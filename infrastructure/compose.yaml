@@ -11,6 +11,11 @@ services:
       SIIP_FEEDBACK_PROVIDER: ${SIIP_FEEDBACK_PROVIDER:-deterministic}
       SIIP_LLM_BASE_URL: ${SIIP_LLM_BASE_URL:-http://host.docker.internal:8000/v1}
       SIIP_LLM_MODEL: ${SIIP_LLM_MODEL:-local-model}
+      SIIP_LLM_API_KEY: ${SIIP_LLM_API_KEY:-}
+      SIIP_LLM_TIMEOUT_SECONDS: ${SIIP_LLM_TIMEOUT_SECONDS:-8}
+      SIIP_LLM_MAX_TOKENS: ${SIIP_LLM_MAX_TOKENS:-350}
+      SIIP_LLM_RETRIES: ${SIIP_LLM_RETRIES:-0}
+      SIIP_ALLOW_PAID_API: ${SIIP_ALLOW_PAID_API:-}
     restart: "no"
 volumes:
   pl-postgres-data:
