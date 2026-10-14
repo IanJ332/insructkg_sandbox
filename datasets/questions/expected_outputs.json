@@ -1,0 +1,104 @@
+{
+  "sql_join_01": {
+    "A": [
+      [
+        "Alice",
+        "Engineering"
+      ],
+      [
+        "Bob",
+        "Sales"
+      ],
+      [
+        "David",
+        "Engineering"
+      ]
+    ],
+    "B": [
+      [
+        "Alice",
+        "Engineering"
+      ],
+      [
+        "Bob",
+        "Sales"
+      ],
+      [
+        "David",
+        "Engineering"
+      ],
+      [
+        "Erin",
+        "Research"
+      ]
+    ]
+  },
+  "sql_join_02": {
+    "A": [
+      [
+        "Alice",
+        "Engineering"
+      ],
+      [
+        "Bob",
+        "Sales"
+      ],
+      [
+        "Carol",
+        null
+      ],
+      [
+        "David",
+        "Engineering"
+      ]
+    ],
+    "B": [
+      [
+        "Alice",
+        "Engineering"
+      ],
+      [
+        "Bob",
+        "Sales"
+      ],
+      [
+        "Carol",
+        null
+      ],
+      [
+        "David",
+        "Engineering"
+      ],
+      [
+        "Erin",
+        "Research"
+      ],
+      [
+        "Frank",
+        null
+      ],
+      [
+        "Gina",
+        null
+      ]
+    ]
+  },
+  "sql_join_03": {
+    "A": [
+      [
+        "Carol"
+      ]
+    ],
+    "B": [
+      [
+        "Carol"
+      ],
+      [
+        "Frank"
+      ],
+      [
+        "Gina"
+      ]
+    ]
+  }
+}

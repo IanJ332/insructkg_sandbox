@@ -1,0 +1,21 @@
+<pl-question-panel>
+<h2>SQL JOINs and NULL Semantics</h2>
+<p>{{params.statement}}</p>
+<p>SQLite dialect. Read-only SELECT queries only. Row order is ignored; duplicate rows count.</p>
+<p>Employees(employee_id INTEGER, name TEXT, department_id INTEGER);<br>
+Departments(department_id INTEGER, department_name TEXT).</p>
+<p>Example data: Alice → 10, Bob → 20, Carol → NULL, David → 10.
+Departments: 10 Engineering, 20 Sales, 30 Research. Additional private cases test unmatched references.</p>
+<p>This is a synthetic local research sandbox. Graph additions are provisional pending instructor review.</p>
+</pl-question-panel>
+<pl-string-input answers-name="sql" multiline="true" aria-label="SQL query" placeholder="Enter your SELECT query" show-help-text="false"></pl-string-input>
+<pl-submission-panel>
+<div class="alert alert-info" role="status">
+<p><strong>{{feedback.status}}</strong></p>
+<p>{{feedback.guidance}}</p>
+<p>{{feedback.concepts}}</p>
+<p>{{feedback.grounding}}</p>
+<p><small>{{feedback.inference}}</small></p>
+</div>
+</pl-submission-panel>
+<pl-answer-panel><p>Review the feedback and reason about which rows the query must preserve. A complete solution is withheld in this sandbox.</p></pl-answer-panel>
