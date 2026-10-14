@@ -117,14 +117,6 @@
   "research_approvals": "NOT_ASSERTED",
   "ci_runs": [
     {
-      "conclusion": "",
-      "databaseId": 38636169814,
-      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
-      "name": "Local platform integration",
-      "status": "in_progress",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814"
-    },
-    {
       "conclusion": "success",
       "databaseId": 38636169671,
       "headSha": "11b803ed91a91520d053427acf79740607c81eff",
@@ -141,12 +133,12 @@
       "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643"
     },
     {
-      "conclusion": "",
-      "databaseId": 38635909605,
-      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "conclusion": "success",
+      "databaseId": 38636169814,
+      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
       "name": "Local platform integration",
-      "status": "in_progress",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909605"
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814"
     },
     {
       "conclusion": "success",
@@ -163,6 +155,14 @@
       "name": "Security",
       "status": "completed",
       "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909388"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 38635909605,
+      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909605"
     },
     {
       "conclusion": "failure",
@@ -196,5 +196,26 @@
     "Cold PL compilation readiness and whitespace-sensitive browser selector corrected; actual attempts preserved",
     "First GitHub Python3.11 pyee pin and same-file fixture initializer corrected; run links retained",
     "Actual unmodified upstream ingest exit124 remains unresolved"
-  ]
+  ],
+  "source_ci_status": "PASS",
+  "pull_request": "https://github.com/IanJ332/insructkg_sandbox/pull/1",
+  "pull_request_draft": true,
+  "fresh_runner_e2e": {
+    "status": "PASS",
+    "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814",
+    "browser_submissions": 5,
+    "records_before": 21,
+    "records_after": 26,
+    "restart_pl_ids": 5,
+    "restart_records": 26,
+    "persistence": "Exact IDs and normalized-record hashes preserved",
+    "corpus": "Original synthetic contract graph and lesson; distinct from local research Mode A",
+    "live_llm_calls": 0
+  },
+  "documentation_ci": {
+    "revision": "5de2dd7",
+    "ci": "PASS",
+    "security": "PASS",
+    "note": "Later evidence-only commit may follow; final branch checks are visible on the draft PR."
+  }
 }

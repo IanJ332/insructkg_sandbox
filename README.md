@@ -38,7 +38,7 @@ Open [PrairieLearn](http://localhost:3000/pl), **Load from disk**, open SIIP SQL
 
 `.env.example` documents literal environment configuration. The default deterministic provider makes no inference requests. Compatible providers implement bounded timeouts, response validation and explicit paid-consent gating; credentials alone never authorize spending. Leave inference disabled under the current instruction.
 
-GitHub Actions implement two-Python quality/tests/build, full-history publication scanning, Bandit and dependency audit, plus a slower actual PL browser/restart workflow. CD is reproducible local startup and a restricted-data-free wheel; there is no automatic institutional deployment.
+GitHub Actions passed two-Python quality/tests/build, full-history publication scanning, Bandit and dependency audit, plus the actual PL browser/restart workflow. Exact run links are in the current status and verification record. CD is reproducible local startup and a restricted-data-free wheel; there is no automatic institutional deployment.
 
 ## Data and research limits
 

@@ -22,7 +22,7 @@ Snapshot: 2026-10-14. Source snapshot and actual CI run URLs are in [verificatio
 | Persistence | PASS | Exact 15 PL IDs and37 normalized record hashes survive stop/start; restart.log/persistence-{before,after}.json |
 | Static checks/build | PASS | Ruff/format, strict mypy on 3 boundaries, config/pip integrity,23-file code-only wheel |
 | Security checks | PASS within scope | Zero final Bandit findings; no known dev-pin vulnerabilities at audit; full-history publication audit has no unreviewed findings |
-| GitHub publication/CI | See verification.json | Authorized original source only; actual remote run status, not inferred from YAML |
+| GitHub publication/CI | PASS | Original source pushed; [two-Python CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169671), [actual PL E2E + restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814) all passed on implementation snapshot 11b803e |
 | Hosted course / real-data pilot | BLOCKED | No institutional/research authorization; no existing course touched |
 
 ## Local evidence
@@ -30,3 +30,5 @@ Snapshot: 2026-10-14. Source snapshot and actual CI run URLs are in [verificatio
 `artifacts/phase2/` holds baseline and expanded logs, E2E result/screenshots/trace, exact restart comparison, scans/build logs and extraction failure. These are intentionally ignored; published sanitized summaries and public CI logs provide reviewable nonrestricted evidence. The E2E driver is rerunnable from public synthetic fixtures. A failed earlier selector run preserved five actual attempts; final CSV import therefore added ten to the 27-record baseline. Fixture/source counts are22 synthetic_fixture (including one earlier dashboard attempt) +15 local_prairielearn_export.
 
 The local UI is at http://localhost:3000/pl and http://127.0.0.1:8080/. Loopback prototype health is not hosted deployment readiness. Model output quality and student learning effectiveness remain unverified.
+
+Fresh GitHub runner evidence is deliberately separate: its original synthetic fixture corpus began with 21 records, imported 5 actual PL attempts to 26 records, and preserved all 5 PL IDs/26 record hashes through restart. The local research-data run retains 37records/15 PL submissions. [Draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1) awaits independent review; main was not merged or rewritten. Final CI/security also ran on the documentation revision.
