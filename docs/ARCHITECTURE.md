@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Implemented architecture
 
 The integration is a modular Python package bundled in PrairieLearn `serverFilesCourse/siip`, not a rewrite of either research repository. Python/SQLite/JSON suffice for the prototype. The official PrairieLearn container owns its separate PostgreSQL database and actual submission lifecycle.

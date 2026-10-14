@@ -1,0 +1,11 @@
+# Proposed Baseline / RAG / KG study
+
+This is a **future design**, not a completed student experiment. First obtain instructor-approved content, authorized model resources, institution/research approvals, consent/access/retention rules and a hosted test course. Do not infer authorization from this technical sandbox.
+
+Technical phase: freeze integration/upstream/image/model/prompt versions, graph checksum/review overlay, document hashes, question/dataset versions and provider settings. Apply the same timestamped SQL attempts and deterministic grade to all three modes. Baseline gets question/SQL/grade; RAG adds retrieved cited excerpts; KG additionally adds explicitly scoped relationships, diagnosis and prior-only concept history. Use identical model, token/time/retry budgets and no hidden solution in prompts. Record retrieval results, graph review state, failures, fallback rate, usage and latency. No model calls are currently authorized.
+
+Before a learner study, have blinded raters score correctness, actionable concept specificity, evidence support, instructor alignment and leakage using a preregistered rubric. Double-code a sample and report agreement/disagreements. Count invalid/error/fallback results in denominators. Avoid optimizing on the held-out evaluation attempts.
+
+For learning outcomes, choose randomization unit with the instructor/statistician (student or section; account for contamination), obtain pretest ability measures, use common posttest/transfer items and retention measures, and preregister primary outcome, exclusions and analysis. Power/sample-size decisions require an expected effect and course constraints; this prototype supplies neither. Repeated attempts within students/questions require clustered or hierarchical analysis. Report uncertainty and attrition, not only aggregate percent correct.
+
+Profiles are descriptive beta heuristics and cannot serve as independent ground truth of mastery. Do not treat answer correctness, satisfaction or automatic citation presence as evidence of learning gain. Provisional/unreviewed graph edges should not enter an instructor-aligned condition without review or an explicitly separated ablation. Separate material-coverage improvements from graph-structure effects.

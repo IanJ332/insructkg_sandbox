@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Repository audit — 2026-10-14
 
 ## Revisions and scope

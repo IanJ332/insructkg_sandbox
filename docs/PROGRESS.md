@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Progress
 
 - Phase 0: repositories retrieved, commits matched, real artifact schema/counts audited; implementation architecture selected. Docker Desktop started. Official PrairieLearn image pulling.

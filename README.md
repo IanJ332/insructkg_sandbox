@@ -1,97 +1,47 @@
 # SIIP — PrairieLearn × InstructKG SQL sandbox
 
-A local, executable research prototype for SQL JOINs and NULL semantics. The student interface is **real PrairieLearn**. Its custom grading hook uses the same bounded SQLite evaluator as the synthetic analytics runner. No hosted UIUC course or real student records are used.
+Original integration code for a local SQL learning research prototype. Three **actual PrairieLearn** questions share a bounded SQLite grader, concept diagnosis, Baseline/RAG/KG feedback interface, and synthetic instructor analytics. Immediate feedback is stored by PrairieLearn; an explicit supported CSV export/import connects its attempts to longitudinal profiles.
 
-Verified on Intel macOS with Python 3.13.9, Docker Desktop 28.5.2 / Compose 2.40.3. Three questions, correct/incorrect UI submissions, feedback, retries, graph import, persistent synthetic profiles and analytics have been exercised. See [verification evidence](docs/VERIFICATION_REPORT.md) for precise status. Live LLM feedback and fresh InstructKG extraction are **BLOCKED**, not simulated successes.
+Phase 2 reproduced the original 43 tests, expanded to **83 distinct tests** (81 public-fixture tests and two local research tests), and exercised five real browser submissions through feedback, correction, export, persistence and analytics. The local store now has 37 synthetic records across five students. **Live model inference is BLOCKED by the user's instruction: no paid usage.** Existing real KG loading passes; fresh upstream ingestion timed out after 600 seconds in a working isolated CPU environment. No fresh concepts or relations are claimed.
 
-## Open the running application
+[Current status](docs/handoff/CURRENT_STATUS.md) · [External review packet](docs/handoff/EXTERNAL_REVIEW_PACKET.md) · [Next implementation plan](docs/handoff/NEXT_IMPLEMENTATION_PLAN.md) · [Documentation index](docs/README.md)
 
-- [PrairieLearn](http://localhost:3000/pl): SIIP SQL → Fall 2026 Synthetic Sandbox → SQL Concept-Aware Feedback Sandbox.
-- [Instructor analytics](http://127.0.0.1:8080): synthetic profiles, source-separated activity, graph review, feedback context comparison.
+## Clean public-code setup
 
-The graph contains 469 original judgments, 319 non-null relations and 121 named concepts. It covers multiple SQL lectures. Every original judgment remains unreviewed; eight separate developer provisional dependencies support the demonstration. The available real lecture PDF is preserved in its research checkout. It is not newly generated or published.
-
-## Reproduce from this directory
-
-Python ≥3.11 and Docker Desktop are required for the deterministic sandbox. Start Docker Desktop, then:
+Requires Git, Python 3.11 or 3.13 and Docker Desktop/Compose for PrairieLearn. Public tests need no university services, paid credentials or GPU.
 
 ```sh
-python3 scripts/bootstrap.py        # retrieve public repositories at recorded commits
-python3 scripts/manage.py install # creates .venv, installs pinned lightweight PDF reader
-make check
-make init                         # rebuild course, both datasets, graph queue and 21 fixtures
-make start                        # official PL image on 127.0.0.1:3000; analytics on 127.0.0.1:8080
+python3 scripts/manage.py install
+.venv/bin/python scripts/manage.py test-public
+.venv/bin/python scripts/manage.py quality
+.venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
+.venv/bin/python scripts/seed.py
+.venv/bin/python scripts/manage.py start
+.venv/bin/python scripts/smoke.py
 ```
 
-Open PrairieLearn and click **Load from disk** (inside the top navigation menu on narrow windows). Wait for **Course sync successful**. Open the SIIP course instance, its assessment, then choose **Student view** from Dev User's menu. Question metadata changes require Load from disk; Python/HTML changes generally load on navigation. Restart the container after changing shared modules to clear process caches.
+The fixture initializer creates a **clearly synthetic contract graph and lesson**, not an InstructKG extraction. Use its course-data target only in a fresh public checkout: it must not overwrite local research data. For authorized real local research preparation use [Local setup](docs/engineering/LOCAL_SETUP.md).
+
+Open [PrairieLearn](http://localhost:3000/pl), **Load from disk**, open SIIP SQL → Fall 2026 Synthetic Sandbox → SQL Concept-Aware Feedback Sandbox, then Dev User → Student view. [Analytics](http://127.0.0.1:8080/) shows profiles, graph review and feedback comparisons. See [demo steps](docs/DEMO.md).
 
 ```sh
-make test                         # meaningful deterministic, graph, feedback, profile and hook tests
-make smoke                        # live HTTP checks; services must already be running
-make evaluate                     # 63 paired fallback outputs, with 0 live inference claims
-make fresh-preflight              # records exact upstream extraction blockers
-make demo                         # starts services and rebuilds non-destructive fixture/evaluation outputs
-make stop                         # stop only this project; retain both databases
-make start
+.venv/bin/python -m playwright install chromium
+.venv/bin/python scripts/manage.py e2e   # adds actual local synthetic submissions
+.venv/bin/python scripts/manage.py evaluate  # 63 deterministic fallback comparisons, zero model calls
+.venv/bin/python scripts/manage.py stop  # retains both databases
+.venv/bin/python scripts/manage.py start
 ```
 
-`make reset` saves the previous synthetic SQLite store, regenerates fixtures, and stops this project's services. It preserves PrairieLearn history. Use its **Regenerate your assessment instance** control for a fresh local demo. It never deletes Docker volumes or unrelated data.
+## Implemented boundaries
 
-## Architecture
+`prairielearn-course/serverFilesCourse/siip/` holds grading, graph, feedback and storage; question hooks are thin. PrairieLearn's digest-pinned official image owns PostgreSQL history. Our analytics use a separate SQLite store. The dashboard binds loopback and has no public authentication. No PL core changes, hosted course synchronization or Neo4j service are required.
 
-```mermaid
-flowchart LR
-  PL[Real PrairieLearn SQL input] --> Hook[server.py grade hook]
-  Hook --> Engine[Shared deterministic grader]
-  Engine --> Worker[Fresh bounded read-only SQLite worker]
-  Hook --> Feedback[Structured concept feedback]
-  Raw[Original InstructKG JSONL] --> Adapter[Graph adapter + review queue]
-  PDF[Real lecture PDF] --> Pages[Page-cited text for RAG]
-  Adapter --> Feedback
-  Pages --> Feedback
-  Fixtures[21 timestamped synthetic attempts] --> Engine
-  Fixtures --> Store[Persistent synthetic profiles]
-  Export[Authorized local PL CSV export] --> Store
-  Store --> Dashboard[Loopback instructor analytics]
-```
+`.env.example` documents literal environment configuration. The default deterministic provider makes no inference requests. Compatible providers implement bounded timeouts, response validation and explicit paid-consent gating; credentials alone never authorize spending. Leave inference disabled under the current instruction.
 
-Portable shared code lives in `prairielearn-course/serverFilesCourse/siip/`. Research repositories remain unmodified under `research/`. Course content, original/provisional graphs, question mappings, submission records and experiment outputs are separate. There is no PostgreSQL/Neo4j dependency for our integration package; PrairieLearn itself uses its bundled PostgreSQL database.
+GitHub Actions implement two-Python quality/tests/build, full-history publication scanning, Bandit and dependency audit, plus a slower actual PL browser/restart workflow. CD is reproducible local startup and a restricted-data-free wheel; there is no automatic institutional deployment.
 
-## Commands and configuration
+## Data and research limits
 
-All `make` targets also work as `python3 scripts/manage.py TARGET`. Targets include `check`, `install`, `init`, `start-pl`, `start-dashboard`, `seed`, `graph`, `test-sql`, `test-feedback`, `test`, `smoke`, `evaluate`, `fresh-preflight`, `stop`, `reset`, and `demo`.
+Research checkouts, course PDF/text, original KG outputs, databases, model caches, screenshots and raw logs stay ignored locally. The existing local graph has 469 judgments / 121 nodes; none are instructor approved. Eight developer provisional edges are separate. Public CI uses different original contract fixtures. Profiles are descriptive beta heuristics, not validated mastery measures; no student learning benefit is established.
 
-The default package uses only the Python standard library. `requirements-dev.txt` pins pypdf for rebuilding lecture text. Optional extraction dependencies are separate in `infrastructure/requirements-pipeline.txt`; optional CUDA-only dependencies are in `requirements-gpu.txt`. Do not install the original all-in-one upstream requirements on this Mac.
-
-`.env.example` contains names and safe defaults only. Environment variables must be exported for Python commands; Compose also reads its environment. Default `SIIP_FEEDBACK_PROVIDER=deterministic` makes no model requests. An already available local OpenAI-compatible server can be configured with `SIIP_FEEDBACK_PROVIDER=local`, `SIIP_LLM_BASE_URL`, and `SIIP_LLM_MODEL`. The container reaches a host-local server via `host.docker.internal`; host evaluation uses `127.0.0.1`. Run `scripts/evaluate.py --live-local` only against that local server. Remote/paid inference is not enabled by the CLI. No cost estimates are invented.
-
-The PrairieLearn image is pinned by digest in `infrastructure/compose.yaml`, independent of the separately audited source commit. The image has no embedded Git checkout, so its source SHA is not asserted. Docker data is in the project-scoped `pl-postgres-data` volume mounted at the image's actual `/var/postgres` path.
-
-## Real PrairieLearn attempts → profiles
-
-The immediate grade/feedback is displayed within PrairieLearn and stored in its submission history. Longitudinal profiles use an explicit source adapter; question code does not guess a student UID.
-
-For this local demo only, download **Downloads → all_submissions.csv** from the SIIP assessment and run:
-
-```sh
-.venv/bin/python scripts/import_pl.py artifacts/pl_all_submissions.csv --local-synthetic-only
-```
-
-Only the local `dev@example.com`, known HW1 and three question IDs are accepted. They map explicitly to synthetic **S003**. Normalized records omit name/UID/UIN, preserve PL submission IDs and source, recompute results, and check agreement with PrairieLearn scores. Reimports are idempotent. This is a tested CSV integration, not a production API connection or automatic push from grading code. Refresh the dashboard after import.
-
-## Troubleshooting
-
-- Docker daemon unavailable: start installed Docker Desktop; `make check` reports the failure.
-- Port conflict: use `lsof -iTCP:3000 -sTCP:LISTEN` / port 8080 to identify the owner. Do not terminate an unrelated service. Adjust loopback ports and documented URLs together if necessary.
-- No course: Load from disk and inspect the job log. No upstream core patch is needed.
-- Grade click after editing: let the input update settle, then click Save & Grade. Confirm a new submitted-answer panel appears.
-- Shared code stale: `docker compose -f infrastructure/compose.yaml restart prairielearn`.
-- Lost history: verify the `/var/postgres` named volume. `make stop/start` preserves history; never use `down -v` for normal shutdown.
-- Fresh extraction cannot install on Intel Python 3.13: actual dependency dry-run has no compatible torch wheel. Use a supported separate extraction environment and an authorized provider; see [InstructKG guide](docs/INSTRUCTKG_INTEGRATION.md).
-- No API key: the entire deterministic sandbox still works; feedback explicitly logs fallback status.
-
-## Research boundaries and documentation
-
-[Demo](docs/DEMO.md) · [audit](docs/REPOSITORY_AUDIT.md) · [architecture](docs/ARCHITECTURE.md) · [PrairieLearn integration](docs/PRAIRIELEARN_INTEGRATION.md) · [feedback](docs/FEEDBACK_DESIGN.md) · [profiles](docs/STUDENT_PROFILE.md) · [security](docs/SECURITY_AND_PRIVACY.md) · [experiment plan](docs/EXPERIMENT_PLAN.md) · [deployment](docs/DEPLOYMENT_GUIDE.md) · [human actions](docs/HUMAN_ACTION_REQUIRED.md) · [progress](docs/PROGRESS.md).
-
-Synthetic results demonstrate technical behavior, not learning improvement. Instructor review, research authorization and a hosted sandbox are future requirements. This is not production-ready. Local copied lecture text/graph evidence and raw PL exports are excluded from integration Git tracking; do not redistribute course material without permission.
+Original code publication is authorized. Third-party redistribution and blanket licensing rights are not established; see [NOTICE](NOTICE.md). Old root-level docs under `docs/` preserve Phase 1 history; the organized Phase 2 handoff is authoritative for current status.

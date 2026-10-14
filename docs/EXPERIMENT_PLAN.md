@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Proposed learning-impact study — not approved or started
 
 This document proposes a future Fall 2026 pilot. Synthetic technical checks are not evidence of learning effects. No real students have been assigned, randomized or measured.

@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Feedback design and comparison
 
 Correctness is always decided by deterministic execution against two independently initialized datasets. LLM output cannot alter score. `public_grade()` strips reference SQL, expected/actual rows and raw engine errors before constructing a model context. Query text is untrusted data, not an instruction source.

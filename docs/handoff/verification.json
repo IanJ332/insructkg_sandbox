@@ -1,0 +1,200 @@
+{
+  "snapshot_date": "2026-10-14",
+  "repository": "https://github.com/IanJ332/insructkg_sandbox",
+  "visibility": "PUBLIC",
+  "branch": "engineering/phase2-hardening",
+  "implementation_sha": "11b803ed91a91520d053427acf79740607c81eff",
+  "documentation_note": "Documentation-only commits can follow; compare CI headSha and git rev-parse HEAD.",
+  "baseline": {
+    "tests": 43,
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "http_checks": 5,
+    "synthetic_records": 27
+  },
+  "tests": {
+    "distinct": 83,
+    "new_vs_baseline": 40,
+    "public_suite": {
+      "tests": 81,
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0,
+      "local_seconds": 55.002
+    },
+    "research_suite": {
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "note": "81 was also executed against local research data; repeated runs are not additional distinct tests."
+  },
+  "actual_local_e2e": {
+    "status": "PASS",
+    "browser_submissions": 5,
+    "actual_pl_submission_ids": [
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "csv_new_records": 10,
+    "records_before": 27,
+    "records_after": 37,
+    "live_model_calls": 0,
+    "evidence": "artifacts/phase2/e2e/result.json"
+  },
+  "analytics": {
+    "synthetic_students": 5,
+    "records": 37,
+    "correct": 19,
+    "incorrect": 18,
+    "synthetic_fixture_records": 22,
+    "local_pl_export_records": 15
+  },
+  "persistence": {
+    "status": "PASS",
+    "pl_submission_ids": 15,
+    "record_count": 37,
+    "comparison": "Exact ordered IDs and full normalized-record SHA256 across stop/start",
+    "evidence": "artifacts/phase2/restart.log"
+  },
+  "quality": {
+    "status": "PASS",
+    "ruff": "all maintained Python",
+    "mypy": "strict on configuration.py, observability.py, ingestion.py only",
+    "config": "owned JSON, IDs, TOML, loopback Compose/image",
+    "pip_check": "PASS",
+    "wheel_files": 23
+  },
+  "security": {
+    "publication_audit": "PASS",
+    "full_reachable_history_scanned": true,
+    "unreviewed_secret_findings": 0,
+    "restricted_paths": 0,
+    "bandit_findings": 0,
+    "dev_dependency_known_vulnerabilities": 0,
+    "scope": "Integration scripts/package and pinned dev dependencies; not entire PL/research image/model stack"
+  },
+  "kg": {
+    "mode_a": "PASS",
+    "judgments": 469,
+    "non_null": 319,
+    "null": 150,
+    "concepts": 121,
+    "instructor_approved": false,
+    "developer_provisional_edges": 8,
+    "review_flags": 9,
+    "mode_b": "BLOCKED",
+    "cpu_exact_lock_build": "PASS",
+    "no_network_import": "PASS",
+    "ingest": "FAIL",
+    "ingest_exit_code": 124,
+    "ingest_timeout_seconds": 600,
+    "actual_fresh_chunks": null,
+    "actual_fresh_concepts": null,
+    "actual_fresh_roles": null,
+    "actual_fresh_clusters": null,
+    "actual_fresh_pairs": null,
+    "actual_fresh_relations": null,
+    "note": "No chunks written. Later stages NOT_RUN. Missing counts mean unavailable, not successful zero-node extraction."
+  },
+  "feedback": {
+    "contract_tests": "PASS",
+    "live_inference": "BLOCKED",
+    "blocker": "Explicit user instruction: Keep inference blocked; no paid usage",
+    "paired_deterministic_outputs": 63,
+    "live_model_calls": 0,
+    "observed_cost": null,
+    "prompt_version": "siip-feedback-v2",
+    "human_quality_review": "NOT_RUN"
+  },
+  "hosted_deployment": "BLOCKED",
+  "real_student_pilot": "BLOCKED",
+  "research_approvals": "NOT_ASSERTED",
+  "ci_runs": [
+    {
+      "conclusion": "",
+      "databaseId": 38636169814,
+      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+      "name": "Local platform integration",
+      "status": "in_progress",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38636169671,
+      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169671"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38636169643,
+      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 38635909605,
+      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "name": "Local platform integration",
+      "status": "in_progress",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909605"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38635909603,
+      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909603"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38635909388,
+      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909388"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 38635364319,
+      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364319"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 38635364492,
+      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364492"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38635364514,
+      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364514"
+    }
+  ],
+  "local_evidence_policy": "Raw logs, PDF/text/graph outputs, databases, exports, model caches, screenshots and traces are ignored and not published. Public CI supplies rerunnable synthetic evidence.",
+  "known_unsuccessful_experiments": [
+    "Initial socket permission denial corrected with authorized local execution",
+    "Intermediate API handler and HTTP reset bugs corrected and rerun",
+    "Cold PL compilation readiness and whitespace-sensitive browser selector corrected; actual attempts preserved",
+    "First GitHub Python3.11 pyee pin and same-file fixture initializer corrected; run links retained",
+    "Actual unmodified upstream ingest exit124 remains unresolved"
+  ]
+}

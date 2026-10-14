@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # PrairieLearn integration
 
 Official interfaces inspected on 2026-10-14: [local installation](https://docs.prairielearn.com/installing/), [question server lifecycle](https://docs.prairielearn.com/question/server/), [string input](https://docs.prairielearn.com/elements/pl-string-input/), [external grading](https://docs.prairielearn.com/externalGrading/), [API](https://docs.prairielearn.com/api/). Checked-out source: eaaa91843807411918d260475e0a9188bcc2c979; the running image is independently pinned by digest f030faf735fdbb80c0307cc1b599d0757bb76a2f4573fbab9a7303adad4275ac. Its Git SHA is unavailable, so no source/image SHA equivalence is asserted. The selected hooks were exercised against the actual image.

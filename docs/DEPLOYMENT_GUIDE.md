@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Authorized hosted deployment guide
 
 No public or hosted deployment was performed. The local official PL container and separate analytics dashboard are the verified environments. An existing CS418 course must not be reused or inspected for this study.

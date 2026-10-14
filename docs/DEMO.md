@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Repeatable local demonstration
 
 Run `make demo`. Open http://localhost:3000/pl, Load from disk, choose SIIP SQL → Fall 2026 Synthetic Sandbox → SQL Concept-Aware Feedback Sandbox. Choose Student view. Keep the separate analytics page at http://127.0.0.1:8080 open. All data are synthetic; feedback defaults to deterministic fallback.

@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Verification report — 2026-10-14
 
 **18 PASS, 2 BLOCKED, 0 FAIL, 0 NOT_RUN in the local acceptance matrix. The full definition of done has not been reached.** Live model feedback and actual fresh extraction remain blocked. No production/hosted/research approval is claimed.

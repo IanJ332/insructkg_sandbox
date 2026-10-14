@@ -1,3 +1,5 @@
+> Phase 1 historical record. For current Phase 2 status, see [CURRENT_STATUS](handoff/CURRENT_STATUS.md). Counts and blockers below describe the earlier snapshot.
+
 # Synthetic student profiles
 
 Five artificial identifiers S001–S005 represent different scripted trajectories. Twenty-one timestamped fixtures are generated locally. Correctness is derived from actual SQL evaluation. S001 is consistently correct; S002 struggles with outer JOIN/NULL; S003 improves; S004 struggles with missing matches; S005 repeatedly fails. Five actual local Dev User PL submissions are independently exported and mapped to S003 for integration demonstration.
