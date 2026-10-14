@@ -7,6 +7,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "artifacts/public-data"
+# Never replace an existing real research graph with a contract fixture.
+if (TARGET / "existing_relations.jsonl").exists():
+    metadata = json.loads((TARGET / "provenance.json").read_text())
+    if metadata.get("kind") != "synthetic_contract_fixture":
+        raise SystemExit("Preserving existing research graph; choose a fresh fixture directory")
 TARGET.mkdir(parents=True, exist_ok=True)
 source = ROOT / "prairielearn-course/serverFilesCourse/siip/data"
 for name in [
@@ -16,7 +21,8 @@ for name in [
     "mapping.json",
     "provisional_relations.jsonl",
 ]:
-    shutil.copyfile(source / name, TARGET / name)
+    if (source / name).resolve() != (TARGET / name).resolve():
+        shutil.copyfile(source / name, TARGET / name)
 records = [
     {
         "A": {"name": "CONTRACT_SQL", "role": "Definition"},

@@ -1,6 +1,6 @@
 # All runtime/research evidence stays local; sanitized reports live in docs.
 artifacts/
-research/
+/research/
 .venv*/
 __pycache__/
 *.py[cod]
