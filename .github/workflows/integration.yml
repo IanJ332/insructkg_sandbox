@@ -5,7 +5,8 @@ on:
       - '.github/workflows/integration.yml'
       - 'tests/e2e/**'
       - 'infrastructure/compose.yaml'
-      - 'scripts/init_public.py'
+      - 'scripts/**'
+      - 'prairielearn-course/**'
       - 'requirements-dev.txt'
   workflow_dispatch:
 permissions:

@@ -2,6 +2,7 @@
 
 import http.client
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -34,8 +35,18 @@ checks.append("Analytics reads persistent five-student store")
 assert "S003" in get("http://127.0.0.1:8080/students?id=S003")
 checks.append("Student detail renders persisted history")
 graph = get("http://127.0.0.1:8080/graph")
-assert "469" in graph and "JOIN_OPERATION" in graph and "unreviewed" in graph
-checks.append("Original graph inventory, direction and review state render")
+data = Path(
+    os.environ.get("SIIP_DATA_DIR") or ROOT / "prairielearn-course/serverFilesCourse/siip/data"
+)
+provenance = json.loads((data / "provenance.json").read_text())
+synthetic = provenance.get("kind") == "synthetic_contract_fixture"
+expected_count, expected_node = (2, "CONTRACT_SQL") if synthetic else (469, "JOIN_OPERATION")
+assert str(expected_count) in graph and expected_node in graph and "unreviewed" in graph
+checks.append(
+    "Synthetic contract graph renders (not real extraction)"
+    if synthetic
+    else "Original graph inventory, direction and review state render"
+)
 comparison = get("http://127.0.0.1:8080/compare")
 assert all(mode in comparison for mode in ["BASELINE", "RAG", "KG", "deterministic_fallback"])
 checks.append("Three fallback comparison contexts render with explicit inference status")

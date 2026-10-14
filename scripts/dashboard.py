@@ -158,14 +158,22 @@ def students(repo, sid=None):
 
 def graph_page():
     existing, provisional = load_graphs()
+    synthetic = existing.provenance.get("kind") == "synthetic_contract_fixture"
+    source_label = (
+        "Original synthetic contract fixture; no real extraction."
+        if synthetic
+        else "Existing model output covering multiple SQL lectures."
+    )
     body = (
         "<section><h2>Graph provenance and review queue</h2><p>"
         + str(len(existing.records))
-        + " existing model judgments · "
+        + " loaded judgments · "
         + str(len(existing.nodes))
         + " concepts · "
         + str(len(existing.edges(True)))
-        + ' unique non-null edges. Original graph includes multiple SQL lectures.</p><p class="badge">All original judgments remain unreviewed. Development edges are provisional.</p><p>Direction means source → target. A depends_on B means B is a prerequisite of A. No questionable edge is silently reversed.</p></section>'
+        + " unique non-null edges.</p><p>"
+        + esc(source_label)
+        + '</p><p class="badge">All loaded judgments remain unreviewed. Development edges are provisional.</p><p>Direction means source → target. A depends_on B means B is a prerequisite of A. No questionable edge is silently reversed.</p></section>'
     )
     module = existing.evidence(["JOIN_OPERATION", "LEFT_OUTER_JOIN"])
     body += "<section><h2>JOIN module judgments</h2>"
@@ -190,7 +198,7 @@ def graph_page():
         )
         + "</section>"
     )
-    body += "<section><h2>Full original judgment inventory</h2>"
+    body += "<section><h2>Full loaded judgment inventory</h2>"
     for rec in existing.records:
         body += (
             "<details><summary>"
