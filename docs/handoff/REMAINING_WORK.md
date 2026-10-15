@@ -1,17 +1,20 @@
-# Remaining work after Phase 4.2 Engineering Closure
+# Remaining work after Phase 4.3 Security Closure & Research Handoff
 
-Completed in Phase 4.2:
-- Cryptographic learner authorization with HMAC-SHA256 signed tickets and session tokens; zero identity disclosure.
-- Authoritative submission identity and unique provisional attempt generation (`prov-{student}-{qid}-{uuid}`); idempotent reconciliation.
-- Single-owner SQLite queue architecture on Windows host with monotonic lease fencing tokens (`lease_token`).
-- Prior-only historical personalization in `FeedbackWorker` scoped strictly before attempt creation time.
-- Playwright end-to-end async browser validation and bounded local Qwen3 8B canary inference (`live_success`, 10.28s).
-- All 188 tests passing; CI, Security, and Local Platform Integration workflows 100% green on GitHub.
+Completed in Phase 4.3:
+- Dynamic uncommitted HMAC secret generation (`auth_secret.key`) replacing static embedded keys.
+- Strict service-to-service key authentication (`X-SIIP-Service-Key`) on `/api/queue/enqueue` and `/api/queue/reconcile`.
+- Development-only gating (`SIIP_ALLOW_SYNTHETIC_AUTH=1`) and loopback/service caller checks on `/api/auth/synthetic-session`.
+- Default server bind host hardened to loopback `127.0.0.1`.
+- Reconciliation provenance validation checking student and question evidence (409 Conflict on mismatch) and preserving submission timestamps.
+- Authentic SQL benchmark curation from ANU corpus (12,899 submissions, 393 students) to 25 benchmark cases across 8 exercises (raw datasets isolated on `D:\AI\Datasets\SIIP\`).
+- Controlled experimental evaluation protocol supporting Conditions A-E, blinded review generation, and automated metrics analysis.
+- 191/191 tests passing; 100% clean across Ruff, Mypy, Bandit (0 issues), and Publication Audit (0 secrets, 0 restricted paths).
 
 | Priority | Recommended Next Milestone | Current Dependency | Acceptance Criteria |
 |---|---|---|---|
-| **P0** | **Offline Research Evaluation Benchmark** | Authentic anonymized student SQL corpus | Offline comparison of Baseline LLM vs. Lecture RAG vs. KG-grounded feedback across correctness, concept relevance, hallucination rate, and actionability. |
-| **P1** | **Instructor Concept & Pedagogical Validation** | Instructor review packet | Verification of generated knowledge graph concepts, relation edges, and prerequisite hierarchy against syllabus. |
+| **P0** | **Execute Controlled 25-Case Inference Run** | Instructor authorization for local GPU run | Run `scripts/experiment_runner.py` with warm Qwen3 8B (~20 min, $0.00 cost) to generate model outputs across Conditions A-E. |
+| **P1** | **Blind Pedagogical Review & Rubric Scoring** | Course TA / Instructor scoring | Evaluate randomized blinded review packet across correctness, concept relevance, hallucination rate, and actionability using `scripts/analyze_results.py`. |
 | **P2** | **Institutional Readiness & Pilot Permissions** | IRB approval, institutional SSO integration, FERPA consent | Institutional approval for live student study; production SSO boundary integration. |
 
-The engineering implementation baseline is **frozen**. No further architectural refactoring or queue rebuilds are required prior to research evaluation.
+The engineering implementation baseline is **complete and frozen**.
+

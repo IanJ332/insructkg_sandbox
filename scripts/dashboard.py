@@ -20,6 +20,7 @@ from siip.grader import QUESTIONS, grade
 from siip.identity import (
     create_signed_session_token,
     create_signed_ticket,
+    verify_service_request,
     verify_signed_session_token,
     verify_signed_ticket,
 )
@@ -592,6 +593,35 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 1: Synthetic local authentication session endpoint
             if self.path == "/api/auth/synthetic-session":
+                is_dev_mode = (
+                    os.environ.get("SIIP_ENV") == "development"
+                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+                )
+                if not is_dev_mode:
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": "Synthetic session issuance is disabled outside isolated development mode. "
+                                "Institutional SSO authentication required."
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
+                client_ip = self.client_address[0]
+                is_loopback = client_ip in ("127.0.0.1", "::1", "localhost")
+                if not is_loopback and not verify_service_request(self.headers):
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": "Synthetic session issuance is restricted to local loopback or authorized service callers."
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
                 if self.headers.get_content_type() != "application/json":
                     return self.send("JSON required", 415)
                 payload = json.loads(text)
@@ -620,6 +650,15 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 2: Durable host-owned queue enqueue endpoint
             if self.path == "/api/queue/enqueue":
+                if not verify_service_request(self.headers):
+                    self.send(
+                        json.dumps(
+                            {"error": "Service authentication required for queue mutations."}
+                        ),
+                        401,
+                        content="application/json",
+                    )
+                    return
                 if self.headers.get_content_type() != "application/json":
                     return self.send("JSON required", 415)
                 payload = json.loads(text)
@@ -704,11 +743,23 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 3: Reconcile provisional attempt to authoritative ID
             if self.path == "/api/queue/reconcile":
+                if not verify_service_request(self.headers):
+                    self.send(
+                        json.dumps(
+                            {"error": "Service authentication required for queue reconciliation."}
+                        ),
+                        401,
+                        content="application/json",
+                    )
+                    return
                 if self.headers.get_content_type() != "application/json":
                     return self.send("JSON required", 415)
                 payload = json.loads(text)
                 prov_id = payload.get("provisional_attempt_id")
                 auth_id = payload.get("authoritative_attempt_id")
+                sid = payload.get("student_id")
+                qid = payload.get("question_id")
+                sub_time = payload.get("submission_time")
                 if not prov_id or not auth_id:
                     self.send(
                         json.dumps({"error": "Missing attempt IDs"}),
@@ -717,7 +768,23 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
                 repo_jobs = get_jobs_repo()
-                reconciled = repo_jobs.reconcile(prov_id, auth_id)
+                try:
+                    reconciled = repo_jobs.reconcile(
+                        prov_id,
+                        auth_id,
+                        student_id=sid,
+                        question_id=qid,
+                        submission_time=sub_time,
+                    )
+                except AttemptConflictError as exc:
+                    self.send(
+                        json.dumps(
+                            {"error": f"Reconciliation conflict: {str(exc)}", "detail": str(exc)}
+                        ),
+                        409,
+                        content="application/json",
+                    )
+                    return
                 if not reconciled:
                     self.send(
                         json.dumps({"error": "Provisional attempt not found"}),
@@ -826,7 +893,7 @@ class DashboardServer(ThreadingHTTPServer):
     def __init__(self, repository, port=8080, host=None):
         self.repository = repository
         self.ingestion_lock = threading.Lock()
-        bind_host = host if host is not None else os.environ.get("SIIP_DASHBOARD_HOST", "0.0.0.0")  # nosec B104
+        bind_host = host if host is not None else os.environ.get("SIIP_DASHBOARD_HOST", "127.0.0.1")
         super().__init__((bind_host, port), Handler)
 
 
@@ -836,7 +903,7 @@ if __name__ == "__main__":
         Path((os.environ.get("SIIP_DB_PATH") or ROOT / "artifacts/synthetic.sqlite3"))
     )
     port = int(os.environ.get("SIIP_DASHBOARD_PORT", "8080"))
-    bind_host = os.environ.get("SIIP_DASHBOARD_HOST", "0.0.0.0")  # nosec B104
+    bind_host = os.environ.get("SIIP_DASHBOARD_HOST", "127.0.0.1")
     print(f"Synthetic analytics: http://{bind_host}:{port}", flush=True)
     import signal
 

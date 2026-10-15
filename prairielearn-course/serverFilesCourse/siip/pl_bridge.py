@@ -14,7 +14,7 @@ import uuid
 
 from .feedback import configured_provider, generate_feedback
 from .grader import QUESTIONS, grade
-from .identity import create_signed_ticket, resolve_student_identity
+from .identity import create_signed_ticket, get_service_key, resolve_student_identity
 from .observability import event
 
 
@@ -88,7 +88,10 @@ def grade_question(data, qid):
                     req = urllib.request.Request(
                         queue_url,
                         data=payload,
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-SIIP-Service-Key": get_service_key(),
+                        },
                         method="POST",
                     )
                     with urllib.request.urlopen(req, timeout=5.0) as resp:  # nosec B310

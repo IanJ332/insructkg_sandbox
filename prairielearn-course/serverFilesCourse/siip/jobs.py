@@ -534,32 +534,88 @@ class FeedbackJobRepository:
         return self._row_to_job(row) if row else None
 
     def reconcile(
-        self, provisional_attempt_id: str, authoritative_attempt_id: str
+        self,
+        provisional_attempt_id: str,
+        authoritative_attempt_id: str,
+        student_id: Optional[str] = None,
+        question_id: Optional[str] = None,
+        submission_time: Optional[str] = None,
     ) -> Optional[FeedbackJob]:
-        """Reconcile a provisional live event to an authoritative submission identifier."""
+        """
+        Reconcile a provisional live event to an authoritative submission identifier.
+        Validates corresponding student and question evidence before binding.
+        """
         with closing(self.connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             try:
+                # Verify provisional record exists and get its evidence
+                prov_row = db.execute(
+                    "SELECT job_id, student_id, question_id, created_at FROM feedback_jobs WHERE attempt_id = ?",
+                    (provisional_attempt_id,),
+                ).fetchone()
+                if not prov_row:
+                    db.commit()
+                    return None
+
+                prov_job_id, prov_student, prov_question, prov_created = prov_row
+
+                # Evidence verification: student_id must match if supplied
+                if student_id and prov_student != student_id:
+                    raise AttemptConflictError(
+                        f"Reconciliation student mismatch: provisional belongs to '{prov_student}', "
+                        f"reconciliation requested for '{student_id}'"
+                    )
+
+                # Evidence verification: question_id must match if supplied
+                if question_id and prov_question != question_id:
+                    raise AttemptConflictError(
+                        f"Reconciliation question mismatch: provisional belongs to '{prov_question}', "
+                        f"reconciliation requested for '{question_id}'"
+                    )
+
                 # Check if authoritative record already exists
                 existing_auth = db.execute(
-                    "SELECT job_id FROM feedback_jobs WHERE attempt_id = ?",
+                    "SELECT job_id, student_id, question_id FROM feedback_jobs WHERE attempt_id = ?",
                     (authoritative_attempt_id,),
                 ).fetchone()
                 if existing_auth:
+                    auth_job_id, auth_student, auth_question = existing_auth
+                    if student_id and auth_student != student_id:
+                        raise AttemptConflictError(
+                            f"Authoritative student mismatch: existing belongs to '{auth_student}', "
+                            f"reconciliation requested for '{student_id}'"
+                        )
+                    if question_id and auth_question != question_id:
+                        raise AttemptConflictError(
+                            f"Authoritative question mismatch: existing belongs to '{auth_question}', "
+                            f"reconciliation requested for '{question_id}'"
+                        )
                     # Authoritative job exists; mark provisional as reconciled alias
                     db.execute(
                         "UPDATE feedback_jobs SET attempt_kind = 'reconciled_duplicate', reconciled_from = ? WHERE attempt_id = ?",
                         (authoritative_attempt_id, provisional_attempt_id),
                     )
                     db.commit()
-                    return self.get(existing_auth[0])
+                    return self.get(auth_job_id)
 
                 # Update provisional attempt to authoritative attempt_id
-                cursor = db.execute(
-                    "UPDATE feedback_jobs SET attempt_id = ?, attempt_kind = 'reconciled', reconciled_from = ? "
-                    "WHERE attempt_id = ?",
-                    (authoritative_attempt_id, provisional_attempt_id, provisional_attempt_id),
-                )
+                if submission_time:
+                    cursor = db.execute(
+                        "UPDATE feedback_jobs SET attempt_id = ?, attempt_kind = 'reconciled', reconciled_from = ?, created_at = ? "
+                        "WHERE attempt_id = ?",
+                        (
+                            authoritative_attempt_id,
+                            provisional_attempt_id,
+                            submission_time,
+                            provisional_attempt_id,
+                        ),
+                    )
+                else:
+                    cursor = db.execute(
+                        "UPDATE feedback_jobs SET attempt_id = ?, attempt_kind = 'reconciled', reconciled_from = ? "
+                        "WHERE attempt_id = ?",
+                        (authoritative_attempt_id, provisional_attempt_id, provisional_attempt_id),
+                    )
                 if cursor.rowcount == 0:
                     db.commit()
                     return None

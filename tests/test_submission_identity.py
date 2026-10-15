@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from dashboard import DashboardServer
+from siip.identity import get_service_key
 from siip.jobs import AttemptConflictError, FeedbackJobRepository
 from siip.pl_bridge import grade_question
 from siip.store import SubmissionRepository
@@ -191,7 +192,7 @@ class TestSubmissionIdentityAndIdempotency(unittest.TestCase):
         self.assertEqual(fetched.job_id, prov_job.job_id)
 
     def test_http_queue_enqueue_and_reconcile(self):
-        # Test HTTP POST /api/queue/enqueue
+        # Test HTTP POST /api/queue/enqueue with service key
         post_body = json.dumps(
             {
                 "student_id": "S001",
@@ -205,7 +206,10 @@ class TestSubmissionIdentityAndIdempotency(unittest.TestCase):
             "POST",
             "/api/queue/enqueue",
             body=post_body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-SIIP-Service-Key": get_service_key(),
+            },
         )
         self.assertEqual(status, 201)
         res = json.loads(data.decode("utf-8"))
@@ -215,24 +219,122 @@ class TestSubmissionIdentityAndIdempotency(unittest.TestCase):
         self.assertTrue(attempt_id.startswith("prov-S001-sql_join_02-"))
         self.assertIsNotNone(ticket)
 
-        # Test HTTP POST /api/queue/reconcile
+        # Test HTTP POST /api/queue/reconcile with service key
         rec_body = json.dumps(
             {
                 "provisional_attempt_id": attempt_id,
                 "authoritative_attempt_id": "pl-9999",
+                "student_id": "S001",
+                "question_id": "sql_join_02",
             }
         )
         r_status, r_data, _ = self._request(
             "POST",
             "/api/queue/reconcile",
             body=rec_body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-SIIP-Service-Key": get_service_key(),
+            },
         )
         self.assertEqual(r_status, 200)
         rec_res = json.loads(r_data.decode("utf-8"))
         self.assertEqual(rec_res["status"], "reconciled")
         self.assertEqual(rec_res["attempt_id"], "pl-9999")
         self.assertEqual(rec_res["job_id"], job_id)
+
+    def test_reconciliation_verifies_student_and_question_evidence(self):
+        # Create a provisional attempt for S001 on sql_join_02
+        post_body = json.dumps(
+            {
+                "student_id": "S001",
+                "question_id": "sql_join_02",
+                "submitted_sql": "SELECT 1;",
+                "grading": {"status": "ok", "score": 1.0, "observation": "correct"},
+            }
+        )
+        _, data, _ = self._request(
+            "POST",
+            "/api/queue/enqueue",
+            body=post_body,
+            headers={"Content-Type": "application/json", "X-SIIP-Service-Key": get_service_key()},
+        )
+        prov_id = json.loads(data.decode("utf-8"))["attempt_id"]
+
+        # 1. Attempt reconciliation with mismatched student_id -> 409 Conflict
+        rec_mismatch_student = json.dumps(
+            {
+                "provisional_attempt_id": prov_id,
+                "authoritative_attempt_id": "pl-auth-100",
+                "student_id": "S002",
+                "question_id": "sql_join_02",
+            }
+        )
+        status, data, _ = self._request(
+            "POST",
+            "/api/queue/reconcile",
+            body=rec_mismatch_student,
+            headers={"Content-Type": "application/json", "X-SIIP-Service-Key": get_service_key()},
+        )
+        self.assertEqual(status, 409)
+        self.assertIn("mismatch", json.loads(data.decode("utf-8"))["error"].lower())
+
+        # 2. Attempt reconciliation with mismatched question_id -> 409 Conflict
+        rec_mismatch_question = json.dumps(
+            {
+                "provisional_attempt_id": prov_id,
+                "authoritative_attempt_id": "pl-auth-100",
+                "student_id": "S001",
+                "question_id": "sql_join_01",
+            }
+        )
+        status, data, _ = self._request(
+            "POST",
+            "/api/queue/reconcile",
+            body=rec_mismatch_question,
+            headers={"Content-Type": "application/json", "X-SIIP-Service-Key": get_service_key()},
+        )
+        self.assertEqual(status, 409)
+        self.assertIn("mismatch", json.loads(data.decode("utf-8"))["error"].lower())
+
+    def test_service_key_required_for_queue_endpoints(self):
+        body = json.dumps(
+            {
+                "student_id": "S001",
+                "question_id": "sql_join_02",
+                "submitted_sql": "SELECT 1;",
+                "grading": {"status": "ok", "score": 1.0},
+            }
+        )
+        # 1. Enqueue without service key -> 401 Unauthorized
+        status, _, _ = self._request(
+            "POST", "/api/queue/enqueue", body=body, headers={"Content-Type": "application/json"}
+        )
+        self.assertEqual(status, 401)
+
+        # 2. Enqueue with wrong service key -> 401 Unauthorized
+        status, _, _ = self._request(
+            "POST",
+            "/api/queue/enqueue",
+            body=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-SIIP-Service-Key": "wrong-key-material",
+            },
+        )
+        self.assertEqual(status, 401)
+
+        # 3. Reconcile without service key -> 401 Unauthorized
+        rec_body = json.dumps(
+            {"provisional_attempt_id": "prov-1", "authoritative_attempt_id": "pl-1"}
+        )
+        status, _, _ = self._request(
+            "POST",
+            "/api/queue/reconcile",
+            body=rec_body,
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 401)
 
 
 if __name__ == "__main__":

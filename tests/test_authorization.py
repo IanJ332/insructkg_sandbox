@@ -33,6 +33,8 @@ class TestLearnerAuthorization(unittest.TestCase):
         self.jobs_db = Path(self.tmp.name) / "jobs.sqlite3"
         os.environ["SIIP_FEEDBACK_JOBS_DB"] = str(self.jobs_db)
         os.environ["SIIP_DB_PATH"] = str(self.sub_db)
+        os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = "1"
+        os.environ["SIIP_ENV"] = "development"
 
         self.sub_repo = SubmissionRepository(self.sub_db)
         self.jobs_repo = FeedbackJobRepository(self.jobs_db)
@@ -236,6 +238,33 @@ class TestLearnerAuthorization(unittest.TestCase):
         self.assertNotIn("retries", view)
         self.assertNotIn("max_retries", view)
         self.assertNotIn("version", view)
+
+    def test_synthetic_session_blocked_outside_dev_mode(self):
+        # Disable development mode
+        old_auth = os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH")
+        old_env = os.environ.get("SIIP_ENV")
+        try:
+            os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = "0"
+            os.environ["SIIP_ENV"] = "production"
+
+            status, data, _ = self._request(
+                "POST",
+                "/api/auth/synthetic-session",
+                body=json.dumps({"student_id": "S001"}),
+                headers={"Content-Type": "application/json"},
+            )
+            self.assertEqual(status, 403)
+            resp = json.loads(data.decode("utf-8"))
+            self.assertIn("disabled outside isolated development mode", resp["error"].lower())
+        finally:
+            if old_auth is not None:
+                os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = old_auth
+            else:
+                os.environ.pop("SIIP_ALLOW_SYNTHETIC_AUTH", None)
+            if old_env is not None:
+                os.environ["SIIP_ENV"] = old_env
+            else:
+                os.environ.pop("SIIP_ENV", None)
 
 
 if __name__ == "__main__":

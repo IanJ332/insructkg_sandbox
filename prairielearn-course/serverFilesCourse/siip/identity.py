@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -93,11 +94,13 @@ def resolve_student_identity(
     return None, False, "unmapped_user_identity"
 
 
-DEFAULT_SECRET_BYTES = b"siip-local-synthetic-auth-secret-key-v1"
+_EPHEMERAL_SECRET: Optional[bytes] = None
+_EPHEMERAL_SERVICE_KEY: Optional[str] = None
 
 
 def get_auth_secret() -> bytes:
-    """Return local authentication secret bytes."""
+    """Return local authentication secret bytes from environment, untracked key file, or secure random."""
+    global _EPHEMERAL_SECRET
     custom = os.environ.get("SIIP_AUTH_SECRET")
     if custom:
         return custom.strip().encode("utf-8")
@@ -109,7 +112,58 @@ def get_auth_secret() -> bytes:
                 return val
         except OSError:
             pass
-    return DEFAULT_SECRET_BYTES
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        generated = secrets.token_bytes(32)
+        secret_file.write_bytes(generated)
+        return generated
+    except OSError:
+        pass
+    if _EPHEMERAL_SECRET is None:
+        _EPHEMERAL_SECRET = secrets.token_bytes(32)
+    return _EPHEMERAL_SECRET
+
+
+def get_service_key() -> str:
+    """Return shared service-to-service authentication key for queue operations."""
+    global _EPHEMERAL_SERVICE_KEY
+    custom = os.environ.get("SIIP_SERVICE_KEY")
+    if custom:
+        return custom.strip()
+    key_file = DATA_DIR / "service.key"
+    if key_file.exists():
+        try:
+            val = key_file.read_text().strip()
+            if val:
+                return val
+        except OSError:
+            pass
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        generated = secrets.token_hex(32)
+        key_file.write_text(generated)
+        return generated
+    except OSError:
+        pass
+    if _EPHEMERAL_SERVICE_KEY is None:
+        _EPHEMERAL_SERVICE_KEY = secrets.token_hex(32)
+    return _EPHEMERAL_SERVICE_KEY
+
+
+def verify_service_request(headers: Any) -> bool:
+    """Verify that a request originates from an authorized internal service caller."""
+    expected_key = get_service_key()
+    if not expected_key:
+        return False
+    srv_header = headers.get("X-SIIP-Service-Key")
+    if srv_header and hmac.compare_digest(srv_header.strip(), expected_key):
+        return True
+    auth_header = headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        if hmac.compare_digest(token, expected_key):
+            return True
+    return False
 
 
 def create_signed_ticket(

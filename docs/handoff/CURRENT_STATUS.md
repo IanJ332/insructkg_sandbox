@@ -1,18 +1,19 @@
-# Current status — Phase 4.2 Engineering Closure
+# Current status — Phase 4.3 Security Boundary Closure & Research Evaluation Handoff
 
-Snapshot date: 2026-10-15, America/Chicago. Implementation snapshot: **07b1b16a0f7020e2eaafd347ba210222e8577c88** on `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 188 distinct public tests pass (56.71s). All GitHub Actions workflows (CI, Security, Local platform integration) are verified green.
+Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 191 distinct public tests pass (49.14s). Code formatting, linting, Mypy strict typing, Bandit security scan (0 issues), and publication audit (0 secrets, 0 restricted paths) are 100% clean.
 
 | Area | Status | Actual result/evidence | Boundary |
 |---|---|---|---|
-| Public deterministic suite | PASS | 188/188, 0 fail/skip, 56.71s | Includes authorization, submission identity, queue topology, and personalization suites |
-| Cryptographic authorization | PASS | HMAC-SHA256 signed tickets (?ticket=...) and session tokens; zero identity disclosure on 401/403 | Local synthetic authentication; production SSO remains an institutional requirement |
-| Submission identity & idempotency | PASS | Distinct provisional attempts (prov-{student}-{qid}-{uuid}); idempotent authoritative (pl-{id}); reconciliation API | Live PL hooks generate provisional attempts; reconciled during ingestion |
-| Single-owner SQLite queue | PASS | Durable host SQLite queue; WAL mode + PRAGMA busy_timeout; monotonic lease_token fencing | Windows host owns DB; Docker container communicates via HTTP POST /api/queue/enqueue |
-| Historical personalization | PASS | Worker auto-queries prior mastery (as_of < created_at); distinct low/high guidance; clean unpersonalized labeling | Pedagogical KG grounding decoupled from learner attempt history |
-| Async browser delivery | PASS | Playwright test (1.55s) verifies PL submit -> deterministic grade -> queue -> worker -> browser retrieval -> 403 check | Mock worker inference in fast automated test; live Ollama verified in canary |
-| Live local GPU canary | PASS | 1 bounded Qwen3 8B canary on RTX 5070 Ti: live_success, 10.28s latency, 107 completion tokens | Model qwen3:8b Q4_K_M on 127.0.0.1:11434; citations ['public:lesson:2'] |
-| Remote CI / Security / Integration | PASS | [CI (38687222671)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222671), [Security (38687222662)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222662), [Integration (38687222773)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222773) | 100% green on commit 07b1b16 |
-| Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Technical architecture frozen and ready for offline research evaluation |
+| Public deterministic suite | PASS | 191/191, 0 fail/skip, 49.14s | Includes authorization, submission identity, queue topology, and personalization suites |
+| Hardened service boundary | PASS | Enforced `X-SIIP-Service-Key` on `/api/queue/enqueue` and `/api/queue/reconcile`; default listen `127.0.0.1` | Queue mutations require service key; 401 Unauthorized for callers without key |
+| Isolated dev-only auth gate | PASS | `/api/auth/synthetic-session` gated to `SIIP_ALLOW_SYNTHETIC_AUTH=1` + loopback/service caller check; 403 otherwise | Production/hosted environments strictly require institutional SSO |
+| Dynamic uncommitted HMAC secret | PASS | `get_auth_secret()` dynamically generates 32-byte secret (`auth_secret.key`, gitignored); no static default secret in repo | Zero hardcoded cryptographic secrets in source |
+| Provenance & conflict check | PASS | `jobs.py` `reconcile()` enforces student/question evidence match (409 Conflict on mismatch); separates submission time | Prevents cross-student or cross-question attempt collision |
+| Authentic SQL benchmark | PASS | ANU authentic student corpus (12,899 submissions, 393 students) curated to 25 benchmark cases across 8 exercises | Raw datasets stored strictly on `D:\AI\Datasets\SIIP\`; zero C: drive leakage |
+| Blind evaluation protocol | PASS | `experiment_runner.py` dry-run verified; generates blinded review packets across Conditions A-E | Local GPU resource estimate: ~19.8 min, 125 inferences, $0.00 cost |
+| Playwright E2E browser suite | PASS | 5/5 browser submissions PASS (26s); actual PL UI on port 3000 -> CSV export -> analytics import | End-to-end integration verified against live local container |
+| Remote CI / Security / Integration | PASS | GitHub Actions workflows green on verified baseline | Pre-push verification complete for Phase 4.3 |
+| Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Technical architecture frozen; handoff to offline research evaluation |
 
 ## What personalization means here
 
