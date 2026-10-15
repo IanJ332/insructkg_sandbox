@@ -69,9 +69,50 @@ class FeedbackJob:
     claimed_by: Optional[str] = None
     lease_expires_at: Optional[str] = None
     version: int = 0
+    attempt_kind: str = "authoritative"
+    reconciled_from: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+    def to_learner_dict(self) -> Dict[str, Any]:
+        """Return strictly learner-visible fields. Excludes lease tokens, worker IDs, retry counters, and internal errors."""
+        res = self.result or {}
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "question_id": self.question_id,
+            "submitted_sql": self.submitted_sql,
+            "grading": {
+                "status": self.grading.get("status"),
+                "score": self.grading.get("score"),
+                "observation": self.grading.get("observation"),
+            },
+            "feedback": (
+                {
+                    "feedback_text": res.get("feedback_text"),
+                    "candidate_concepts": res.get("candidate_concepts", []),
+                    "evidence_references": res.get("evidence_references", []),
+                    "personalized": res.get("personalized", False),
+                    "history_provenance": res.get("history_provenance", "none"),
+                }
+                if self.status == "completed" and self.result
+                else None
+            ),
+            "created_at": self.created_at,
+            "completed_at": self.completed_at,
+            "error": "Feedback generation unavailable." if self.status == "failed" else None,
+            "provenance": (
+                {
+                    "model_identifier": self.model_identifier,
+                    "prompt_version": self.prompt_version,
+                    "graph_version": self.graph_version,
+                    "latency_ms": self.latency_ms,
+                }
+                if self.status == "completed"
+                else None
+            ),
+        }
 
 
 class FeedbackJobRepository:
@@ -81,27 +122,27 @@ class FeedbackJobRepository:
         "job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
         "feedback_mode, status, created_at, started_at, completed_at, latency_ms, "
         "model_identifier, prompt_version, graph_version, result, error, retries, "
-        "max_retries, lease_token, claimed_by, lease_expires_at, version"
+        "max_retries, lease_token, claimed_by, lease_expires_at, version, attempt_kind, reconciled_from"
     )
     _SQL_SELECT_BY_ATTEMPT = (
         "SELECT job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
         "feedback_mode, status, created_at, started_at, completed_at, latency_ms, "
         "model_identifier, prompt_version, graph_version, result, error, retries, "
-        "max_retries, lease_token, claimed_by, lease_expires_at, version "
+        "max_retries, lease_token, claimed_by, lease_expires_at, version, attempt_kind, reconciled_from "
         "FROM feedback_jobs WHERE attempt_id=?"
     )
     _SQL_SELECT_PENDING = (
         "SELECT job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
         "feedback_mode, status, created_at, started_at, completed_at, latency_ms, "
         "model_identifier, prompt_version, graph_version, result, error, retries, "
-        "max_retries, lease_token, claimed_by, lease_expires_at, version "
+        "max_retries, lease_token, claimed_by, lease_expires_at, version, attempt_kind, reconciled_from "
         "FROM feedback_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1"
     )
     _SQL_SELECT_EXPIRED_LEASE = (
         "SELECT job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
         "feedback_mode, status, created_at, started_at, completed_at, latency_ms, "
         "model_identifier, prompt_version, graph_version, result, error, retries, "
-        "max_retries, lease_token, claimed_by, lease_expires_at, version "
+        "max_retries, lease_token, claimed_by, lease_expires_at, version, attempt_kind, reconciled_from "
         "FROM feedback_jobs WHERE status = 'processing' AND (lease_expires_at IS NULL OR lease_expires_at < ?) "
         "ORDER BY started_at ASC LIMIT 1"
     )
@@ -109,7 +150,7 @@ class FeedbackJobRepository:
         "SELECT job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
         "feedback_mode, status, created_at, started_at, completed_at, latency_ms, "
         "model_identifier, prompt_version, graph_version, result, error, retries, "
-        "max_retries, lease_token, claimed_by, lease_expires_at, version "
+        "max_retries, lease_token, claimed_by, lease_expires_at, version, attempt_kind, reconciled_from "
         "FROM feedback_jobs WHERE job_id = ?"
     )
 
@@ -143,7 +184,9 @@ class FeedbackJobRepository:
                     lease_token TEXT,
                     claimed_by TEXT,
                     lease_expires_at TEXT,
-                    version INTEGER DEFAULT 0
+                    version INTEGER DEFAULT 0,
+                    attempt_kind TEXT DEFAULT 'authoritative',
+                    reconciled_from TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON feedback_jobs(status, created_at);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_attempt ON feedback_jobs(attempt_id);
@@ -155,7 +198,7 @@ class FeedbackJobRepository:
             db.commit()
 
     def _ensure_schema(self, db: sqlite3.Connection) -> None:
-        """Ensure lease_token, claimed_by, lease_expires_at, and version columns exist."""
+        """Ensure lease_token, claimed_by, lease_expires_at, version, and attempt_kind columns exist."""
         cursor = db.execute("PRAGMA table_info(feedback_jobs)")
         existing_cols = {row[1] for row in cursor.fetchall()}
         for col_name, col_type in [
@@ -163,6 +206,8 @@ class FeedbackJobRepository:
             ("claimed_by", "TEXT"),
             ("lease_expires_at", "TEXT"),
             ("version", "INTEGER DEFAULT 0"),
+            ("attempt_kind", "TEXT DEFAULT 'authoritative'"),
+            ("reconciled_from", "TEXT"),
         ]:
             if col_name not in existing_cols:
                 db.execute(f"ALTER TABLE feedback_jobs ADD COLUMN {col_name} {col_type}")
@@ -182,6 +227,7 @@ class FeedbackJobRepository:
         grading: Dict[str, Any],
         mode: str = "kg",
         max_retries: int = 2,
+        attempt_kind: str = "authoritative",
     ) -> FeedbackJob:
         """Idempotently enqueue a feedback job. Returns existing job if attempt_id is known."""
         # Never store hidden rows, reference SQL or raw engine datasets in durable job queue
@@ -204,6 +250,10 @@ class FeedbackJobRepository:
                         existing.student_id != student_id
                         or existing.question_id != question_id
                         or existing.submitted_sql != submitted_sql
+                        or existing.grading.get("status") != minimized_grading.get("status")
+                        or existing.grading.get("score") != minimized_grading.get("score")
+                        or existing.grading.get("observation")
+                        != minimized_grading.get("observation")
                     ):
                         raise AttemptConflictError(
                             f"Attempt ID '{attempt_id}' already exists with conflicting payload"
@@ -224,8 +274,8 @@ class FeedbackJobRepository:
                 db.execute(
                     "INSERT INTO feedback_jobs "
                     "(job_id, attempt_id, student_id, question_id, submitted_sql, grading, "
-                    "feedback_mode, status, created_at, retries, max_retries, version) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, 0)",
+                    "feedback_mode, status, created_at, retries, max_retries, version, attempt_kind) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?, 0, ?)",
                     (
                         job_id,
                         attempt_id,
@@ -236,6 +286,7 @@ class FeedbackJobRepository:
                         mode,
                         now,
                         max_retries,
+                        attempt_kind,
                     ),
                 )
                 db.commit()
@@ -258,6 +309,7 @@ class FeedbackJobRepository:
             created_at=now,
             max_retries=max_retries,
             version=0,
+            attempt_kind=attempt_kind,
         )
 
     def claim(
@@ -350,47 +402,32 @@ class FeedbackJobRepository:
         lease_token: Optional[str] = None,
     ) -> FeedbackJob:
         """Mark a job as successfully completed with full provenance and fencing token validation."""
+        if not lease_token:
+            raise StaleLeaseError(
+                f"Job {job_id} cannot be completed without an active worker claim (missing lease token)"
+            )
         now = datetime.now(timezone.utc).isoformat()
         with closing(self.connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             try:
-                if lease_token:
-                    update_cursor = db.execute(
-                        "UPDATE feedback_jobs SET "
-                        "status = 'completed', completed_at = ?, latency_ms = ?, "
-                        "model_identifier = ?, prompt_version = ?, graph_version = ?, "
-                        "result = ?, error = NULL, lease_token = NULL, claimed_by = NULL, "
-                        "version = version + 1 "
-                        "WHERE job_id = ? AND status = 'processing' AND lease_token = ?",
-                        (
-                            now,
-                            latency_ms,
-                            model_identifier,
-                            prompt_version,
-                            graph_version,
-                            json.dumps(result),
-                            job_id,
-                            lease_token,
-                        ),
-                    )
-                else:
-                    update_cursor = db.execute(
-                        "UPDATE feedback_jobs SET "
-                        "status = 'completed', completed_at = ?, latency_ms = ?, "
-                        "model_identifier = ?, prompt_version = ?, graph_version = ?, "
-                        "result = ?, error = NULL, lease_token = NULL, claimed_by = NULL, "
-                        "version = version + 1 "
-                        "WHERE job_id = ? AND status = 'processing'",
-                        (
-                            now,
-                            latency_ms,
-                            model_identifier,
-                            prompt_version,
-                            graph_version,
-                            json.dumps(result),
-                            job_id,
-                        ),
-                    )
+                update_cursor = db.execute(
+                    "UPDATE feedback_jobs SET "
+                    "status = 'completed', completed_at = ?, latency_ms = ?, "
+                    "model_identifier = ?, prompt_version = ?, graph_version = ?, "
+                    "result = ?, error = NULL, lease_token = NULL, claimed_by = NULL, "
+                    "version = version + 1 "
+                    "WHERE job_id = ? AND status = 'processing' AND lease_token = ?",
+                    (
+                        now,
+                        latency_ms,
+                        model_identifier,
+                        prompt_version,
+                        graph_version,
+                        json.dumps(result),
+                        job_id,
+                        lease_token,
+                    ),
+                )
                 if update_cursor.rowcount == 0:
                     raise StaleLeaseError(
                         f"Job {job_id} cannot be completed: lease expired or acquired by another worker"
@@ -410,20 +447,18 @@ class FeedbackJobRepository:
 
     def fail(self, job_id: str, error: str, lease_token: Optional[str] = None) -> FeedbackJob:
         """Record job failure; retries if within bounds, otherwise marks failed."""
+        if not lease_token:
+            raise StaleLeaseError(
+                f"Job {job_id} failure update rejected: missing active worker claim (missing lease token)"
+            )
         now = datetime.now(timezone.utc).isoformat()
         with closing(self.connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             try:
-                if lease_token:
-                    row = db.execute(
-                        "SELECT retries, max_retries FROM feedback_jobs WHERE job_id = ? AND lease_token = ?",
-                        (job_id, lease_token),
-                    ).fetchone()
-                else:
-                    row = db.execute(
-                        "SELECT retries, max_retries FROM feedback_jobs WHERE job_id = ?",
-                        (job_id,),
-                    ).fetchone()
+                row = db.execute(
+                    "SELECT retries, max_retries FROM feedback_jobs WHERE job_id = ? AND lease_token = ?",
+                    (job_id, lease_token),
+                ).fetchone()
                 if not row:
                     raise StaleLeaseError(
                         f"Job {job_id} failure update rejected: lease expired or invalid"
@@ -437,24 +472,14 @@ class FeedbackJobRepository:
                     new_status = "failed"
                     completed_at = now
 
-                if lease_token:
-                    update_cursor = db.execute(
-                        "UPDATE feedback_jobs SET "
-                        "status = ?, error = ?, retries = ?, completed_at = ?, "
-                        "lease_token = NULL, claimed_by = NULL, lease_expires_at = NULL, "
-                        "version = version + 1 "
-                        "WHERE job_id = ? AND lease_token = ?",
-                        (new_status, error, new_retries, completed_at, job_id, lease_token),
-                    )
-                else:
-                    update_cursor = db.execute(
-                        "UPDATE feedback_jobs SET "
-                        "status = ?, error = ?, retries = ?, completed_at = ?, "
-                        "lease_token = NULL, claimed_by = NULL, lease_expires_at = NULL, "
-                        "version = version + 1 "
-                        "WHERE job_id = ?",
-                        (new_status, error, new_retries, completed_at, job_id),
-                    )
+                update_cursor = db.execute(
+                    "UPDATE feedback_jobs SET "
+                    "status = ?, error = ?, retries = ?, completed_at = ?, "
+                    "lease_token = NULL, claimed_by = NULL, lease_expires_at = NULL, "
+                    "version = version + 1 "
+                    "WHERE job_id = ? AND lease_token = ?",
+                    (new_status, error, new_retries, completed_at, job_id, lease_token),
+                )
                 if update_cursor.rowcount == 0:
                     raise StaleLeaseError(f"Job {job_id} failure update lost race condition")
                 db.commit()
@@ -502,6 +527,48 @@ class FeedbackJobRepository:
             ).fetchone()
         return self._row_to_job(row) if row else None
 
+    def get_by_attempt(self, attempt_id: str) -> Optional[FeedbackJob]:
+        """Fetch a job by its attempt identifier."""
+        with closing(self.connect()) as db:
+            row = db.execute(self._SQL_SELECT_BY_ATTEMPT, (attempt_id,)).fetchone()
+        return self._row_to_job(row) if row else None
+
+    def reconcile(
+        self, provisional_attempt_id: str, authoritative_attempt_id: str
+    ) -> Optional[FeedbackJob]:
+        """Reconcile a provisional live event to an authoritative submission identifier."""
+        with closing(self.connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                # Check if authoritative record already exists
+                existing_auth = db.execute(
+                    "SELECT job_id FROM feedback_jobs WHERE attempt_id = ?",
+                    (authoritative_attempt_id,),
+                ).fetchone()
+                if existing_auth:
+                    # Authoritative job exists; mark provisional as reconciled alias
+                    db.execute(
+                        "UPDATE feedback_jobs SET attempt_kind = 'reconciled_duplicate', reconciled_from = ? WHERE attempt_id = ?",
+                        (authoritative_attempt_id, provisional_attempt_id),
+                    )
+                    db.commit()
+                    return self.get(existing_auth[0])
+
+                # Update provisional attempt to authoritative attempt_id
+                cursor = db.execute(
+                    "UPDATE feedback_jobs SET attempt_id = ?, attempt_kind = 'reconciled', reconciled_from = ? "
+                    "WHERE attempt_id = ?",
+                    (authoritative_attempt_id, provisional_attempt_id, provisional_attempt_id),
+                )
+                if cursor.rowcount == 0:
+                    db.commit()
+                    return None
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+        return self.get_by_attempt(authoritative_attempt_id)
+
     def get_for_student(self, job_id: str, student_id: str) -> Optional[FeedbackJob]:
         """Fetch job enforcing student identity authorization boundary."""
         job = self.get(job_id)
@@ -509,7 +576,7 @@ class FeedbackJobRepository:
             return None
         if job.student_id != student_id:
             raise UnauthorizedJobAccessError(
-                f"Unauthorized access: job '{job_id}' belongs to student '{job.student_id}', not '{student_id}'"
+                f"Unauthorized access: You do not have permission to view feedback for job '{job_id}'"
             )
         return job
 
@@ -547,15 +614,23 @@ class FeedbackJobRepository:
             claimed_by=row[20] if len(row) > 20 else None,
             lease_expires_at=row[21] if len(row) > 21 else None,
             version=row[22] if len(row) > 22 else 0,
+            attempt_kind=row[23] if len(row) > 23 else "authoritative",
+            reconciled_from=row[24] if len(row) > 24 else None,
         )
 
 
 class FeedbackWorker:
     """Bounded worker that pulls jobs from FeedbackJobRepository, invokes provider, and records provenance."""
 
-    def __init__(self, repo: FeedbackJobRepository, worker_id: str = "worker-1"):
+    def __init__(
+        self,
+        repo: FeedbackJobRepository,
+        worker_id: str = "worker-1",
+        submission_repo: Optional[Any] = None,
+    ):
         self.repo = repo
         self.worker_id = worker_id
+        self.submission_repo = submission_repo
 
     def process_one(
         self, provider: Any = None, mastery: Optional[Dict[str, Any]] = None
@@ -575,15 +650,39 @@ class FeedbackWorker:
             except (OSError, ValueError, KeyError):
                 graph_sha = "unversioned"
 
+            # Historical personalization: load prior mastery profile if not explicitly passed
+            student_mastery = mastery
+            history_provenance = "none"
+            if student_mastery is None and self.submission_repo is not None:
+                try:
+                    prof = self.submission_repo.profile(
+                        job.student_id, as_of=job.created_at, before=True
+                    )
+                    if prof and isinstance(prof, dict) and prof.get("concepts"):
+                        student_mastery = prof["concepts"]
+                        history_provenance = "prior_submissions"
+                except Exception:
+                    student_mastery = None
+            elif student_mastery is not None:
+                history_provenance = "provided_context"
+
             # Generate feedback using configured mode and provider
             feedback_result = generate_feedback(
                 qid=job.question_id,
                 sql=job.submitted_sql,
                 result=job.grading,
                 mode=job.feedback_mode,
-                mastery=mastery,
+                mastery=student_mastery,
                 provider=provider,
             )
+            feedback_result["personalized"] = bool(student_mastery)
+            feedback_result["history_provenance"] = history_provenance
+            if "historical_personalization" not in feedback_result:
+                feedback_result["historical_personalization"] = {
+                    "status": "provided_concept_evidence" if student_mastery else "none",
+                    "concept_count": len(student_mastery) if student_mastery else 0,
+                    "evidence_kind": "descriptive_beta_heuristic" if student_mastery else None,
+                }
             if (
                 provider is not None
                 and feedback_result.get("inference_status") == "provider_error_fallback"

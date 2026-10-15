@@ -16,9 +16,9 @@ Departments: 10 Engineering, 20 Sales, 30 Research. Additional private cases tes
 <p>{{feedback.concepts}}</p>
 <p>{{feedback.grounding}}</p>
 <p><small>{{feedback.inference}}</small></p>
-{{#feedback.job_id}}
-<p><small>Async Feedback Job: <code>{{feedback.job_id}}</code> &middot; <a href="http://127.0.0.1:8080/feedback?job_id={{feedback.job_id}}&amp;student_id={{feedback.student_id}}" target="_blank">View AI Explanation</a></small></p>
-{{/feedback.job_id}}
+{{#feedback.feedback_url}}
+<p><small>Async Feedback Job: <code>{{feedback.job_id}}</code> &middot; <a href="{{feedback.feedback_url}}" target="_blank" rel="noopener noreferrer">View AI Explanation</a></small></p>
+{{/feedback.feedback_url}}
 </div>
 </pl-submission-panel>
 <pl-answer-panel><p>Review the feedback and reason about which rows the query must preserve. A complete solution is withheld in this sandbox.</p></pl-answer-panel>

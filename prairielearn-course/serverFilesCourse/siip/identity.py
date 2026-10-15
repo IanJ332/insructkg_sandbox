@@ -5,8 +5,11 @@ missing identities, excludes student-controlled form fields, and isolates group 
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -88,3 +91,96 @@ def resolve_student_identity(
             return mapping[uid_str], True, "authorized_trusted_identity"
 
     return None, False, "unmapped_user_identity"
+
+
+DEFAULT_SECRET_BYTES = b"siip-local-synthetic-auth-secret-key-v1"
+
+
+def get_auth_secret() -> bytes:
+    """Return local authentication secret bytes."""
+    custom = os.environ.get("SIIP_AUTH_SECRET")
+    if custom:
+        return custom.strip().encode("utf-8")
+    secret_file = DATA_DIR / "auth_secret.key"
+    if secret_file.exists():
+        try:
+            val = secret_file.read_bytes().strip()
+            if val:
+                return val
+        except OSError:
+            pass
+    return DEFAULT_SECRET_BYTES
+
+
+def create_signed_ticket(
+    student_id: str, job_id: str, secret: Optional[bytes] = None, ttl_seconds: float = 3600.0
+) -> str:
+    """Generate a tamper-evident signed ticket granting access to a specific job."""
+    sec = secret if secret is not None else get_auth_secret()
+    expires_at = int(time.time() + ttl_seconds)
+    payload = f"{student_id}:{job_id}:{expires_at}"
+    sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"{student_id}.{job_id}.{expires_at}.{sig}"
+
+
+def verify_signed_ticket(ticket: str, job_id: str, secret: Optional[bytes] = None) -> Optional[str]:
+    """
+    Verify ticket signature, job binding, and expiration.
+    Returns authorized student_id if valid, or None if invalid/expired.
+    """
+    if not isinstance(ticket, str):
+        return None
+    parts = ticket.strip().split(".")
+    if len(parts) != 4:
+        return None
+    student_id, ticket_job_id, expires_str, provided_sig = parts
+    if ticket_job_id != job_id:
+        return None
+    try:
+        expires_at = int(expires_str)
+    except ValueError:
+        return None
+    if time.time() > expires_at:
+        return None
+    sec = secret if secret is not None else get_auth_secret()
+    payload = f"{student_id}:{job_id}:{expires_at}"
+    expected_sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return None
+    return student_id
+
+
+def create_signed_session_token(
+    student_id: str, secret: Optional[bytes] = None, ttl_seconds: float = 86400.0
+) -> str:
+    """Generate a tamper-evident synthetic session token for a student principal."""
+    sec = secret if secret is not None else get_auth_secret()
+    expires_at = int(time.time() + ttl_seconds)
+    payload = f"{student_id}:{expires_at}"
+    sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"{student_id}.{expires_at}.{sig}"
+
+
+def verify_signed_session_token(token: str, secret: Optional[bytes] = None) -> Optional[str]:
+    """
+    Verify session token signature and expiration.
+    Returns authorized student_id if valid, or None if invalid/expired.
+    """
+    if not isinstance(token, str):
+        return None
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return None
+    student_id, expires_str, provided_sig = parts
+    try:
+        expires_at = int(expires_str)
+    except ValueError:
+        return None
+    if time.time() > expires_at:
+        return None
+    sec = secret if secret is not None else get_auth_secret()
+    payload = f"{student_id}:{expires_at}"
+    expected_sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return None
+    return student_id

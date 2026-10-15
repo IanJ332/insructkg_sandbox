@@ -5,14 +5,16 @@ Enforces safe synthetic student identity resolution and fail-closed personalizat
 
 from __future__ import annotations
 
-import hashlib
+import json
 import os
 import time
+import urllib.error
+import urllib.request
 import uuid
 
 from .feedback import configured_provider, generate_feedback
 from .grader import QUESTIONS, grade
-from .identity import resolve_student_identity
+from .identity import create_signed_ticket, resolve_student_identity
 from .observability import event
 
 
@@ -40,51 +42,96 @@ def grade_question(data, qid):
     )
 
     job_id = None
+    ticket = None
+    feedback_url = None
+    attempt_id = None
+    attempt_kind = "authoritative"
+    queue_url = os.environ.get("SIIP_QUEUE_URL")
     job_repo_path = os.environ.get("SIIP_FEEDBACK_JOBS_DB")
-    async_enabled = os.environ.get("SIIP_ASYNC_FEEDBACK") == "1" or bool(job_repo_path)
+    feedback_base_url = os.environ.get("SIIP_FEEDBACK_SERVICE_URL", "http://127.0.0.1:8080").rstrip(
+        "/"
+    )
+    async_enabled = (
+        os.environ.get("SIIP_ASYNC_FEEDBACK") == "1" or bool(queue_url) or bool(job_repo_path)
+    )
 
     try:
         provider = configured_provider()
         if async_enabled and provider is not None:
             # Asynchronous path: deterministic grading finishes immediately.
             # Generative inference is enqueued as a durable feedback job.
-            from .jobs import FeedbackJobRepository
-
-            repo_path = (
-                job_repo_path
-                or (
-                    os.environ.get("SIIP_DATA_DIR")
-                    and f"{os.environ['SIIP_DATA_DIR']}/feedback_jobs.sqlite3"
-                )
-                or "artifacts/feedback_jobs.sqlite3"
-            )
-            job_repo = FeedbackJobRepository(repo_path)
-
             student_id, is_trusted, id_reason = resolve_student_identity(data)
             if is_trusted and student_id:
-                # Deterministic stable attempt ID from submission_id or student/question/sql/variant hash
-                sub_id = data.get("submission_id") or data.get("variant_id")
+                # Distinguish authoritative PrairieLearn submission ID from live provisional attempt
+                sub_id = data.get("submission_id") or data.get("options", {}).get("submission_id")
                 if sub_id:
                     attempt_id = f"pl-{sub_id}"
+                    attempt_kind = "authoritative"
                 else:
-                    variant_seed = data.get("variant_seed", 0)
-                    sig = hashlib.sha256(
-                        f"{student_id}:{qid}:{sql}:{variant_seed}".encode()
-                    ).hexdigest()[:20]
-                    attempt_id = f"sub-{sig}"
+                    event_id = uuid.uuid4().hex[:12]
+                    attempt_id = f"prov-{student_id}-{qid}-{event_id}"
+                    attempt_kind = "provisional"
 
-                job = job_repo.enqueue(
-                    attempt_id=attempt_id,
-                    student_id=student_id,
-                    question_id=qid,
-                    submitted_sql=sql,
-                    grading=result,  # job_repo minimizes this to public_grade
-                    mode="kg",
-                )
-                job_id = job.job_id
+                if queue_url:
+                    # Single-runtime database ownership: container dispatches via host HTTP API
+                    payload = json.dumps(
+                        {
+                            "attempt_id": attempt_id,
+                            "attempt_kind": attempt_kind,
+                            "student_id": student_id,
+                            "question_id": qid,
+                            "submitted_sql": sql,
+                            "grading": result,
+                            "feedback_mode": "kg",
+                        }
+                    ).encode("utf-8")
+                    req = urllib.request.Request(
+                        queue_url,
+                        data=payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=5.0) as resp:  # nosec B310
+                        res_data = json.loads(resp.read().decode("utf-8"))
+                        job_id = res_data.get("job_id")
+                        ticket = res_data.get("ticket")
+                        raw_fb_url = res_data.get("feedback_url")
+                        feedback_url = (
+                            f"{feedback_base_url}{raw_fb_url}"
+                            if raw_fb_url and raw_fb_url.startswith("/")
+                            else raw_fb_url
+                        )
+                else:
+                    # Local SQLite repository fallback (standalone / unit test mode)
+                    from .jobs import FeedbackJobRepository
+
+                    repo_path = (
+                        job_repo_path
+                        or (
+                            os.environ.get("SIIP_DATA_DIR")
+                            and f"{os.environ['SIIP_DATA_DIR']}/feedback_jobs.sqlite3"
+                        )
+                        or "artifacts/jobs/feedback_jobs.sqlite3"
+                    )
+                    job_repo = FeedbackJobRepository(repo_path)
+                    job = job_repo.enqueue(
+                        attempt_id=attempt_id,
+                        student_id=student_id,
+                        question_id=qid,
+                        submitted_sql=sql,
+                        grading=result,  # job_repo minimizes this to public_grade
+                        mode="kg",
+                        attempt_kind=attempt_kind,
+                    )
+                    job_id = job.job_id
+                    ticket = create_signed_ticket(student_id, job_id)
+                    feedback_url = f"{feedback_base_url}/feedback?job_id={job_id}&ticket={ticket}"
+
                 feedback = generate_feedback(qid, sql, result, mode="baseline")
                 feedback["inference_status"] = "async_job_queued"
                 feedback["job_id"] = job_id
+                feedback["ticket"] = ticket
+                feedback["feedback_url"] = feedback_url
                 feedback["personalization_status"] = "personalized_async_queued"
                 feedback["student_id"] = student_id
             else:
@@ -121,6 +168,8 @@ def grade_question(data, qid):
             + ". Graph support is provisional; original judgments await instructor review.",
             "inference": feedback["inference_status"] + " · " + feedback["model_identifier"],
             "job_id": job_id,
+            "ticket": ticket,
+            "feedback_url": feedback_url,
             "student_id": feedback.get("student_id"),
             "siip": {
                 "feedback_origin": "prairielearn_hook_immediate",
@@ -131,6 +180,10 @@ def grade_question(data, qid):
                 "grading_latency_ms": latency,
                 "feedback": feedback,
                 "job_id": job_id,
+                "ticket": ticket,
+                "feedback_url": feedback_url,
+                "attempt_id": attempt_id,
+                "attempt_kind": attempt_kind,
                 "student_id": feedback.get("student_id"),
                 "personalization_status": feedback.get("personalization_status"),
             },

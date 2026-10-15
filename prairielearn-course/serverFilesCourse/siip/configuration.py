@@ -23,7 +23,7 @@ class ProviderConfig:
             raise ValueError("Unknown feedback provider")
         if (
             not 0.1 <= self.timeout_seconds <= 60.0
-            or not 32 <= self.max_tokens <= 500
+            or not 32 <= self.max_tokens <= 2000
             or not 0 <= self.retries <= 2
         ):
             raise ValueError("Inference limits outside approved local bounds")

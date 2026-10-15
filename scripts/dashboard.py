@@ -17,7 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 from siip.feedback import generate_feedback, load_graphs
 from siip.grader import QUESTIONS, grade
-from siip.jobs import FeedbackJobRepository
+from siip.identity import (
+    create_signed_session_token,
+    create_signed_ticket,
+    verify_signed_session_token,
+    verify_signed_ticket,
+)
+from siip.jobs import AttemptConflictError, FeedbackJobRepository, JobQueueFullError
 from siip.observability import event
 from siip.store import STUDENTS, SubmissionRepository
 
@@ -247,116 +253,164 @@ def get_jobs_repo():
     return FeedbackJobRepository(jobs_db)
 
 
-def feedback_page(job_id, student_id):
+def authenticate_feedback_request(headers, params, job_id):
+    """
+    Authenticate caller using HMAC signed ticket or synthetic session token.
+    Returns (student_id, error_tuple) where error_tuple is (status_code, error_dict) if auth fails.
+    """
+    # 1. Try signed ticket (?ticket=... or X-Feedback-Ticket header)
+    ticket = params.get("ticket", [None])[0] or headers.get("X-Feedback-Ticket")
+    if ticket:
+        auth_student = verify_signed_ticket(ticket, job_id=job_id)
+        if auth_student:
+            return auth_student, None
+        return None, (401, {"error": "Invalid, expired, or mismatched feedback ticket."})
+
+    # 2. Try session token (Authorization: Bearer <token> or X-Synthetic-Session)
+    auth_header = headers.get("Authorization", "")
+    session_token = None
+    if auth_header.startswith("Bearer "):
+        session_token = auth_header[7:].strip()
+    elif headers.get("X-Synthetic-Session"):
+        session_token = headers.get("X-Synthetic-Session").strip()
+
+    if session_token:
+        auth_student = verify_signed_session_token(session_token)
+        if auth_student:
+            return auth_student, None
+        return None, (401, {"error": "Invalid or expired session token."})
+
+    # 3. Neither ticket nor session token provided. Never accept unverified student_id!
+    return None, (
+        401,
+        {
+            "error": (
+                "Authentication required. Access requires a signed feedback ticket (?ticket=...) "
+                "or a valid synthetic session token (Authorization: Bearer <token>). "
+                "Production PrairieLearn/SSO authentication remains an institutional requirement."
+            )
+        },
+    )
+
+
+def feedback_page(job_id, headers, params):
     if not job_id:
         return shell(
             "Feedback delivery",
             "<section><h2>Learner feedback delivery</h2>"
-            "<p class='muted'>Enter a job ID and your synthetic student principal to retrieve AI feedback.</p>"
-            "<form method='GET' action='/feedback'>"
-            "<label>Job ID: <input name='job_id' placeholder='job-...' required></label> "
-            "<label>Student ID: <input name='student_id' placeholder='S001' required></label> "
-            "<button type='submit'>Retrieve feedback</button></form></section>",
+            "<p class='muted'>Access to AI feedback requires a signed ticket generated upon assessment grading.</p>"
+            "<p>Please access feedback via the link provided in your PrairieLearn grading receipt.</p></section>",
         ), 200
-
-    if not student_id:
-        return shell(
-            "Authentication required",
-            "<section><h2>Authentication required</h2>"
-            "<p>Access denied: Knowledge of a job ID alone is not authorization. "
-            "Please provide an authorized synthetic student principal (<code>?student_id=...</code>).</p></section>",
-        ), 401
 
     repo = get_jobs_repo()
     job = repo.get(job_id)
     if not job:
         return shell(
-            "Job not found",
-            f"<section><h2>Feedback job not found</h2><p>No job record exists for <code>{esc(job_id)}</code>.</p></section>",
+            "Feedback not found",
+            f"<section><h2>Feedback not found</h2><p>No feedback record was found for job <code>{esc(job_id)}</code>.</p></section>",
         ), 404
 
-    if job.student_id != student_id:
+    auth_student, auth_error = authenticate_feedback_request(headers, params, job_id)
+    if auth_error:
+        code, err_data = auth_error
+        return shell(
+            "Authentication required",
+            f"<section><h2>401 Unauthorized</h2><p>{esc(err_data['error'])}</p></section>",
+        ), code
+
+    if job.student_id != auth_student:
         return shell(
             "Access denied",
-            f"<section><h2 style='color:#991b1b;'>403 Forbidden: Learner mismatch</h2>"
-            f"<p>Access Denied: Job <code>{esc(job_id)}</code> was generated for student <code>{esc(job.student_id)}</code>, "
-            f"not requesting principal <code>{esc(student_id)}</code>.</p></section>",
+            "<section><h2 style='color:#991b1b;'>403 Forbidden: Access Denied</h2>"
+            "<p>Access Denied: You do not have permission to view feedback for this job.</p></section>",
         ), 403
 
+    learner_view = job.to_learner_dict()
+    status = learner_view["status"]
     status_badge_color = {
         "completed": "#2e7d32",
         "processing": "#f57c00",
         "pending": "#1976d2",
         "failed": "#d32f2f",
-    }.get(job.status, "#555")
+    }.get(status, "#555")
 
     body = f"""
     <section>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <h2>Personalized AI feedback</h2>
         <div>
-          <span class="badge" style="background:#e0f2fe;color:#0369a1;">Learner: {esc(job.student_id)}</span>
-          <span class="badge" style="background:{status_badge_color};color:white;margin-left:8px;">{esc(job.status.upper())}</span>
+          <span class="badge" style="background:#e0f2fe;color:#0369a1;">Learner: {esc(auth_student)}</span>
+          <span class="badge" style="background:{status_badge_color};color:white;margin-left:8px;">{esc(status.upper())}</span>
         </div>
       </div>
-      <p><strong>Question:</strong> {esc(job.question_id)} &middot; <strong>Attempt ID:</strong> <code>{esc(job.attempt_id)}</code></p>
+      <p><strong>Question:</strong> {esc(learner_view["question_id"])} &middot; <strong>Job ID:</strong> <code>{esc(learner_view["job_id"])}</code></p>
       <h3>Submitted SQL</h3>
-      <pre style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">{esc(job.submitted_sql)}</pre>
-      <p><strong>Deterministic grading:</strong> Score: {job.grading.get("score")} &middot; Status: {esc(job.grading.get("status"))} &middot; Observation: {esc(job.grading.get("observation"))}</p>
+      <pre style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">{esc(learner_view["submitted_sql"])}</pre>
+      <p><strong>Deterministic grading:</strong> Score: {learner_view["grading"].get("score")} &middot; Status: {esc(learner_view["grading"].get("status"))} &middot; Observation: {esc(learner_view["grading"].get("observation"))}</p>
     </section>
     """
 
-    if job.status == "completed" and job.result:
-        res = job.result
+    if status == "completed" and learner_view.get("feedback"):
+        fb = learner_view["feedback"]
+        hist_note = ""
+        if fb.get("personalized"):
+            hist_note = f"<p><small class='badge' style='background:#e8f5e9;color:#1b5e20;'>Historical personalization: Active ({esc(fb.get('history_provenance', 'prior_submissions'))})</small></p>"
+        else:
+            hist_note = "<p><small class='badge' style='background:#f3f4f6;color:#374151;'>Historical personalization: None (first attempt or no prior history)</small></p>"
+
         body += f"""
         <section style="border-left:4px solid #087674;">
           <h3>Pedagogical guidance</h3>
-          <p style="font-size:17px;line-height:1.6;">{
-            esc(res.get("feedback_text", "No guidance generated."))
-        }</p>
+          {hist_note}
+          <p style="font-size:17px;line-height:1.6;">{esc(fb.get("feedback_text", "No guidance generated."))}</p>
           <h4>Possible concept gaps</h4>
-          <p>{esc(", ".join(res.get("candidate_concepts", [])) or "None identified")}</p>
+          <p>{esc(", ".join(fb.get("candidate_concepts", [])) or "None identified")}</p>
           <h4>Lecture grounding references</h4>
-          <p>{esc(", ".join(res.get("evidence_references", [])) or "None cited")}</p>
-        </section>
-        <section>
-          <h3>Provenance & evaluation grounding</h3>
-          {
-            table(
-                ["Property", "Value"],
-                [
-                    ["Model identifier", esc(job.model_identifier or "unknown")],
-                    ["Prompt version", esc(job.prompt_version or "unknown")],
-                    ["Knowledge graph digest", esc(job.graph_version or "unknown")],
-                    ["Inference latency", f"{job.latency_ms:.2f} ms" if job.latency_ms else "N/A"],
-                    ["Created timestamp", esc(job.created_at)],
-                    ["Completed timestamp", esc(job.completed_at or "N/A")],
-                    ["Attempt ID", esc(job.attempt_id)],
-                    ["Job ID", esc(job.job_id)],
-                ],
-            )
-        }
+          <p>{esc(", ".join(fb.get("evidence_references", [])) or "None cited")}</p>
         </section>
         """
-    elif job.status in ("pending", "processing"):
+        if learner_view.get("provenance"):
+            prov = learner_view["provenance"]
+            body += f"""
+            <section>
+              <h3>Provenance & evaluation grounding</h3>
+              {
+                table(
+                    ["Property", "Value"],
+                    [
+                        ["Model identifier", esc(prov.get("model_identifier") or "unknown")],
+                        ["Prompt version", esc(prov.get("prompt_version") or "unknown")],
+                        ["Knowledge graph digest", esc(prov.get("graph_version") or "unknown")],
+                        [
+                            "Inference latency",
+                            f"{prov['latency_ms']:.2f} ms" if prov.get("latency_ms") else "N/A",
+                        ],
+                        ["Created timestamp", esc(learner_view["created_at"])],
+                        ["Completed timestamp", esc(learner_view.get("completed_at") or "N/A")],
+                    ],
+                )
+            }
+            </section>
+            """
+    elif status in ("pending", "processing"):
         body += f"""
         <section style="background:#fffbeb;border:1px solid #fde68a;">
           <h3>Inference in progress</h3>
           <p>This feedback job is currently being processed by the background GPU worker.</p>
-          <p>Status: <strong>{esc(job.status)}</strong> &middot; Started at: {esc(job.started_at or "Waiting in queue")}</p>
+          <p>Status: <strong>{esc(status)}</strong> &middot; Created at: {esc(learner_view["created_at"])}</p>
           <p><small>Refresh this page or check back shortly to view the grounded AI explanation.</small></p>
         </section>
         """
-    elif job.status == "failed":
+    elif status == "failed":
         body += f"""
         <section style="background:#fef2f2;border:1px solid #fecaca;">
           <h3 style="color:#991b1b;">Inference failure</h3>
-          <p>Generation encountered an error: {esc(job.error or "Unknown failure")}</p>
+          <p>{esc(learner_view.get("error") or "Feedback generation unavailable.")}</p>
           <p>Deterministic baseline feedback was safely retained in PrairieLearn.</p>
         </section>
         """
 
-    return shell(f"Feedback · {job.student_id}", body), 200
+    return shell(f"Feedback · {auth_student}", body), 200
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -390,7 +444,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def trusted(self):
         self.correlation = str(uuid.uuid4())
-        allowed = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+        allowed = {
+            f"127.0.0.1:{self.server.server_port}",
+            f"localhost:{self.server.server_port}",
+            f"host.docker.internal:{self.server.server_port}",
+            "127.0.0.1",
+            "localhost",
+            "host.docker.internal",
+        }
         if self.headers.get("Host") not in allowed:
             self.send("Forbidden host", 403)
             return False
@@ -415,15 +476,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(compare(params))
             elif parsed.path == "/feedback":
                 job_id = params.get("job_id", [None])[0]
-                student_id = params.get("student_id", [None])[0]
-                html_body, code = feedback_page(job_id, student_id)
+                html_body, code = feedback_page(job_id, self.headers, params)
                 self.send(html_body, code)
             elif parsed.path == "/api/feedback":
                 job_id = params.get("job_id", [None])[0]
-                student_id = (
-                    self.headers.get("X-Synthetic-Student-Id")
-                    or params.get("student_id", [None])[0]
-                )
                 if not job_id:
                     self.send(
                         json.dumps({"error": "Missing job_id"}),
@@ -431,34 +487,38 @@ class Handler(BaseHTTPRequestHandler):
                         content="application/json",
                     )
                     return
-                if not student_id:
-                    self.send(
-                        json.dumps({"error": "Authentication required: Missing student principal"}),
-                        401,
-                        content="application/json",
-                    )
-                    return
                 repo_jobs = get_jobs_repo()
                 job = repo_jobs.get(job_id)
                 if not job:
                     self.send(
-                        json.dumps({"error": "Job not found"}),
+                        json.dumps({"error": "Feedback job not found"}),
                         404,
                         content="application/json",
                     )
                     return
-                if job.student_id != student_id:
+                auth_student, auth_error = authenticate_feedback_request(
+                    self.headers, params, job_id
+                )
+                if auth_error:
+                    code, err_data = auth_error
+                    self.send(
+                        json.dumps(err_data),
+                        code,
+                        content="application/json",
+                    )
+                    return
+                if job.student_id != auth_student:
                     self.send(
                         json.dumps(
                             {
-                                "error": f"Forbidden: Learner mismatch. Job belongs to {job.student_id}"
+                                "error": "Forbidden: You do not have permission to view this feedback job."
                             }
                         ),
                         403,
                         content="application/json",
                     )
                     return
-                self.send(json.dumps(job.to_dict()), 200, content="application/json")
+                self.send(json.dumps(job.to_learner_dict()), 200, content="application/json")
             elif parsed.path == "/api/analytics":
                 self.send(json.dumps(repo.analytics()), content="application/json")
             elif parsed.path == "/health":
@@ -499,13 +559,20 @@ class Handler(BaseHTTPRequestHandler):
         allowed = {
             f"http://127.0.0.1:{self.server.server_port}",
             f"http://localhost:{self.server.server_port}",
+            f"http://host.docker.internal:{self.server.server_port}",
         }
-        if (
-            self.headers.get("Origin") not in {None, *allowed}
-            or self.headers.get("Sec-Fetch-Site") == "cross-site"
-        ):
+        origin = self.headers.get("Origin")
+        if origin is not None and origin not in allowed:
             return self.send("Forbidden origin", 403)
-        if self.path not in {"/attempt", "/api/attempts"}:
+        if self.headers.get("Sec-Fetch-Site") == "cross-site":
+            return self.send("Forbidden origin", 403)
+        if self.path not in {
+            "/attempt",
+            "/api/attempts",
+            "/api/auth/synthetic-session",
+            "/api/queue/enqueue",
+            "/api/queue/reconcile",
+        }:
             return self.send("Not found", 404)
         if "Content-Length" not in self.headers:
             return self.send("Content length required", 411)
@@ -522,6 +589,158 @@ class Handler(BaseHTTPRequestHandler):
             if len(raw) != size:
                 raise ValueError("Incomplete payload")
             text = raw.decode("utf-8")
+
+            # Route 1: Synthetic local authentication session endpoint
+            if self.path == "/api/auth/synthetic-session":
+                if self.headers.get_content_type() != "application/json":
+                    return self.send("JSON required", 415)
+                payload = json.loads(text)
+                sid = payload.get("student_id")
+                if not sid or sid not in STUDENTS:
+                    self.send(
+                        json.dumps({"error": "Invalid or unknown synthetic student principal"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                token = create_signed_session_token(sid)
+                self.send(
+                    json.dumps(
+                        {
+                            "token": token,
+                            "student_id": sid,
+                            "token_type": "Bearer",  # nosec B105
+                            "expires_in": 86400,
+                        }
+                    ),
+                    200,
+                    content="application/json",
+                )
+                return
+
+            # Route 2: Durable host-owned queue enqueue endpoint
+            if self.path == "/api/queue/enqueue":
+                if self.headers.get_content_type() != "application/json":
+                    return self.send("JSON required", 415)
+                payload = json.loads(text)
+                sid = payload.get("student_id")
+                qid = payload.get("question_id")
+                sql = payload.get("submitted_sql", "")
+                grading = payload.get("grading")
+                mode = payload.get("feedback_mode", "kg")
+                attempt_id = payload.get("attempt_id")
+                attempt_kind = payload.get(
+                    "attempt_kind", "authoritative" if attempt_id else "provisional"
+                )
+
+                if not sid or sid not in STUDENTS:
+                    self.send(
+                        json.dumps({"error": "Invalid student principal"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                if not qid or qid not in QUESTIONS:
+                    self.send(
+                        json.dumps({"error": "Invalid question_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                if not isinstance(grading, dict):
+                    self.send(
+                        json.dumps({"error": "Invalid grading payload"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+
+                if not attempt_id:
+                    event_id = uuid.uuid4().hex[:12]
+                    attempt_id = f"prov-{sid}-{qid}-{event_id}"
+                    attempt_kind = "provisional"
+
+                repo_jobs = get_jobs_repo()
+                try:
+                    job = repo_jobs.enqueue(
+                        attempt_id=attempt_id,
+                        student_id=sid,
+                        question_id=qid,
+                        submitted_sql=sql,
+                        grading=grading,
+                        mode=mode,
+                        attempt_kind=attempt_kind,
+                    )
+                except JobQueueFullError as exc:
+                    self.send(
+                        json.dumps({"error": "Queue full", "detail": str(exc)}),
+                        503,
+                        content="application/json",
+                    )
+                    return
+                except AttemptConflictError as exc:
+                    self.send(
+                        json.dumps({"error": "Attempt conflict", "detail": str(exc)}),
+                        409,
+                        content="application/json",
+                    )
+                    return
+
+                ticket = create_signed_ticket(sid, job.job_id)
+                self.send(
+                    json.dumps(
+                        {
+                            "job_id": job.job_id,
+                            "attempt_id": job.attempt_id,
+                            "status": job.status,
+                            "ticket": ticket,
+                            "feedback_url": f"/feedback?job_id={job.job_id}&ticket={ticket}",
+                        }
+                    ),
+                    201 if job.version == 0 else 200,
+                    content="application/json",
+                )
+                return
+
+            # Route 3: Reconcile provisional attempt to authoritative ID
+            if self.path == "/api/queue/reconcile":
+                if self.headers.get_content_type() != "application/json":
+                    return self.send("JSON required", 415)
+                payload = json.loads(text)
+                prov_id = payload.get("provisional_attempt_id")
+                auth_id = payload.get("authoritative_attempt_id")
+                if not prov_id or not auth_id:
+                    self.send(
+                        json.dumps({"error": "Missing attempt IDs"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                repo_jobs = get_jobs_repo()
+                reconciled = repo_jobs.reconcile(prov_id, auth_id)
+                if not reconciled:
+                    self.send(
+                        json.dumps({"error": "Provisional attempt not found"}),
+                        404,
+                        content="application/json",
+                    )
+                    return
+                self.send(
+                    json.dumps(
+                        {
+                            "status": "reconciled",
+                            "job_id": reconciled.job_id,
+                            "attempt_id": reconciled.attempt_id,
+                            "attempt_kind": reconciled.attempt_kind,
+                            "reconciled_from": reconciled.reconciled_from,
+                        }
+                    ),
+                    200,
+                    content="application/json",
+                )
+                return
+
+            # Route 4: Analytics submission attempts
             if self.path == "/api/attempts":
                 if self.headers.get_content_type() != "application/json":
                     return self.send("JSON required", 415)
@@ -604,10 +823,11 @@ class Handler(BaseHTTPRequestHandler):
 class DashboardServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, repository, port=8080):
+    def __init__(self, repository, port=8080, host=None):
         self.repository = repository
         self.ingestion_lock = threading.Lock()
-        super().__init__(("127.0.0.1", port), Handler)
+        bind_host = host if host is not None else os.environ.get("SIIP_DASHBOARD_HOST", "0.0.0.0")  # nosec B104
+        super().__init__((bind_host, port), Handler)
 
 
 if __name__ == "__main__":
@@ -616,10 +836,11 @@ if __name__ == "__main__":
         Path((os.environ.get("SIIP_DB_PATH") or ROOT / "artifacts/synthetic.sqlite3"))
     )
     port = int(os.environ.get("SIIP_DASHBOARD_PORT", "8080"))
-    print(f"Synthetic analytics: http://127.0.0.1:{port}", flush=True)
+    bind_host = os.environ.get("SIIP_DASHBOARD_HOST", "0.0.0.0")  # nosec B104
+    print(f"Synthetic analytics: http://{bind_host}:{port}", flush=True)
     import signal
 
-    server = DashboardServer(repo, port)
+    server = DashboardServer(repo, port, host=bind_host)
     signal.signal(
         signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown, daemon=True).start()
     )

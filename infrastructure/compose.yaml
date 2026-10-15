@@ -18,6 +18,8 @@ services:
       SIIP_LLM_RETRIES: ${SIIP_LLM_RETRIES:-0}
       SIIP_ALLOW_PAID_API: ${SIIP_ALLOW_PAID_API:-}
       SIIP_FEEDBACK_JOBS_DB: /jobs/feedback_jobs.sqlite3
+      SIIP_QUEUE_URL: ${SIIP_QUEUE_URL:-http://host.docker.internal:8080/api/queue/enqueue}
+      SIIP_FEEDBACK_SERVICE_URL: ${SIIP_FEEDBACK_SERVICE_URL:-http://127.0.0.1:8080}
       SIIP_ASYNC_FEEDBACK: ${SIIP_ASYNC_FEEDBACK:-0}
     restart: "no"
 volumes:

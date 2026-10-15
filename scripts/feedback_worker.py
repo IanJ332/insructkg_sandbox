@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 from siip.feedback import configured_provider
 from siip.jobs import FeedbackJobRepository, FeedbackWorker
 from siip.observability import event
+from siip.store import SubmissionRepository
 
 
 def main():
@@ -27,6 +28,11 @@ def main():
         default=os.environ.get("SIIP_FEEDBACK_JOBS_DB")
         or str(ROOT / "artifacts/jobs/feedback_jobs.sqlite3"),
         help="Path to feedback jobs SQLite database",
+    )
+    parser.add_argument(
+        "--sub-db",
+        default=os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3"),
+        help="Path to submissions SQLite database for historical profile lookup",
     )
     parser.add_argument(
         "--worker-id",
@@ -66,11 +72,18 @@ def main():
     db_path = Path(args.db)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     repo = FeedbackJobRepository(db_path)
-    worker = FeedbackWorker(repo, worker_id=args.worker_id)
+
+    sub_repo = None
+    if args.sub_db:
+        sub_path = Path(args.sub_db)
+        if sub_path.exists():
+            sub_repo = SubmissionRepository(sub_path)
+
+    worker = FeedbackWorker(repo, worker_id=args.worker_id, submission_repo=sub_repo)
     provider = configured_provider()
 
     print(
-        f"SIIP Feedback Worker starting: id={args.worker_id}, db={args.db}, provider={type(provider).__name__ if provider else 'None'}",
+        f"SIIP Feedback Worker starting: id={args.worker_id}, db={args.db}, sub_db={args.sub_db if sub_repo else 'None'}, provider={type(provider).__name__ if provider else 'None'}",
         flush=True,
     )
 
