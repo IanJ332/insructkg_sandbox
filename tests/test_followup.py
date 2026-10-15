@@ -3,7 +3,10 @@
 import concurrent.futures
 import importlib.util
 import json
+import os
+import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
@@ -90,6 +93,10 @@ class PersonalizationTests(RepoCase):
         self.assertEqual(weak["feedback"]["inference_status"], "deterministic_fallback")
         self.assertEqual(self.repo.records(), before)
         self.assertEqual(weak["evidence_receipt"]["prior_attempt_count"], 1)
+        self.assertEqual(
+            weak["evidence_receipt"]["feedback_origin"], "authorized_post_submission_replay"
+        )
+        self.assertTrue(all(r["feedback_origin"] == "local_analytics_recomputed" for r in before))
 
     def test_provider_context_is_minimized_and_subject_isolated(self):
         self.seed_contrasting_histories()
@@ -166,6 +173,7 @@ class PersonalizationTests(RepoCase):
         with patch("siip.pl_bridge.configured_provider", return_value=None):
             grade_question(data, QID)
         self.assertEqual(data["score"], 0)
+        self.assertEqual(data["feedback"]["siip"]["feedback_origin"], "prairielearn_hook_immediate")
         self.assertEqual(
             data["feedback"]["siip"]["feedback"]["historical_personalization"]["status"], "none"
         )
@@ -634,6 +642,59 @@ class LocalBackendTests(unittest.TestCase):
         self.assertEqual(requests[0].get_method(), "GET")
         self.assertTrue(requests[0].full_url.endswith("/v1/models"))
         self.assertIsNone(requests[0].data)
+
+
+class ShutdownContractTests(unittest.TestCase):
+    def run_isolated_stop(self, ready, running=True):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "scripts").mkdir()
+            (root / "artifacts").mkdir()
+            binary = root / "bin"
+            binary.mkdir()
+            shutil.copyfile(ROOT / "scripts/manage.py", root / "scripts/manage.py")
+            fake = binary / "docker"
+            fake.write_text(
+                "#!" + sys.executable + "\n"
+                "import json,os,sys\n"
+                "args=sys.argv[1:]\n"
+                "with open(os.environ['SIIP_STOP_TEST_LOG'],'a') as stream: stream.write(json.dumps(args)+'\\n')\n"
+                "if 'ps' in args: print('owned-synthetic-container' if os.environ['SIIP_STOP_TEST_RUNNING']=='1' else '')\n"
+                "if 'pg_isready' in args: sys.exit(int(os.environ['SIIP_STOP_TEST_READY']))\n"
+            )
+            fake.chmod(0o755)
+            log = root / "commands.jsonl"
+            subprocess.run(
+                [sys.executable, str(root / "scripts/manage.py"), "stop"],
+                cwd=root,
+                check=True,
+                env={
+                    **os.environ,
+                    "PATH": str(binary) + os.pathsep + os.environ.get("PATH", ""),
+                    "SIIP_STOP_TEST_LOG": str(log),
+                    "SIIP_STOP_TEST_READY": str(ready),
+                    "SIIP_STOP_TEST_RUNNING": "1" if running else "0",
+                },
+                capture_output=True,
+            )
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+            self.assertTrue(all(str(root / "infrastructure/compose.yaml") in row for row in calls))
+            return calls
+
+    def test_ready_bundled_postgres_stops_before_container(self):
+        calls = self.run_isolated_stop(0)
+        graceful = next(
+            i for i, row in enumerate(calls) if "/PrairieLearn/scripts/start_postgres.sh" in row
+        )
+        final = next(i for i, row in enumerate(calls) if row[-1] == "stop" and "exec" not in row)
+        self.assertLess(graceful, final)
+        self.assertFalse(any("-v" in row or "down" in row for row in calls))
+
+    def test_absent_or_unready_postgres_never_runs_graceful_stop(self):
+        for running in [False, True]:
+            calls = self.run_isolated_stop(1, running)
+            self.assertFalse(any("/PrairieLearn/scripts/start_postgres.sh" in row for row in calls))
+            self.assertEqual(calls[-1][-1], "stop")
 
 
 if __name__ == "__main__":

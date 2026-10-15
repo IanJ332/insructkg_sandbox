@@ -185,6 +185,7 @@ class SubmissionRepository:
                     "concepts": QUESTIONS[qid]["concepts"],
                     "feedback_mode": mode,
                     "feedback": feedback,
+                    "feedback_origin": "local_analytics_recomputed",
                     "dataset_version": "employees-departments-v1",
                     "profile_version": "beta-heuristic-v1",
                     "grading_latency_ms": grading_latency_ms,

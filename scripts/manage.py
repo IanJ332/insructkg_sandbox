@@ -93,6 +93,30 @@ def dashboard_stop():
         pidfile.unlink()
 
 
+def stop_services():
+    dashboard_stop()
+    # The official image starts PostgreSQL as a background process. A container
+    # stop alone can leave a socket lock in its writable layer across restarts.
+    running = subprocess.run(
+        COMPOSE + ["ps", "--status", "running", "-q", "prairielearn"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    if running:
+        ready = subprocess.run(
+            COMPOSE + ["exec", "-T", "prairielearn", "pg_isready", "-q"], cwd=ROOT
+        )
+        if ready.returncode == 0:
+            run(
+                COMPOSE
+                + ["exec", "-T", "prairielearn", "/PrairieLearn/scripts/start_postgres.sh", "stop"],
+                timeout=75,
+            )
+    run(COMPOSE + ["stop"])
+
+
 def tests(pattern=None):
     command = [PYTHON, "-m", "unittest", "discover", "-s", "tests", "-v"]
     if pattern:
@@ -187,12 +211,10 @@ elif cmd == "fresh-preflight":
 elif cmd == "smoke":
     script("smoke.py")
 elif cmd == "stop":
-    dashboard_stop()
-    run(COMPOSE + ["stop"])
+    stop_services()
 elif cmd == "reset":
     # Reversible reset: keep all current state in timestamped backups; no volume deletion.
-    dashboard_stop()
-    run(COMPOSE + ["stop"])
+    stop_services()
     saved = ROOT / "artifacts" / ("reset-backup-" + datetime.now().strftime("%Y%m%d-%H%M%S"))
     saved.mkdir()
     if (ROOT / "artifacts/synthetic.sqlite3").exists():

@@ -47,6 +47,7 @@ def grade_question(data, qid):
             + ". Graph support is provisional; original judgments await instructor review.",
             "inference": feedback["inference_status"] + " · " + feedback["model_identifier"],
             "siip": {
+                "feedback_origin": "prairielearn_hook_immediate",
                 "question_id": qid,
                 "grading_status": result["status"],
                 "observation": result["observation"],

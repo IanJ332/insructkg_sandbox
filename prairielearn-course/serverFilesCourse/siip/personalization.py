@@ -47,6 +47,7 @@ def feedback_for_attempt(repo, attempt_id, principal, *, provider=None):
     return {
         "feedback": feedback,
         "evidence_receipt": {
+            "feedback_origin": "authorized_post_submission_replay",
             "scope": "synthetic_only",
             "cutoff": record["timestamp"],
             "policy": "strictly_before_current_timestamp",
