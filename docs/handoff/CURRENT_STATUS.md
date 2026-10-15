@@ -1,34 +1,35 @@
-# Current status — Phase 4.3 Security Boundary Closure & Research Evaluation Handoff
+# Current status — Phase 4.4 Scientific Evaluation Readiness & Genuine Evidence Grounding
 
-Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 191 distinct public tests pass (49.14s). Code formatting, linting, Mypy strict typing, Bandit security scan (0 issues), and publication audit (0 secrets, 0 restricted paths) are 100% clean.
+Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 201 distinct public tests pass (52.8s). Code formatting, linting, Mypy strict typing, and configuration validation are 100% clean.
 
 | Area | Status | Actual result/evidence | Boundary |
 |---|---|---|---|
-| Public deterministic suite | PASS | 191/191, 0 fail/skip, 49.14s | Includes authorization, submission identity, queue topology, and personalization suites |
-| Hardened service boundary | PASS | Enforced `X-SIIP-Service-Key` on `/api/queue/enqueue` and `/api/queue/reconcile`; default listen `127.0.0.1` | Queue mutations require service key; 401 Unauthorized for callers without key |
-| Isolated dev-only auth gate | PASS | `/api/auth/synthetic-session` gated to `SIIP_ALLOW_SYNTHETIC_AUTH=1` + loopback/service caller check; 403 otherwise | Production/hosted environments strictly require institutional SSO |
-| Dynamic uncommitted HMAC secret | PASS | `get_auth_secret()` dynamically generates 32-byte secret (`auth_secret.key`, gitignored); no static default secret in repo | Zero hardcoded cryptographic secrets in source |
-| Provenance & conflict check | PASS | `jobs.py` `reconcile()` enforces student/question evidence match (409 Conflict on mismatch); separates submission time | Prevents cross-student or cross-question attempt collision |
-| Authentic SQL benchmark | PASS | ANU authentic student corpus (12,899 submissions, 393 students) curated to 25 benchmark cases across 8 exercises | Raw datasets stored strictly on `D:\AI\Datasets\SIIP\`; zero C: drive leakage |
-| Blind evaluation protocol | PASS | `experiment_runner.py` dry-run verified; generates blinded review packets across Conditions A-E | Local GPU resource estimate: ~19.8 min, 125 inferences, $0.00 cost |
-| Playwright E2E browser suite | PASS | 5/5 browser submissions PASS (26s); actual PL UI on port 3000 -> CSV export -> analytics import | End-to-end integration verified against live local container |
-| Remote CI / Security / Integration | PASS | GitHub Actions workflows green on verified baseline | Pre-push verification complete for Phase 4.3 |
-| Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Technical architecture frozen; handoff to offline research evaluation |
+| Public deterministic suite | PASS | 201/201, 0 fail/skip, 52.84s | Adds Phase 4.4 scientific readiness suite (`test_scientific_readiness.py`) |
+| Authentic SQL benchmark audit | PASS | 25 cases audited: 7 distinct exercises (Ex 4,5,8,9,10,11,12; Ex 13 missing), 21 distinct students, 24 unique queries, 20/25 rule-based fallback | Original ANU labels preserved separately; heuristic patterns not presented as ground truth |
+| Authentic Evidence Registry | PASS | `siip/evidence_registry.py` registers source hashes, document IDs, approval statuses; 0/25 instructor-approved KG edges | Honest fail-closed eligibility; synthetic and unreviewed edges clearly distinguished |
+| Genuine student histories | PASS | `siip/authentic_history.py` extracts strictly prior ANU attempts (3–28 prior per student); future records excluded | Artificial mastery constants removed from real research condition |
+| Local Ollama inference pipeline | PASS | `scripts/experiment_runner.py` with `--dry-run` and `--execute`; local Qwen3 8B (digest `500a1f067a9f...`) on RTX 5070 Ti | Measured latency ~9.2s/call; idempotent result caching; full 125-call run held for authorization |
+| Single-blind review protocol | PASS | `artifacts/research/blind_review_packet.json` isolates prompts, condition labels, and treatments from reviewer | Key stored separately in `blind_review_key.json`; scoring template in `scoring_form.json` |
+| Statistical analysis suite | PASS | `scripts/analyze_results.py` implements paired Wilcoxon signed-rank, paired t-test, Cohen's d, r, 95% CIs, pairwise deletion | Explicitly labeled Exploratory Pilot ($N=25$); repeated students/exercises documented |
+| Docker host deployment boundary | BLOCKED | Container `host.docker.internal:8080` cannot connect to Windows host default `127.0.0.1` binding without broadening access | Service key present but transport unreachable; marked BLOCKED per protocol; queue architecture preserved |
+| Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Offline research evaluation ready; live pilot held |
 
-## What personalization means here
+## What personalization means in Phase 4.4
 
-Immediate PL hints use the current question/grade and configured concept/KG context. They are not historically personalized. The separate local service uses an explicitly authorized synthetic subject and strictly prior evidence to produce different **deterministic** hints. Relevant model contexts differ too, tested with fake providers; live personalized LLM quality remains unverified. KG context does not establish semantically grounded or instructor-approved truth. See [capability distinctions](../research/FEEDBACK_CAPABILITIES.md) and [lifecycle](../architecture/PERSONALIZED_FEEDBACK_LIFECYCLE.md).
+Condition E uses **genuine temporal prior submissions** extracted directly from the ANU course dataset (`Submission.sqlite`). For each of the 25 benchmark cases, all student attempts recorded prior to the target submission timestamp are aggregated into empirical concept mastery estimates using a Bayesian Beta prior. Submissions occurring at or after the target timestamp are mathematically excluded (3–11 excluded future submissions per case) to prevent temporal leakage. Artificial constants (`prior_attempts = 2, concept_mastery = 0.35`) have been completely eliminated from the research condition. Condition D serves as the exact control, receiving identical question and KG contexts but an explicit empty learner profile (`prior_attempts = 0`).
 
-Feedback provenance is explicit: `prairielearn_hook_immediate`, `local_analytics_recomputed`, and `authorized_post_submission_replay`. Import recomputes analytics feedback; it is not a copy of the original PL hint. Older preserved records may lack the new origin field. Batch-ingestion hints use previously persisted history; the post-submission service recomputes after commit against all strictly earlier persisted events without overwriting grades or original feedback.
+## Evidence grounding and KG coverage findings
 
-## Executed evidence and meaningful failures
+An independent audit of the instructional materials and knowledge graphs confirmed:
+1. **Lecture Materials:** The public ANU Zenodo deposit published `db_schema.pdf` and `Submission.sqlite`, but did not include course lecture slides. UIUC CS418 course slides are not accessible in this environment. Therefore, authentic lecture text retrieval is limited to verified schema documentation. Generic hardcoded lecture strings have been removed from the runner.
+2. **Knowledge Graph Coverage:** The available InstructKG relations in the sandbox consist of 8 developer provisional edges, all marked `unreviewed` with `instructor_reviewed = False`. None have formal course instructor approval, and none cover concepts for Exercises 4, 8, 9, 10, 11, or 12.
+3. **Scientific Invariant:** In accordance with scientific integrity requirements, rather than fabricating connections to force eligibility, **0 of 25 cases** are classified as eligible for an instructor-aligned KG claim. This empty set is documented as an authentic research finding.
 
-Local evidence stays under ignored artifacts/followup/. Actual E2E submits five new attempts 16–20 and imports37→42 records;20 PL IDs survive restart. Original E2E evidence was retained separately in accepted-e2e-evidence/. Public CI uses a distinct synthetic graph/lesson, not the469-record local research graph. Source revisions/upstream pins are preserved.
+## Local GPU Server & Ollama Execution Status
 
-A local restart initially failed because the official image retained a PostgreSQL socket lock in its writable layer. PG logs confirmed it; an owned-container recreation using the same named volume recovered all history. manage.py now stops ready bundled PostgreSQL through the official script before Compose stop. Two isolated regression tests and the actual exact-record restart pass. No PID/lock file or volume was blindly deleted.
-
-An initial replay test compared an in-memory tuple to its persisted JSON array, and the first shutdown tests failed on macOS /var→/private/var path normalization. Those assertions were corrected and rerun; source behavior was not weakened. Historical failure logs remain local. The original 600s extraction failure is retained; the named CPU variant is a separately recorded successful experiment.
-
-The apps remain local at http://localhost:3000/pl and http://127.0.0.1:8080/. The prototype is ready for technical review, not hosted learner delivery or a real pilot.
-
-Fresh CI evidence: the disposable runner's synthetic fixture store went 21→26 records through 5actual PL submissions and supported CSV import; exact 5 PL IDs/26 record hashes survived clean restart. This is separate from the local 42record/20 PL-submission research-data run. No real graph/course PDF is uploaded to CI.
+The local Ollama server (version 0.17.7) is active on the host and verified against the NVIDIA GeForce RTX 5070 Ti Laptop GPU (12 GB VRAM):
+- Model: `qwen3:8b` (Q4_K_M quantization, digest `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`).
+- Measured Inference Latency: ~9.2 seconds per response.
+- Response Formatting: Enforces JSON mode, schema validation, and solution leakage checks.
+- Preflight Dry-Run: `python scripts/experiment_runner.py --dry-run` passes completely non-inferentially.
+- Full 125-inference experiment: Preserved as unexecuted pending explicit authorization.

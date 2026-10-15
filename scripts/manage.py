@@ -30,6 +30,13 @@ def get_python():
     return str(venv_py) if venv_py.is_file() else sys.executable
 
 
+def get_tool(tool_name):
+    which = shutil.which(tool_name)
+    if which:
+        return [which]
+    return [get_python(), "-m", tool_name]
+
+
 def run(command, **kwargs):
     return subprocess.run(command, cwd=ROOT, check=True, **kwargs)
 
@@ -335,9 +342,9 @@ elif cmd == "test-public":
         env={**os.environ, "SIIP_DATA_DIR": str(ROOT / "artifacts/public-data")},
     )
 elif cmd == "quality":
-    run([get_python(), "-m", "ruff", "check", "."])
-    run([get_python(), "-m", "ruff", "format", "--check", "."])
-    run([get_python(), "-m", "mypy"])
+    run([*get_tool("ruff"), "check", "."])
+    run([*get_tool("ruff"), "format", "--check", "."])
+    run([*get_tool("mypy")])
     script("validate_config.py")
 elif cmd == "build":
     run([get_python(), "-m", "pip", "wheel", "--no-deps", ".", "--wheel-dir", "artifacts/dist"])

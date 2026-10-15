@@ -70,11 +70,41 @@ def audit_anu() -> dict:
 
     conn.close()
 
+    import hashlib
+
+    def compute_sha256(path: Path) -> str:
+        if not path.exists():
+            return "not_found"
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    hashes = {
+        "Submission.sqlite": compute_sha256(db_path),
+        "db_schema.pdf": compute_sha256(ANU_DIR / "db_schema.pdf"),
+        "README.md": compute_sha256(ANU_DIR / "README.md"),
+    }
+
+    # Verify query execution on populated database instance
+    query_exec_ok = False
+    try:
+        c2 = sqlite3.connect(db_path)
+        row = c2.execute("SELECT count(*) FROM movie;").fetchone()
+        query_exec_ok = bool(row and row[0] > 0)
+        c2.close()
+    except Exception:
+        query_exec_ok = False
+
     return {
         "dataset": "ANU Relational Database Course (Wang et al., 2020)",
         "source": "Zenodo: https://zenodo.org/records/6526769",
         "license": "Creative Commons Attribution 4.0 International (CC-BY 4.0)",
         "file_path": str(db_path),
+        "file_hashes": hashes,
+        "database_executable": query_exec_ok,
+        "grading_reproduction_note": (
+            "Submission.sqlite contains queryable schema and data. However, automated grading "
+            "reproduction cannot be claimed from schema descriptions alone without the full "
+            "browser test execution harness."
+        ),
         "tables": table_info,
         "distinct_students": dist_students,
         "distinct_exercises": dist_exercises,
