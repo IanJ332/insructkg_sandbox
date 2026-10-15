@@ -103,10 +103,12 @@ class AuthorizedPrairieLearnAPISource:
 
         if (
             not isinstance(identity_map, dict)
-            or not identity_map
+            or len(identity_map) != 1
             or any(pl_id(k) != k or v not in STUDENTS for k, v in identity_map.items())
         ):
-            raise ValueError("Only explicit synthetic identity mappings are supported")
+            raise ValueError(
+                "One explicitly mapped synthetic owner per assessment instance required"
+            )
         parsed = urlparse(base_url)
         if (
             parsed.scheme not in {"http", "https"}

@@ -15,6 +15,7 @@ from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
@@ -224,7 +225,7 @@ class MockAPIBase(RepoCase):
                 for key, value in self.server.extra_headers.items():
                     self.send_header(key, value)
                 self.end_headers()
-                body = self.server.body
+                body = self.server.bodies_by_path.get(self.path, self.server.body)
                 self.wfile.write(body if isinstance(body, bytes) else json.dumps(body).encode())
 
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -241,12 +242,13 @@ class MockAPIBase(RepoCase):
         super().setUp()
         self.server.body, self.server.response_status, self.server.extra_headers = [], 200, {}
         self.server.requests, self.server.failure = [], None
+        self.server.bodies_by_path = {}
         self.source = AuthorizedPrairieLearnAPISource(
             f"http://127.0.0.1:{self.server.server_port}",
             "synthetic-contract",
             5000,
             9000,
-            {"101": "S001", "102": "S002"},
+            {"101": "S001"},
             authorized=True,
             assessment_id=7000,
         )
@@ -255,16 +257,32 @@ class MockAPIBase(RepoCase):
 
 class SynchronizationTests(MockAPIBase):
     def test_api_sync_to_profiles_to_distinct_authorized_feedback(self):
-        self.server.body = [
+        other = AuthorizedPrairieLearnAPISource(
+            f"http://127.0.0.1:{self.server.server_port}",
+            "synthetic-contract",
+            5000,
+            9001,
+            {"102": "S002"},
+            authorized=True,
+            assessment_id=7000,
+        )
+        self.server.bodies_by_path[urlparse(self.source.url).path] = [
             api_row("1", date="2026-10-14T09:00:00Z"),
-            api_row("2", user="102", sql=GOOD, score=1, date="2026-10-14T09:00:00Z"),
             api_row("3"),
-            api_row("4", user="102"),
         ]
-        self.assertEqual(self.sync.sync_once()["inserted_count"], 4)
+        self.server.bodies_by_path[urlparse(other.url).path] = [
+            {
+                **api_row("2", user="102", sql=GOOD, score=1, date="2026-10-14T09:00:00Z"),
+                "assessment_instance_id": "9001",
+                "variant_id": "8001",
+            },
+            {**api_row("4", user="102"), "assessment_instance_id": "9001", "variant_id": "8001"},
+        ]
+        self.assertEqual(self.sync.sync_once()["inserted_count"], 2)
+        self.assertEqual(SubmissionSynchronizer(self.repo, other).sync_once()["inserted_count"], 2)
         feedbacks = []
-        for sid, number in [("S001", "3"), ("S002", "4")]:
-            aid = "pl-api-" + self.source.scope[:20] + "-" + number
+        for sid, number, source in [("S001", "3", self.source), ("S002", "4", other)]:
+            aid = "pl-api-" + source.scope[:20] + "-" + number
             feedbacks.append(
                 feedback_for_attempt(self.repo, aid, synthetic_principal(sid, authorized=True))
             )
@@ -298,7 +316,7 @@ class SynchronizationTests(MockAPIBase):
         self.assertEqual(self.repo.checkpoint_state(self.source.scope), state)
 
     def test_conflicting_duplicate_aborts_everything(self):
-        self.server.body = [api_row(), api_row(user="102")]
+        self.server.body = [api_row(), api_row(sql=GOOD, score=1)]
         with self.assertRaisesRegex(ValueError, "Conflicting duplicate"):
             self.sync.sync_once()
         self.assertEqual(self.repo.records(), [])
@@ -526,6 +544,16 @@ class SynchronizationTests(MockAPIBase):
     def test_authorization_and_completed_scope_required(self):
         with self.assertRaises(PermissionError):
             AuthorizedPrairieLearnAPISource("http://localhost:3000", "", 1, 1, {})
+        with self.assertRaisesRegex(ValueError, "owner"):
+            AuthorizedPrairieLearnAPISource(
+                "http://localhost:3000",
+                "synthetic-contract",
+                1,
+                1,
+                {"101": "S001", "102": "S002"},
+                authorized=True,
+                assessment_id=1,
+            )
         self.source.assessment_id = None
         with self.assertRaises(ValueError):
             SubmissionSynchronizer(self.repo, self.source)
