@@ -1,10 +1,10 @@
 # Current status — Phase 2 cross-validation follow-up
 
-Snapshot date: 2026-10-14, America/Chicago. Implementation snapshot: **47626e6c0326fb0cee59e61beceaebd76f071c6a** on `engineering/phase2-hardening`, [draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1), unmerged. Documentation-only commits may follow; [verification.json](verification.json) keys executed CI to exact source SHAs. All accepted 83distinct tests are retained.
+Snapshot date: 2026-10-14, America/Chicago. Implementation snapshot: **d65028a41b81be9b120f21734ece6e5edabdb864** on `engineering/phase2-hardening`, [draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1), unmerged. Documentation-only commits may follow; [verification.json](verification.json) keys executed CI to exact source SHAs. All accepted 83distinct tests are retained.
 
 | Area | Status | Actual result/evidence | Boundary |
 |---|---|---|---|
-| Public deterministic suite | PASS |119/119,0fail/skip,47.941s; artifacts/followup/public-tests-final.log | Mock API/model transports; original public fixtures |
+| Public deterministic suite | PASS |119/119,0fail/skip,37.968s; artifacts/followup/public-tests-owner-scope.log | Mock API/model transports; original public fixtures |
 | Real existing graph suite | PASS |2/2; research-tests-final.log | Actual469 judgments/121 nodes; original graph unreviewed |
 | Local personalized feedback | PASS, synthetic | Same current SQL/grade, contrasting S001/S002 prior histories produce different feedback; demo + regressions | Post-submission service only; no learner-login/learning-effect claim |
 | Privacy/temporal boundaries | PASS, synthetic | Subject-scoped attempt query, explicit principal, exclusive cutoff, relevant numeric aggregates, cross-subject denial tests | Principal factory is local trusted code, not institutional authentication |
@@ -19,7 +19,7 @@ Snapshot date: 2026-10-14, America/Chicago. Implementation snapshot: **47626e6c0
 | Local endpoint/backend readiness | PASS contracts | Configurable endpoint/model/JSON mode/limits/errors; dry-run plans need no paid key for local backends | Actual Ollama/vLLM/GPU execution NOT_RUN |
 | Windows GPU deployment | NOT_RUN; guide ready | Official-release pins, read-only readiness script and documented Windows/WSL2 recipes | Future hardware/driver/model unknown; no installations/serving |
 | Live generative inference | BLOCKED | Explicit user instruction; zero actual generative calls | Mock transport success is not live inference |
-| CI/security/publication | PASS | [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343534), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343514), [actual PL E2E/restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887) passed on implementation snapshot; 26-file code-only 0.2.1 wheel | No raw research/material/runtime artifacts published |
+| CI/security/publication | PASS | [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813272), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813399), [actual PL E2E/restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663808887) passed on implementation snapshot; 26-file code-only 0.2.1 wheel | No raw research/material/runtime artifacts published |
 | Hosted learner integration / pilot | BLOCKED | Identity/auth/data/research/instructor permissions unavailable | No CS418, real records, production deployment or merge |
 
 ## What personalization means here

@@ -5,7 +5,7 @@
   "repository": "https://github.com/IanJ332/insructkg_sandbox",
   "visibility": "PUBLIC",
   "branch": "engineering/phase2-hardening",
-  "implementation_sha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+  "implementation_sha": "d65028a41b81be9b120f21734ece6e5edabdb864",
   "documentation_note": "Documentation-only commits may follow; verify final branch head/PR checks separately.",
   "pull_request": "https://github.com/IanJ332/insructkg_sandbox/pull/1",
   "pull_request_draft": true,
@@ -21,7 +21,8 @@
     "public_suite": {
       "tests": 119,
       "passed": 119,
-      "seconds": 47.941
+      "seconds": 37.968,
+      "evidence": "artifacts/followup/public-tests-owner-scope.log"
     },
     "real_graph_suite": {
       "tests": 2,
@@ -57,7 +58,14 @@
       "local_analytics_recomputed",
       "authorized_post_submission_replay"
     ],
-    "kg_grounding": "Context/provisional hints implemented; semantic grounding and instructor alignment NOT_VERIFIED"
+    "kg_grounding": "Context/provisional hints implemented; semantic grounding and instructor alignment NOT_VERIFIED",
+    "default_comparison": {
+      "outputs": 63,
+      "actual_live_calls": 0,
+      "prompt": "siip-feedback-v3",
+      "historical_context": "none; held constant across default Baseline/RAG/KG comparisons",
+      "evidence": "artifacts/followup/default-comparison.log"
+    }
   },
   "synchronization": {
     "contract_and_mock_http": "PASS",
@@ -69,7 +77,9 @@
     "atomic_checkpoint_cas": "PASS",
     "csv_fallback": "PASS",
     "csv_overlap": "explicit scope alias required; fail closed on ambiguity",
-    "real_records_accessed": false
+    "real_records_accessed": false,
+    "one_owner_per_assessment_instance": true,
+    "contrasting_history_test_scopes": "Two individual assessment instances and distinct variants, one explicit owner per client"
   },
   "actual_local_e2e": {
     "status": "PASS",
@@ -309,83 +319,43 @@
   "ci_runs": [
     {
       "conclusion": "success",
-      "databaseId": 38662343514,
-      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "databaseId": 38663813399,
+      "headSha": "d65028a41b81be9b120f21734ece6e5edabdb864",
       "name": "Security",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343514"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813399"
     },
     {
       "conclusion": "success",
-      "databaseId": 38662343534,
-      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "databaseId": 38663813272,
+      "headSha": "d65028a41b81be9b120f21734ece6e5edabdb864",
       "name": "CI",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343534"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813272"
     },
     {
       "conclusion": "success",
-      "databaseId": 38662337951,
-      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "databaseId": 38663809033,
+      "headSha": "d65028a41b81be9b120f21734ece6e5edabdb864",
       "name": "Security",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337951"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663809033"
     },
     {
       "conclusion": "success",
-      "databaseId": 38662337898,
-      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "databaseId": 38663808946,
+      "headSha": "d65028a41b81be9b120f21734ece6e5edabdb864",
       "name": "CI",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337898"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663808946"
     },
     {
       "conclusion": "success",
-      "databaseId": 38662337887,
-      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "databaseId": 38663808887,
+      "headSha": "d65028a41b81be9b120f21734ece6e5edabdb864",
       "name": "Local platform integration",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38661434306,
-      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
-      "name": "Security",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434306"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38661434300,
-      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
-      "name": "CI",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434300"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38661429192,
-      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
-      "name": "Security",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429192"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38661429182,
-      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
-      "name": "CI",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429182"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38661429257,
-      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
-      "name": "Local platform integration",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429257"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663808887"
     }
   ],
   "blockers": [
@@ -626,12 +596,94 @@
   "ci_status": "PASS",
   "fresh_runner_e2e": {
     "status": "PASS",
-    "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887",
+    "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663808887",
     "initial_synthetic_records": 21,
     "after_csv_records": 26,
     "actual_pl_submissions": 5,
     "restart_exact_ids_hashes": "PASS",
     "corpus": "Original synthetic contract fixture; distinct from actual local research graph",
     "live_model_calls": 0
-  }
+  },
+  "prior_followup_ci_runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 38662343514,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343514"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38662343534,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343534"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38662337951,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337951"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38662337898,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337898"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38662337887,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661434306,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434306"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661434300,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434300"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429192,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429192"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429182,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429182"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429257,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429257"
+    }
+  ]
 }

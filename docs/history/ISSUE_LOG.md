@@ -35,3 +35,7 @@ Actual non-generative native/Tesseract ingestion completed13 chunks each; final 
 First replay assertion compared in-memory tuple to persisted JSON list; corrected to compare persisted snapshots. First 2 shutdown tests failed due macOS /var→/private/var normalization; fixed test path resolution and reran. Actual local PL restart failed due stale `/var/run/postgresql` socket lock; volume data intact. Supported owned-container recreation recovered history, then manage.py gained official ready-PG stop before Compose stop; contracts and exact42 record/20 PL-ID restart pass. No lock file/volume was blindly deleted.
 
 Final follow-up implementation snapshot 47626e6 passed CI 38662343534, Security 38662343514 and actual-PL integration 38662337887. Fresh runner 5submissions/26 records survive exact restart; local 20submissions/42records also pass. The PR remains draft/unmerged; no inference or production deployment occurred.
+
+Final API contract review found that the initial combined synthetic lifecycle fixture put two owners under one assessment-instance ID. The official SQL binds ownership through ai.user_id. The client now rejects multi-owner mapping, and the test uses separate instances/variants; all earlier behavior/grade boundaries remain.
+
+The final single-owner source revision d65028a passed CI 38663813272, Security 38663813399 and actual PL E2E/restart 38663808887. All 119 public tests pass locally in 37.968s; 2 unchanged real-graph tests also pass. No tests were skipped.
