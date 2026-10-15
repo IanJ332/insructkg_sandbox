@@ -1,0 +1,235 @@
+"""Reproducible local commands. Never opens a hosted course or invokes paid inference."""
+
+import argparse
+import json
+import os
+import platform
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+COMPOSE = ["docker", "compose", "-f", str(ROOT / "infrastructure/compose.yaml")]
+PYTHON = str(ROOT / ".venv/bin/python") if (ROOT / ".venv/bin/python").exists() else sys.executable
+
+
+def run(command, **kwargs):
+    return subprocess.run(command, cwd=ROOT, check=True, **kwargs)
+
+
+def script(name, *args):
+    return run([PYTHON, str(ROOT / "scripts" / name), *args])
+
+
+def prerequisites():
+    report = {
+        "platform": platform.platform(),
+        "architecture": platform.machine(),
+        "python": sys.version.split()[0],
+        "tools": {tool: shutil.which(tool) for tool in ["git", "python3", "node", "docker"]},
+    }
+    for port in [3000, 8080]:
+        with socket.socket() as s:
+            report[f"port_{port}_listening"] = s.connect_ex(("127.0.0.1", port)) == 0
+    (ROOT / "artifacts").mkdir(exist_ok=True)
+    (ROOT / "artifacts/environment.json").write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
+    run(["docker", "info", "--format", "{{.ServerVersion}}"])
+
+
+def dashboard_start():
+    pidfile = ROOT / "artifacts/dashboard.pid"
+    with socket.socket() as s:
+        if s.connect_ex(("127.0.0.1", 8080)) == 0:
+            with urllib.request.urlopen("http://127.0.0.1:8080/health", timeout=3) as response:  # nosec B310: fixed loopback.
+                health = json.load(response)
+            if health.get("service") != "siip-analytics":
+                raise RuntimeError("Port 8080 belongs to an unverified service; preserving it")
+            print("SIIP dashboard already healthy")
+            return
+    log = (ROOT / "artifacts/dashboard.log").open("a")
+    p = subprocess.Popen(
+        [PYTHON, str(ROOT / "scripts/dashboard.py")],
+        cwd=ROOT,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    pidfile.write_text(str(p.pid))
+    print("Dashboard PID", p.pid)
+    for _ in range(30):
+        if p.poll() is not None:
+            raise RuntimeError("Dashboard exited; inspect artifacts/dashboard.log")
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8080/health", timeout=1) as response:  # nosec B310: fixed loopback.
+                if json.load(response).get("service") == "siip-analytics":
+                    return
+        except (OSError, ValueError):
+            pass
+        time.sleep(0.25)
+    raise RuntimeError("Dashboard readiness timeout")
+
+
+def dashboard_stop():
+    pidfile = ROOT / "artifacts/dashboard.pid"
+    if pidfile.exists():
+        pid = int(pidfile.read_text())
+        # Validate process identity before sending any signal.
+        observed = subprocess.run(
+            ["/bin/ps", "-p", str(pid), "-o", "command="], text=True, capture_output=True
+        ).stdout
+        if str(ROOT / "scripts/dashboard.py") in observed:
+            import signal
+
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        pidfile.unlink()
+
+
+def stop_services():
+    dashboard_stop()
+    # The official image starts PostgreSQL as a background process. A container
+    # stop alone can leave a socket lock in its writable layer across restarts.
+    running = subprocess.run(
+        COMPOSE + ["ps", "--status", "running", "-q", "prairielearn"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    if running:
+        ready = subprocess.run(
+            COMPOSE + ["exec", "-T", "prairielearn", "pg_isready", "-q"], cwd=ROOT
+        )
+        if ready.returncode == 0:
+            run(
+                COMPOSE
+                + ["exec", "-T", "prairielearn", "/PrairieLearn/scripts/start_postgres.sh", "stop"],
+                timeout=75,
+            )
+    run(COMPOSE + ["stop"])
+
+
+def tests(pattern=None):
+    command = [PYTHON, "-m", "unittest", "discover", "-s", "tests", "-v"]
+    if pattern:
+        command += ["-k", pattern]
+    p = subprocess.run(
+        command, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    (ROOT / "artifacts/tests.log").write_text(p.stdout)
+    print(p.stdout)
+    if p.returncode:
+        raise SystemExit(p.returncode)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "command",
+    choices=[
+        "check",
+        "install",
+        "init",
+        "start-pl",
+        "start-dashboard",
+        "start",
+        "seed",
+        "graph",
+        "test-sql",
+        "test-feedback",
+        "test",
+        "evaluate",
+        "fresh-preflight",
+        "stop",
+        "reset",
+        "demo",
+        "smoke",
+        "test-public",
+        "test-research",
+        "quality",
+        "build",
+        "e2e",
+    ],
+)
+args = parser.parse_args()
+cmd = args.command
+if cmd == "check":
+    prerequisites()
+elif cmd == "install":
+    if not (ROOT / ".venv").exists():
+        run([sys.executable, "-m", "venv", ".venv"])
+    run([str(ROOT / ".venv/bin/python"), "-m", "pip", "install", "-r", "requirements-dev.txt"])
+elif cmd == "init":
+    for name in ["prepare.py", "expected.py", "graph_audit.py", "seed.py"]:
+        script(name)
+elif cmd == "start-pl":
+    run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
+elif cmd == "start-dashboard":
+    dashboard_start()
+elif cmd == "start":
+    run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
+    dashboard_start()
+elif cmd == "seed":
+    script("seed.py")
+elif cmd == "graph":
+    script("graph_audit.py")
+elif cmd == "test-sql":
+    tests("SQLTests")
+elif cmd == "test-feedback":
+    tests("FeedbackTests")
+elif cmd == "test":
+    tests()
+elif cmd == "test-research":
+    run([PYTHON, "-m", "unittest", "discover", "-s", "research_tests", "-v"])
+elif cmd == "test-public":
+    script("init_public.py")
+    run(
+        [PYTHON, "-m", "unittest", "discover", "-s", "tests", "-v"],
+        env={**os.environ, "SIIP_DATA_DIR": str(ROOT / "artifacts/public-data")},
+    )
+elif cmd == "quality":
+    run([PYTHON, "-m", "ruff", "check", "."])
+    run([PYTHON, "-m", "ruff", "format", "--check", "."])
+    run([PYTHON, "-m", "mypy"])
+    script("validate_config.py")
+elif cmd == "build":
+    run([PYTHON, "-m", "pip", "wheel", "--no-deps", ".", "--wheel-dir", "artifacts/dist"])
+    script("check_wheel.py")
+elif cmd == "e2e":
+    run([PYTHON, str(ROOT / "tests/e2e/prairielearn_flow.py"), "--ack-local-synthetic"])
+elif cmd == "evaluate":
+    script("evaluate.py")
+elif cmd == "fresh-preflight":
+    script("extract.py")
+elif cmd == "smoke":
+    script("smoke.py")
+elif cmd == "stop":
+    stop_services()
+elif cmd == "reset":
+    # Reversible reset: keep all current state in timestamped backups; no volume deletion.
+    stop_services()
+    saved = ROOT / "artifacts" / ("reset-backup-" + datetime.now().strftime("%Y%m%d-%H%M%S"))
+    saved.mkdir()
+    if (ROOT / "artifacts/synthetic.sqlite3").exists():
+        shutil.move(ROOT / "artifacts/synthetic.sqlite3", saved / "synthetic.sqlite3")
+    script("seed.py")
+    print("Synthetic store reset; prior database saved to", saved)
+    print(
+        "PrairieLearn history retained. Use Regenerate your assessment instance for a fresh local demo."
+    )
+elif cmd == "demo":
+    script("seed.py")
+    script("graph_audit.py")
+    script("evaluate.py")
+    run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
+    dashboard_start()
+    print(
+        "Open http://localhost:3000/pl and http://127.0.0.1:8080; follow docs/DEMO.md. UI actions are manual; fixture runs do not prove UI success."
+    )

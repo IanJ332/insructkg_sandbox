@@ -1,0 +1,44 @@
+name: Local platform integration
+on:
+  push:
+    paths:
+      - '.github/workflows/integration.yml'
+      - 'tests/e2e/**'
+      - 'infrastructure/compose.yaml'
+      - 'scripts/**'
+      - 'prairielearn-course/**'
+      - 'requirements-dev.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prairielearn-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SIIP_FEEDBACK_PROVIDER: deterministic
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+      - run: python scripts/manage.py install
+      - run: .venv/bin/python -m playwright install --with-deps chromium
+      - name: Initialize clearly synthetic graph/corpus in disposable runner
+        run: .venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
+      - run: .venv/bin/python scripts/seed.py
+      - run: .venv/bin/python scripts/manage.py start
+      - run: .venv/bin/python scripts/smoke.py
+      - name: Actual PL submission, feedback, retry, CSV persistence and analytics
+        run: .venv/bin/python tests/e2e/prairielearn_flow.py --ack-local-synthetic
+      - name: Restart both services and verify persistence
+        run: |
+          .venv/bin/python scripts/persistence_probe.py before
+          .venv/bin/python scripts/manage.py stop
+          .venv/bin/python scripts/manage.py start
+          .venv/bin/python scripts/smoke.py
+          .venv/bin/python scripts/persistence_probe.py after
+      - if: always()
+        run: .venv/bin/python scripts/manage.py stop

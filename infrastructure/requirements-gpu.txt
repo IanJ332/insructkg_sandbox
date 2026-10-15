@@ -1,0 +1,2 @@
+# Optional CUDA machine only; never install on the integration host.
+vllm==0.19.1

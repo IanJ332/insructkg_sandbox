@@ -1,0 +1,37 @@
+{
+  "review_status": "developer_validated_pending_instructor",
+  "reviewer": "local sandbox developer",
+  "source": "Exercise requirements and inspected JOIN/NULL lecture; exact conceptual names are developer annotations",
+  "questions": {
+    "sql_join_01": [
+      "INNER_JOIN",
+      "JOIN_CONDITION",
+      "JOIN_OPERATION"
+    ],
+    "sql_join_02": [
+      "LEFT_OUTER_JOIN",
+      "UNMATCHED_ROWS",
+      "NULL_SEMANTICS"
+    ],
+    "sql_join_03": [
+      "LEFT_OUTER_JOIN",
+      "IS_NULL",
+      "FILTERING_AFTER_JOIN"
+    ]
+  },
+  "aliases": {
+    "INNER_JOIN": "JOIN_OPERATION"
+  },
+  "provisional_concepts": [
+    "FILTERING_AFTER_JOIN",
+    "INNER_JOIN",
+    "IS_NULL",
+    "JOIN_CONDITION",
+    "JOIN_OPERATION",
+    "LEFT_OUTER_JOIN",
+    "NULL_SEMANTICS",
+    "RELATIONAL_TABLES",
+    "SQL_SELECT",
+    "UNMATCHED_ROWS"
+  ]
+}

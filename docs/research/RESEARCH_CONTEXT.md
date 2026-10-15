@@ -1,0 +1,9 @@
+# Research context and source limits
+
+The supplied SIIP brief describes three years of progression: Year 1 SQL error diagnosis and personalized feedback; Year 2 instructor-aligned concept graphs from course materials; Year 3 PrairieLearn integration and eventual learning-impact evaluation. This chronology comes from the user's research brief, not an independently verified publication history.
+
+The brief names “From SQL Errors to Concept Gaps: An AI-Powered Knowledge Graph Analytics Platform for Personalized Feedback,” “WIP: AI-Powered Knowledge Graph System for Personalized SQL Learning and Adaptive Feedback in Database Systems Education,” and “Instructor-Aligned Knowledge Graphs for Personalized Learning.” Full paper texts were not supplied or claimed read. The prior platform reportedly uses PostgreSQL/Neo4j; no accessible original feedback-backend repository has been established. The demo URL alone does not establish API compatibility or source availability.
+
+Actual available evidence is the pinned Jeffry/reference repositories, their README/stage source/findings/testing notes, the real SQL lecture PDF and existing relation output, and official PrairieLearn lifecycle docs/source. The audit records precisely those revisions. Jeffry contains PDF ingestion, concepts/roles, clustering, packets and relation judgment, not a complete SQL feedback application. This integration adds the missing local learning-environment boundaries without claiming equivalence to the earlier backend.
+
+The current experiment is a technical prototype with original synthetic students and attempts. Existing graph output is real research output but unreviewed. Public contract fixtures are artificial; deterministic fallback and local mocked HTTP responses are labeled separately from live inference. Future Entrepreneurial Mindset/project generation remains unimplemented and lower priority than validating SQL feedback.

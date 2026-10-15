@@ -1,0 +1,12 @@
+{
+  "verified_against_official_releases_on": "2026-10-14",
+  "ollama_windows_version": "0.40.4",
+  "ollama_release": "https://github.com/ollama/ollama/releases/tag/v0.40.4",
+  "vllm_server_version": "0.31.0",
+  "vllm_release": "https://github.com/vllm-project/vllm/releases/tag/v0.31.0",
+  "research_inprocess_vllm_pin": "0.19.1",
+  "hardware_execution": "NOT_RUN",
+  "model": null,
+  "inference": "BLOCKED",
+  "note": "Server recipes are separate from the research CPU lock. Compatibility on the future GPU requires validation. No model is selected, downloaded or served in this phase."
+}

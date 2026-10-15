@@ -1,0 +1,32 @@
+{
+  "sql_join_01": {
+    "title": "Matching employees and departments",
+    "statement": "Retrieve employees who have a matching department record. Return employee name and department_name, in that column order.",
+    "concepts": [
+      "INNER_JOIN",
+      "JOIN_CONDITION",
+      "JOIN_OPERATION"
+    ],
+    "reference_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;"
+  },
+  "sql_join_02": {
+    "title": "Keep every employee",
+    "statement": "Retrieve every employee, including employees without matching departments. Return employee name and department_name, in that column order.",
+    "concepts": [
+      "LEFT_OUTER_JOIN",
+      "UNMATCHED_ROWS",
+      "NULL_SEMANTICS"
+    ],
+    "reference_sql": "SELECT e.name, d.department_name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id;"
+  },
+  "sql_join_03": {
+    "title": "Find employees without a department match",
+    "statement": "Retrieve the names of employees for whom no matching department record exists. Return one column: name. Include both NULL references and non-NULL references with no match.",
+    "concepts": [
+      "LEFT_OUTER_JOIN",
+      "IS_NULL",
+      "FILTERING_AFTER_JOIN"
+    ],
+    "reference_sql": "SELECT e.name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id WHERE d.department_id IS NULL;"
+  }
+}

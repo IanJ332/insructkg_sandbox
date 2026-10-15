@@ -1,0 +1,9 @@
+{
+  "purpose": "Illustrative local synthetic scope; verify IDs and copy into ignored artifacts before use",
+  "base_url": "http://127.0.0.1:3000",
+  "course_instance_id": "1",
+  "assessment_id": "1",
+  "assessment_instance_id": "1",
+  "identity_map": {"1": "S003"},
+  "legacy_attempt_ids": {}
+}
