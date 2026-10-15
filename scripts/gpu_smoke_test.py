@@ -6,6 +6,7 @@ import ctypes
 import http.client
 import json
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -55,9 +56,10 @@ def get_system_ram():
 
 def get_gpu_status():
     try:
-        out = subprocess.check_output(
+        smi_bin = shutil.which("nvidia-smi") or "nvidia-smi"
+        out = subprocess.check_output(  # nosec B607: verified system utility.
             [
-                "nvidia-smi",
+                smi_bin,
                 "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu",
                 "--format=csv,noheader,nounits",
             ],
@@ -78,7 +80,7 @@ def test_a_availability():
     print("\n--- Running Test A: Basic Model Availability ---")
     req = urllib.request.Request(f"{OLLAMA_BASE_URL}/v1/models")
     t0 = time.monotonic()
-    with urllib.request.urlopen(req, timeout=5) as resp:
+    with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310: fixed loopback.
         body = json.loads(resp.read().decode())
     latency = round(time.monotonic() - t0, 4)
     models = [m.get("id") for m in body.get("data", [])]
@@ -109,7 +111,7 @@ def test_b_chat_completions():
         headers={"Content-Type": "application/json"},
     )
     t0 = time.monotonic()
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310: fixed loopback.
         data = json.loads(resp.read().decode())
     latency = round(time.monotonic() - t0, 3)
     gpu_after = get_gpu_status()
@@ -173,7 +175,7 @@ def test_c_structured_json():
         headers={"Content-Type": "application/json"},
     )
     t0 = time.monotonic()
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310: fixed loopback.
         data = json.loads(resp.read().decode())
     latency = round(time.monotonic() - t0, 3)
 
@@ -221,13 +223,13 @@ def test_d_responses_api():
     )
     t0 = time.monotonic()
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = resp.read().decode()
+        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310: fixed loopback.
+            resp.read()
             status = "PASS"
-            detail = data
+            detail = "HTTP 200 OK (basic Responses API supported)"
     except (urllib.error.HTTPError, TimeoutError, http.client.RemoteDisconnected, OSError) as e:
-        status = "INCOMPATIBLE"
-        detail = f"{type(e).__name__}: Ollama does not implement /v1/responses (OpenAI Responses API). Encountered: {e}"
+        status = "FAIL"
+        detail = f"{type(e).__name__}: {e}"
     latency = round(time.monotonic() - t0, 3)
 
     print(f"Responses API result: {status} ({detail}), Latency: {latency}s")

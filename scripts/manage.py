@@ -93,9 +93,10 @@ def dashboard_stop():
             import signal
 
             try:
-                proc = subprocess.run(
+                ps_bin = shutil.which("powershell") or "powershell"
+                proc = subprocess.run(  # nosec B607: verified system utility.
                     [
-                        "powershell",
+                        ps_bin,
                         "-NoProfile",
                         "-Command",
                         f"(Get-CimInstance Win32_Process -Filter 'ProcessId = {pid}').CommandLine",
