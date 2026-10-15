@@ -7,3 +7,7 @@ The primary upstream remains unmodified Jeffry c34a7786528e78766f15d918ab17aca2a
 Local Mode A independently verifies 469 judgments, 319 non-null/150 null and 121 nodes; two explicit research tests cover provenance/direction. Public CI has a different clearly synthetic contract graph, not an imitation extraction result. Eight developer provisional edges remain separate from original judgments; no instructor approval is claimed.
 
 Mode B uses the actual upstream main.py. A locked Python 3.11 Linux CPU/API image isolates the Mac torch-wheel incompatibility without changing OCR/chunking/extraction algorithms. It excludes vLLM. Actual import/ingestion and remaining stage statuses are recorded in the handoff and local extraction logs; no concept/relation run is claimed without model resources. See dependencies and graph-validation docs.
+
+## Follow-up ingestion result
+
+A named non-generative CPU variant now completes actual upstream ingestion: 13chunks with native parsing and 13 with Tesseract bitmap OCR. Formula/code/picture/chart generation is disabled externally; upstream files are unchanged. The guarded Tesseract run completed in 268.25s, with zero generation attempts, 16cited pages and original chunk/neighbor provenance. This resolves a compatible CPU ingestion path, not original-settings VLM extraction or a fresh KG. [Profiling details](../engineering/INGESTION_PROFILING.md) retain the original 600s failure and limits.

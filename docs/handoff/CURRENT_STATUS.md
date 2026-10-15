@@ -1,34 +1,41 @@
-# Current verified status — Phase 2
+# Current status — Phase 2 cross-validation follow-up
 
-Snapshot: 2026-10-14. Source snapshot and actual CI run URLs are in [verification.json](verification.json). A later documentation commit may follow the tested implementation snapshot. Status words: PASS = completed stated check; PARTIAL = implemented with material gaps; FAIL = actual unsuccessful check; BLOCKED = prerequisite/instruction prevents execution; NOT_RUN = not executed.
+Snapshot date: 2026-10-14, America/Chicago. Implementation snapshot: **47626e6c0326fb0cee59e61beceaebd76f071c6a** on `engineering/phase2-hardening`, [draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1), unmerged. Documentation-only commits may follow; [verification.json](verification.json) keys executed CI to exact source SHAs. All accepted 83distinct tests are retained.
 
-| Subsystem/check | Status | Actual evidence and scope |
-|---|---|---|
-| Original baseline | PASS | 43/43 original tests; five HTTP checks; baseline audit and local logs |
-| Expanded public suite | PASS | 81/81 tests, zero fail/skip; final-public-tests.log; 55.002sec final local run |
-| Actual research graph suite | PASS | 2/2 distinct original tests; research-tests.log; 469 judgments/121 nodes |
-| PrairieLearn | PASS | Actual local course/assessment and three questions; five final browser submissions, feedback and retries; e2e/result.json |
-| SQL grading | PASS | Independent A/B SQLite bags, safety/deadline tests and actual PL results |
-| KG Mode A | PASS | Real pinned research JSONL loads with direction/provenance; original edges remain unreviewed |
-| Instructor graph approval | NOT_RUN | No instructor review; local overlay UI alone is not approval |
-| Provider implementation/contracts | PASS | Config, local mocked HTTP success/errors, validation/fallback tests; no live model proof |
-| Live feedback inference | BLOCKED | User explicitly instructed keep inference blocked/no paid usage; zero calls |
-| Deterministic comparison | PASS | 21 submissions ×3 modes =63 outputs, zero live_success; evaluation.log |
-| CPU extraction import | PASS | Unmodified upstream main.py --help in isolated Linux CPU image with network disabled |
-| CPU locked image build | PASS | Exact lock recipe rebuilt; unmodified upstream import passed again with network disabled; extraction-locked-build.log / extraction-locked-import.log |
-| Fresh upstream ingestion | FAIL | Actual 600 seconds run exit124; parsing models initialized, no chunks written |
-| KG Mode B complete extraction | BLOCKED | Ingest failure plus model-stage use forbidden; no concepts/roles/clusters/pairs/relations claimed |
-| Profiles / analytics | PASS | Five synthetic students,37 records (19correct/18incorrect),15 source-separated PL imports; UI/API agreement and isolation tests |
-| Persistence | PASS | Exact 15 PL IDs and37 normalized record hashes survive stop/start; restart.log/persistence-{before,after}.json |
-| Static checks/build | PASS | Ruff/format, strict mypy on 3 boundaries, config/pip integrity,23-file code-only wheel |
-| Security checks | PASS within scope | Zero final Bandit findings; no known dev-pin vulnerabilities at audit; full-history publication audit has no unreviewed findings |
-| GitHub publication/CI | PASS | Original source pushed; [two-Python CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169671), [actual PL E2E + restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814) all passed on implementation snapshot 11b803e |
-| Hosted course / real-data pilot | BLOCKED | No institutional/research authorization; no existing course touched |
+| Area | Status | Actual result/evidence | Boundary |
+|---|---|---|---|
+| Public deterministic suite | PASS |119/119,0fail/skip,47.941s; artifacts/followup/public-tests-final.log | Mock API/model transports; original public fixtures |
+| Real existing graph suite | PASS |2/2; research-tests-final.log | Actual469 judgments/121 nodes; original graph unreviewed |
+| Local personalized feedback | PASS, synthetic | Same current SQL/grade, contrasting S001/S002 prior histories produce different feedback; demo + regressions | Post-submission service only; no learner-login/learning-effect claim |
+| Privacy/temporal boundaries | PASS, synthetic | Subject-scoped attempt query, explicit principal, exclusive cutoff, relevant numeric aggregates, cross-subject denial tests | Principal factory is local trusted code, not institutional authentication |
+| Immediate PL feedback | PASS, history-free | Actual 3 questions/5 new browser submissions, feedback/retry and CSV import | No trusted identity/history in hook; no unauthorized lookup |
+| API synchronization | PASS contract / live NOT_RUN | Mapping/dedup/late/incremental/profile/permissions/errors/rollback/CAS/CSV reconciliation tests | Local mock HTTP only; no PL token created or live API queried |
+| CSV fallback | PASS | Verified actual PL export/import preserved | CSV remains explicit and supported |
+| Local store/analytics | PASS |5 synthetic students;42 records,22 correct/20 incorrect;22 fixture +20 PL-export records | Synthetic only; profiles descriptive, not validated mastery |
+| Restart/persistence | PASS | Exact20 PL submission IDs and42 record hashes survive clean stop/start | Own sandbox only; no volume deletion |
+| Non-generative fresh ingestion | PASS, named CPU variant | Native13 chunks/163.01s; guarded Tesseract13 chunks/268.25s,16 cited pages, zero generation attempts | Original upstream serialization/chunker; enrichment disabled externally |
+| Original-settings600s failure | Historical FAIL | Preserved logs; exact stage attribution unproven | Generative enrichment intentionally not rerun |
+| Fresh concepts/roles/clusters/pairs/relations | BLOCKED / NOT_RUN | No generative inference permitted | Fresh chunks are not a completed KG or automatically promoted RAG corpus |
+| Local endpoint/backend readiness | PASS contracts | Configurable endpoint/model/JSON mode/limits/errors; dry-run plans need no paid key for local backends | Actual Ollama/vLLM/GPU execution NOT_RUN |
+| Windows GPU deployment | NOT_RUN; guide ready | Official-release pins, read-only readiness script and documented Windows/WSL2 recipes | Future hardware/driver/model unknown; no installations/serving |
+| Live generative inference | BLOCKED | Explicit user instruction; zero actual generative calls | Mock transport success is not live inference |
+| CI/security/publication | PASS | [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343534), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343514), [actual PL E2E/restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887) passed on implementation snapshot; 26-file code-only 0.2.1 wheel | No raw research/material/runtime artifacts published |
+| Hosted learner integration / pilot | BLOCKED | Identity/auth/data/research/instructor permissions unavailable | No CS418, real records, production deployment or merge |
 
-## Local evidence
+## What personalization means here
 
-`artifacts/phase2/` holds baseline and expanded logs, E2E result/screenshots/trace, exact restart comparison, scans/build logs and extraction failure. These are intentionally ignored; published sanitized summaries and public CI logs provide reviewable nonrestricted evidence. The E2E driver is rerunnable from public synthetic fixtures. A failed earlier selector run preserved five actual attempts; final CSV import therefore added ten to the 27-record baseline. Fixture/source counts are22 synthetic_fixture (including one earlier dashboard attempt) +15 local_prairielearn_export.
+Immediate PL hints use the current question/grade and configured concept/KG context. They are not historically personalized. The separate local service uses an explicitly authorized synthetic subject and strictly prior evidence to produce different **deterministic** hints. Relevant model contexts differ too, tested with fake providers; live personalized LLM quality remains unverified. KG context does not establish semantically grounded or instructor-approved truth. See [capability distinctions](../research/FEEDBACK_CAPABILITIES.md) and [lifecycle](../architecture/PERSONALIZED_FEEDBACK_LIFECYCLE.md).
 
-The local UI is at http://localhost:3000/pl and http://127.0.0.1:8080/. Loopback prototype health is not hosted deployment readiness. Model output quality and student learning effectiveness remain unverified.
+Feedback provenance is explicit: `prairielearn_hook_immediate`, `local_analytics_recomputed`, and `authorized_post_submission_replay`. Import recomputes analytics feedback; it is not a copy of the original PL hint. Older preserved records may lack the new origin field. Batch-ingestion hints use previously persisted history; the post-submission service recomputes after commit against all strictly earlier persisted events without overwriting grades or original feedback.
 
-Fresh GitHub runner evidence is deliberately separate: its original synthetic fixture corpus began with 21 records, imported 5 actual PL attempts to 26 records, and preserved all 5 PL IDs/26 record hashes through restart. The local research-data run retains 37records/15 PL submissions. [Draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1) awaits independent review; main was not merged or rewritten. Final CI/security also ran on the documentation revision.
+## Executed evidence and meaningful failures
+
+Local evidence stays under ignored artifacts/followup/. Actual E2E submits five new attempts 16–20 and imports37→42 records;20 PL IDs survive restart. Original E2E evidence was retained separately in accepted-e2e-evidence/. Public CI uses a distinct synthetic graph/lesson, not the469-record local research graph. Source revisions/upstream pins are preserved.
+
+A local restart initially failed because the official image retained a PostgreSQL socket lock in its writable layer. PG logs confirmed it; an owned-container recreation using the same named volume recovered all history. manage.py now stops ready bundled PostgreSQL through the official script before Compose stop. Two isolated regression tests and the actual exact-record restart pass. No PID/lock file or volume was blindly deleted.
+
+An initial replay test compared an in-memory tuple to its persisted JSON array, and the first shutdown tests failed on macOS /var→/private/var path normalization. Those assertions were corrected and rerun; source behavior was not weakened. Historical failure logs remain local. The original 600s extraction failure is retained; the named CPU variant is a separately recorded successful experiment.
+
+The apps remain local at http://localhost:3000/pl and http://127.0.0.1:8080/. The prototype is ready for technical review, not hosted learner delivery or a real pilot.
+
+Fresh CI evidence: the disposable runner's synthetic fixture store went 21→26 records through 5actual PL submissions and supported CSV import; exact 5 PL IDs/26 record hashes survived clean restart. This is separate from the local 42record/20 PL-submission research-data run. No real graph/course PDF is uploaded to CI.

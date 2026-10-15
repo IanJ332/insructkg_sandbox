@@ -1,16 +1,14 @@
-# Remaining work
+# Remaining work after cross-validation
 
-The [next implementation plan](NEXT_IMPLEMENTATION_PLAN.md) contains files, tests, acceptance gates and risks for each item. No working component is scheduled for a cosmetic rebuild.
+Completed: synthetic post-submission personalization, prior-only minimized context, deterministic scoped API reconciliation, safe CPU ingestion, no-paid-key local backend planning and clean PG restart.
 
-| Priority | Work | Blocker/dependency | Expected change and acceptance |
+| Priority | Remaining work | Current dependency | Acceptance |
 |---|---|---|---|
-| P0.1 | Actual Baseline/RAG/KG inference | Explicit user no-inference instruction | Authorized future canary in feedback.py/evaluate.py; actual output/usage and unchanged scores |
-| P0.2 | Fresh actual InstructKG stages | Ingest600s timeout; later model access forbidden | Profile extraction wrapper/container; actual stage metadata/counts and reviewable graph |
-| P1.1 | Hosted feedback latency | Hosted runtime facts, model authorization | Measure hook budget; async service only if needed; bounded correct-attempt feedback |
-| P1.2 | Load/containment/restore validation | Defined target workload | Worker/storage/tests/CI and documented limits; isolated restore hashes pass |
-| P2.1 | Authorized hosted course and identity | Institutional access/policy | Versioned source adapter; synthetic hosted E2E with no existing course changes |
-| P2.2 | Legacy backend assessment | Repository/rights unknown | Evaluate reusable boundaries against synthetic regression; documented reuse decision |
-| P3.1 | Instructor graph/profile validation | Instructor judgments and labeled evidence | Versioned review/calibration; no unreviewed authority claims |
-| P3.2 | Learning study, later EM/projects | Research approval, design and sample | Preregistered outcomes and reproducible analysis; EM separate future scope |
+| P0 | Real local feedback / downstream fresh KG | Explicitly blocked model use, approved resources | Actual model/version/quality and real stage outputs; no grade changes |
+| P1 | Actual local synthetic API canary | Approved owned-course token/scope | Supported GET, idempotence, CSV adoption and profile evidence |
+| P1 | Load/containment/restore hardening | Target workload | Measured limits and isolated restoration, reviewed security scope |
+| P2 | Hosted authenticated delivery | Institutional identity/privacy/course approvals | Subject/course isolation and sanctioned synthetic E2E |
+| P2 | Windows GPU and Responses validation | Actual host/driver/model plus later authorization | Pinned resolved runtime and actual protocol/hardware evidence |
+| P3 | Instructor graph/profile/study validation | Pedagogical/research decisions | Reviewed uncertainty, calibration and valid empirical design |
 
-Current user action is not needed to maintain the local deterministic demo. See HUMAN_ACTION_REQUIRED.md only when pursuing the blocked research/deployment stages.
+[NEXT_IMPLEMENTATION_PLAN](NEXT_IMPLEMENTATION_PLAN.md) supplies files, tests, risks and responsibility for each task. Ordinary debugging and engineering remain autonomous; no code rebuild is proposed without evidence.

@@ -25,3 +25,13 @@ CI run 38635364492 failed only the Python 3.11 dependency installation: local fr
 The public-only smoke path also needed explicit fixture awareness: the original smoke asserted469 real graph judgments, which is inappropriate for the distinct 2-record public contract graph. It now validates the declared corpus mode and labels it; the graph UI exposes synthetic provenance instead of describing that fixture as extracted multi-lecture output. No real-graph assertion was relaxed in the separate research tests.
 
 Final implementation-snapshot verification: CI 38636169643, Security 38636169671 and actual-PL integration 38636169814 all completed successfully. Fresh CI exported/imported 5actual attempts and proved26 records/5 PL IDs unchanged after restart. The earlier corpus-smoke failure is preserved as run 38635909605, not erased. Documentation-revision CI/security also passed.
+
+## Cross-validation follow-up
+
+The immediate PL hook had no historical profile and remains anonymous by design; added a separate trusted synthetic post-submission boundary rather than guessing identity. API polling had no bounded atomic checkpoint lifecycle; added complete-snapshot validation, scoped IDs, deferred grades, CAS/rollback and explicit CSV reconciliation. Local extraction formerly demanded a paid API key for every provider; pure planning now separates local GPU/compatible API and remote paid gates.
+
+Actual non-generative native/Tesseract ingestion completed13 chunks each; final guarded Tesseract 268.25s,16 cited pages,0 generation attempts. Original 600s failure is retained, not claimed fully attributed. The final wrapper defaults ingest to the non-generative variant.
+
+First replay assertion compared in-memory tuple to persisted JSON list; corrected to compare persisted snapshots. First 2 shutdown tests failed due macOS /var→/private/var normalization; fixed test path resolution and reran. Actual local PL restart failed due stale `/var/run/postgresql` socket lock; volume data intact. Supported owned-container recreation recovered history, then manage.py gained official ready-PG stop before Compose stop; contracts and exact42 record/20 PL-ID restart pass. No lock file/volume was blindly deleted.
+
+Final follow-up implementation snapshot 47626e6 passed CI 38662343534, Security 38662343514 and actual-PL integration 38662337887. Fresh runner 5submissions/26 records survive exact restart; local 20submissions/42records also pass. The PR remains draft/unmerged; no inference or production deployment occurred.

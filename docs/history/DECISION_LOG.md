@@ -16,3 +16,13 @@
 | 012 | Strict mypy scoped to three new boundaries | Honest incremental adoption; do not claim whole-codebase typing |
 
 These are retrospective decisions supported by current code and the baseline audit, not a fabricated prior ADR history. Hosted deployment and empirical learner claims are intentionally deferred pending actual resources and approvals.
+
+## Follow-up decisions
+
+| ADR | Decision and reason | Consequence/review trigger |
+|---|---|---|
+|013|Keep PL hook identity-free; use explicit trusted principal for post-submission synthetic feedback|Hosted identity/delivery requires its own documented authorized contract|
+|014|Poll supported complete API snapshots with atomic CAS, no invented cursor|Late IDs/timestamps retained; response bounds/scalability explicit|
+|015|Require explicit CSV/API scope aliases|Avoid double counting or equating instance numbers with IDs|
+|016|Non-generative CPU parsing is a named external configuration|Preserve upstream algorithm/provenance; do not claim original VLM settings or fresh KG|
+|017|Separate feedback Chat Completions from extraction Responses/in-process backends|Local serving needs no paid provider key; actual GPU/protocol validation remains|

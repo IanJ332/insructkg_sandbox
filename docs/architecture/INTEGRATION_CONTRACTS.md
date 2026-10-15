@@ -17,3 +17,9 @@
 Invalid payload/IDs return 400, untrusted Host/Origin 403, unknown routes 404, missing length 411, excessive body 413, wrong media type 415, storage/internal failures 503. Responses include Content-Length, Connection: close, X-Request-ID, no-store and a restrictive CSP. The dashboard is loopback synthetic tooling, not an authenticated public API.
 
 Authorized PL API read adapter uses only documented GET endpoints and explicit identity mapping. It requires authorization, HTTPS outside loopback, and refuses credential-bearing redirects. Hosted connectivity remains unverified.
+
+## Follow-up contracts
+
+`feedback_for_attempt(repo, attempt_id, principal)` accepts only a trusted synthetic principal, queries attempt AND subject together, and returns feedback plus a minimized prior-only evidence receipt; it never overwrites grade/history. Untrusted dictionaries, cross-subject and missing attempts fail with the same access-denied error. `generate_feedback` now minimizes mastery to relevant bounded aggregates; metadata reports whether any history was supplied. PL calls it without history.
+
+`SubmissionSynchronizer.sync_once()` validates the full supported GET array, defers null grades, deduplicates and commits attempts/checkpoint atomically; it returns counts only. No cursor is invented. Missing permissions/API/schema/scope failures cause no progress; stale checkpoint CAS requires refetch. CSV/API overlap requires explicit scoped reconciliation. See SUBMISSION_SYNCHRONIZATION.md.

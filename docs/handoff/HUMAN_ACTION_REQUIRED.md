@@ -10,3 +10,5 @@ No routine debugging or coding is assigned to the user. The authorized local dem
 6. Decide publication/license rights for any future research code/material sharing; current public repository excludes ambiguous materials and has no blanket license.
 
 Repository protection/review settings can be applied by the owner according to CI_CD.md. These are governance preferences, not blockers to the current public-code verification.
+
+Follow-up: no action is required to run the local deterministic personalization demonstration. Future Windows GPU execution needs the actual host/GPU details and an approved local model; no paid credential is intrinsically needed. The existing no-generative-inference instruction remains in force. A later actual PL API canary requires explicitly authorized synthetic-course token/scope; hosted or real learner access is not inferred.

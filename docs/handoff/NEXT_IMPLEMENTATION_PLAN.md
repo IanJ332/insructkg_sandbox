@@ -1,115 +1,107 @@
-# Next implementation plan
+# Next implementation plan — after cross-validation follow-up
 
-This plan retains the working package, course and CSV boundary. Each task states its current evidence and a completion gate. Complexity is relative engineering effort, not a promised calendar date. No inference is authorized under the current user instruction.
+The accepted prototype is retained. This phase completes synthetic post-submission personalization, deterministic API reconciliation contracts and a compatible non-generative CPU ingestion path. No remaining task proposes rebuilding functioning components. Current user instruction keeps all generative inference blocked.
 
-## P0 — Blocking research functionality
+## P0.1 — Approved live local feedback canary — BLOCKED
 
-### P0.1 Live model feedback validation — BLOCKED, human resource decision then autonomous engineering
+1. State: endpoint/model/JSON/validation/error contracts pass against mocks; historical synthetic rule feedback works.
+2. Problem: no actual model quality, latency, leakage or usage evidence.
+3. Evidence: zero actual generative calls; Windows/GPU execution NOT_RUN.
+4. Solution: only after instruction changes, choose an approved local model/hardware and bounded canary; compare identical attempts with/without history and fixed graph conditions, then rate outputs before a larger evaluation.
+5. Files: feedback.py, configuration.py, scripts/evaluate.py, WINDOWS_GPU_READINESS.md, version manifest.
+6. Tests: existing contracts; approved real endpoint canary, schema/fallback/grade invariance, latency/usage and human evidence/leakage ratings.
+7. Acceptance: actual correctly labeled responses, unchanged deterministic grades, recorded model/checkpoint/prompt/settings, no secrets/records published.
+8. Dependencies: explicit model-use authorization and approved local endpoint/model/resources; no paid account is intrinsically required.
+9. Risks: VRAM, context budget, semantic injection/leakage, synchronous PL latency and confusing personalization with graph effect.
+10. Complexity/responsibility: medium engineering plus human model/resource decision; autonomous implementation after that decision.
 
-1. Current state: configurable compatible client and three context modes implemented; mocked HTTP/error/filter tests pass. Zero live calls.
-2. Problem: no actual provider-backed response or quality/cost measurement exists.
-3. Evidence: 63 deterministic comparison outputs, contract tests, explicit user instruction to keep inference blocked/no paid usage.
-4. Solution: only after a changed instruction, select approved endpoint/model and finite batch/cost ceiling; run a one-attempt Baseline/RAG/KG canary, inspect outputs, then the bounded frozen comparison set. Do not automatically start 63 paid calls.
-5. Files: configuration.py, feedback.py, scripts/evaluate.py, .env.example, feedback-evaluation/status docs.
-6. Tests: retain contract/error/grade-invariance tests; add approved live evidence including model/prompt/settings, usage, latency, retrieved references and validation failures. Independent humans rate quality/leakage.
-7. Acceptance: actual live responses in all three modes with citations valid for their condition; unchanged deterministic scores; failures and observed usage reported; no secrets/raw records published.
-8. Dependencies: explicit model-use authorization; endpoint/model; credential only in ignored configuration; instructor-approved corpus for pedagogical claims.
-9. Risks: synchronous tail latency, prompt injection, semantic leakage, unsupported API details and cost.
-10. Complexity: medium. Human: resource/usage decision only; implementation and debugging autonomous. Current instruction blocks execution, not coding readiness.
+## P0.2 — Complete fresh research stages — BLOCKED; CPU ingest now PASS
 
-### P0.2 Complete fresh upstream extraction — PARTIAL, autonomous parsing work; model stages blocked
+1. State: actual native/Tesseract upstream chunks verified; original-settings generative enrichment not rerun.
+2. Problem: concepts/roles/clusters/pairs/relations are not freshly generated; OCR/content quality and page 6coverage require review.
+3. Evidence:13 chunks per variant; Tesseract16 cited pages; generation guard attempts0; historical 600s timeout retained.
+4. Solution: review sampled chunks/coverage first; freeze chosen non-generative config and hashes. Only after approved model use, resolve a separate GPU/client environment and execute unchanged upstream downstream stages into new per-config output directories.
+5. Files: extraction_cpu.py, profile_ingestion.py, verify_ingestion.py, CPU/GPU dependency inputs, research status/provenance.
+6. Tests: input/source/profiler hashes, chunk links/citations, output/resume consistency, orphan cards/roles/directions and adapter schema; actual stage counts/errors/model/runtime.
+7. Acceptance: real stage outputs with audit metadata and explicit instructor review queue; never substitute current historical graph counts or synthetic fixture nodes.
+8. Dependencies: content review, approved model use, available compute and rights; local parsing needs no paid API.
+9. Risks: OCR/table corruption, generative enrichment confounds, stale resumes, minimum-context filtering and upstream orphan-card issue.
+10. Complexity/responsibility: medium preparation/high research validation; autonomous non-generative diagnostics, human pedagogical/model decisions only.
 
-1. Current state: Linux CPU dependency isolation and upstream CLI import pass; actual ingestion exceeded 600 seconds with no chunks.
-2. Problem: Mode B has no freshly completed document/concept/role/cluster/pair/relation artifacts.
-3. Evidence: exit124, fresh-ingest.log, empty fresh-cpu output, unchanged Jeffry pin; no fabricated counts.
-4. Solution: profile the existing parser on cached weights and isolate whether native text/OCR/enrichment causes delay; rerun unchanged algorithm with a documented justified CPU/time budget. If an optional OCR setting changes, treat it as a distinct experimental configuration. After approved model access, execute upstream stages with isolated outputs and capture each stage's metadata/counts/errors.
-5. Files: infrastructure/Dockerfile.extraction, extraction-cpu.lock, scripts/extraction_cpu.py, extraction status/provenance docs; do not edit upstream algorithm in place.
-6. Tests: no-network import; bounded PDF ingestion; checksum/page/chunk provenance; role/cluster/packet/relation validation; deterministic resume only when input/model/config hashes match. Record unsuccessful stages, not only final file presence.
-7. Acceptance: actual nonstale chunks and complete stage outputs with model/settings/runtime, no orphaned-card promotion, graph adapter accepts schema and instructor review queue exposes uncertain directions.
-8. Dependencies: current PDF/local rights; parsing resources for ingest; approved generative model for later stages; review rights before publishing outputs.
-9. Risks: CPU enrichment latency, nonhermetic weight downloads, stage resume contamination, tiny source corpus, known upstream orphan cards and OCR damage.
-10. Complexity: medium for profiling, high for completed research validation. Autonomous nonmodel diagnostics; human model decision/instructor review only.
+## P1.1 — Actual authorized local PL API canary — NOT_RUN
 
-## P1 — Reliability and quality
+1. State: official endpoint/schema inspected; complete deterministic/mock HTTP reconciliation suite passes; actual PL→CSV E2E passes.
+2. Problem: no authenticated live PL API poll has executed.
+3. Evidence: no token was created/queried; synthetic mock endpoint tests and canonical scope policy.
+4. Solution: obtain an explicitly scoped token for the owned synthetic course through supported PL settings, verify ID/map/CSV aliases, run a read-only poll and compare source IDs/scores/profiles before and after repeated/late attempts. Never point it at CS418 or real records.
+5. Files: sources.py, synchronization.py, scripts/sync_pl.py, ignored scope/token config, integration tests/docs.
+6. Tests: actual local supported GET, permissions denied, repeat 0inserts, completed/pending attempts, alias adoption, rollback/CAS and profile/feedback agreement.
+7. Acceptance: authenticated local synthetic API evidence, no duplicate CSV/API counts, no raw UID/name/UIN stored and no unexpected scope access.
+8. Dependencies: explicit local synthetic API access/token and verified scope mapping; no university production credentials requested.
+9. Risks: token account-wide privileges, future schema/pagination changes, stable-origin aliases and immutable regrade policy.
+10. Complexity/responsibility: small/medium; engineering autonomous once approved access exists. Hosted integration remains a separate gate.
 
-### P1.1 Hosted latency and optional-feedback lifecycle — experimental
+## P1.2 — Runtime/load/restore hardening — PARTIAL
 
-1. Current state: deterministic grade set before optional bounded synchronous feedback; fallback isolates exceptions.
-2. Problem: a configured provider can still delay a synchronous PL request up to its bounded timeout/retries.
-3. Evidence: current PL hook and provider contract; no hosted latency measurement or approved live endpoint.
-4. Solution: measure permitted host runtime/deadlines first. If the measured budget is unsuitable, design an explicit authorized feedback job/cache service with status polling and a reproducible attempt key; preserve immediate deterministic grade. Do not add a speculative queue before a constraint exists.
-5. Files: pl_bridge.py, feedback.py, optional new service/adapter, question rendering, integration contracts.
-6. Tests: delayed provider, failed job/retry, stale result isolation, duplicate keys and actual hosted E2E in a separate test course.
-7. Acceptance: grade latency within agreed budget; feedback status is observable and cannot attach to a different attempt or change scores.
-8. Dependencies: hosted network/runtime facts and approved model access if measurement uses inference.
-9. Risks: added operational complexity, identity leakage and job persistence.
-10. Complexity: medium investigation / high if async service justified. Autonomous engineering after institution facts.
+1. State: all retained tests, new contracts, actual E2E, exact restart and clean PG shutdown pass; preserved snapshots exist.
+2. Problem: no target-course load/restore SLA, formal worker containment proof or full container/research vulnerability audit.
+3. Evidence: scoped security audit and observed official-image stale socket fault/recovery.
+4. Solution: benchmark the agreed synthetic workload, test isolated backup restoration, audit target containers/dependencies and define operational request-draining/shutdown policy before public/hosted service.
+5. Files: sql_worker.py, store.py, manage.py, operations/security docs and workflows.
+6. Tests: CPU/memory adversarial cases, concurrent readers/imports, stale checkpoints, owned-scope shutdown, isolated restore exact-ID/hash verification.
+7. Acceptance: measured resource/latency/recovery limits, reviewed findings and no silent skipped checks.
+8. Dependencies: target workload/environment definition; routine local checks autonomous.
+9. Risks: platform-specific limits, SQLite contention, shutdown disconnects and small-fixture false confidence.
+10. Complexity/responsibility: medium, autonomous engineering; institutional target access only if needed.
 
-### P1.2 Broaden boundary verification and operations — partial
+## P2.1 — Authenticated hosted learner feedback — BLOCKED
 
-1. Current state: 83 distinct tests, local restart, full-history secret scan, Bandit and dev dependency audit; CI runs linked in verification.json.
-2. Problem: no formal containment proof, target-load benchmark, image/research-stack vulnerability audit or automated restore drill.
-3. Evidence: TEST_STRATEGY.md and SECURITY_AUDIT.md explicitly scope current checks.
-4. Solution: threat-model target deployment; exercise worker memory/process bounds on the target OS, concurrent imports/readers, and restore into isolated databases; audit pinned containers/research dependencies and triage actual findings. Extend type checking at changed boundaries incrementally.
-5. Files: sql_worker.py, store.py, dashboard.py, tests/test_hardening.py, workflows, operations/dependency docs.
-6. Tests: adversarial resource cases, measured contention/error rates at agreed synthetic load, backup/restore ID/hash comparison, scanner failure-path tests.
-7. Acceptance: documented target/resource limits and residual risks; recovery drill passes; CI failures resolved without skipped tests; publication checks remain fail closed.
-8. Dependencies: defined target workload/environment; ordinary local work can proceed autonomously.
-9. Risks: expensive builds, platform-specific bounds and false confidence from small fixtures.
-10. Complexity: medium. No user action needed for ordinary engineering; target-host access may require institution.
+1. State: anonymous PL hook plus local trusted synthetic principal service; no principal serialization/HTTP endpoint exposed.
+2. Problem: supported hosted identity/delivery/retention contracts remain unknown.
+3. Evidence: PL hook ignores identity/mastery fields; service tests do not establish SSO or real authorization.
+4. Solution: use an approved authenticated external feedback view first; derive subject/course principal server-side and minimize history. Investigate immediate PL delivery only through a verified documented identity/rendering contract. Do not invent feedback-writeback endpoints.
+5. Files: personalization.py, sources.py, future approved auth/delivery adapter, infrastructure/security/operations docs.
+6. Tests: authenticated subject/course separation, replay/expiry if tokens are introduced, hostile self-selected IDs, data retention/access controls and sanctioned synthetic hosted E2E.
+7. Acceptance: approved course/identity mechanism, no user-controlled principal proof, correct subject-only feedback and bounded failure behavior; real records only after research permission.
+8. Dependencies: university/course authorization, identity/privacy/retention decisions, runtime/network facts and research approvals.
+9. Risks: real-record disclosure, token overprivilege, unauthenticated dashboard exposure and unsupported PL assumptions.
+10. Complexity/responsibility: high; human institutional decisions/access, autonomous implementation within that scope.
 
-## P2 — Deployment readiness
+## P2.2 — Future Windows GPU / extraction protocol validation — NOT_RUN
 
-### P2.1 Authorized hosted sandbox and identity adapter — BLOCKED
+1. State: fixed official server versions, read-only readiness and configuration/transport dry-run tests; no server/model installed.
+2. Problem: actual GPU/driver/VRAM, local routing and upstream Responses behavior are unverified.
+3. Evidence: current Mac tools absent; server vs research runtime pins differ; extraction uses Responses while feedback uses Chat Completions.
+4. Solution: validate future Windows/WSL2 hardware/driver and isolated pinned server environment, record resolved packages/model digest; later approved canary validates protocols. Keep CPU Docling lock separate from GPU vLLM.
+5. Files: infrastructure/windows/*, check_local_model.py, extraction.py/wrapper and GPU lock after resolution.
+6. Tests: metadata-only readiness first, then authorized endpoint/structured-output/error contract, Responses extraction schema and actual GPU resource measurements only after authorization.
+7. Acceptance: reproducible hardware/software/model manifest and actual protocol evidence; local backend never demands a paid provider credential.
+8. Dependencies: Windows NVIDIA host and future model-use authorization; no current installation/inference allowed.
+9. Risks: incompatible wheels/driver, VRAM, WSL routing and partial Responses support despite Chat compatibility.
+10. Complexity/responsibility: medium; human hardware/model decision, autonomous deployment/testing after scope permits.
 
-1. Current state: local PL and explicit dev@example.com→S003 CSV integration pass; no hosted deployment or real identities.
-2. Problem: actual course permissions, UID mapping, retention and outbound API constraints are unknown.
-3. Evidence: local-only URLs/allowlist, no original backend/API token, official docs distinguish course editing from student-data rights.
-4. Solution: obtain a separate sanctioned course; verify supported runtime and documented read APIs; implement a narrowly scoped source adapter with consent-aware pseudonym mapping, minimized fields and idempotent pagination/checkpoints. Synchronize only the approved new course and reviewed public/authorized materials.
-5. Files: sources.py, ingestion.py, infrastructure, protected deployment configuration, PL course metadata and operations/security docs.
-6. Tests: mocked documented API pagination/auth/redirect/error contracts then actual authorized sandbox read/export, student separation and restart/rollback under synthetic data.
-7. Acceptance: approved course/permission record, no changes to existing courses, correctly mapped synthetic attempts, bounded feedback and monitored storage; real records only after research authorization.
-8. Dependencies: institution/course owner; access policy; credentials; material rights and research approval for real data.
-9. Risks: SSO/FERPA/retention, course API constraints, external-grader network assumptions, public unauthenticated dashboard.
-10. Complexity: high. Human obtains authorization/access; deployment/adapters/tests autonomous within that scope.
+## P3.1 — Instructor review and study integrity — NOT_RUN
 
-### P2.2 Original backend reuse assessment — BLOCKED on access
+1. State: original KG remains unreviewed,8 developer provisional edges separate; descriptive Beta profile and synthetic personalization demonstrated.
+2. Problem: no instructor-aligned truth, calibrated mastery, semantic grounding or learning benefit established.
+3. Evidence: FEEDBACK_CAPABILITIES.md and source/review labels; no real learners/inference study.
+4. Solution: version instructor graph/mapping decisions; blind-rate concept/edge/evidence/feedback quality; hold history constant or add factorial ablations when comparing RAG/KG; preregister appropriately powered learner study after authorization.
+5. Files: graph review/mapping, profile/evaluation harness, research rubric/protocol and access-controlled artifacts.
+6. Tests: review audit trail, mapping/grounding accuracy, temporal leakage, raters' agreement, calibration and reproducible clustered outcome analysis.
+7. Acceptance: honest uncertainty/coverage and approved empirical design; synthetic behavior never reported as student learning gain.
+8. Dependencies: instructor/research/consent decisions, approved content, data and resources.
+9. Risks: concept overlap, graph/history confounding, OCR errors, small sample/contamination and observer bias.
+10. Complexity/responsibility: high research effort; human judgments/approvals, autonomous tooling/analysis implementation.
 
-1. Current state: modular replacement boundaries documented, original backend schema/source unavailable.
-2. Problem: cannot assess whether previous platform improves diagnosis/analytics without code/contracts.
-3. Evidence: LEGACY_SYSTEM_INTEGRATION.md; provided paper titles/demo do not prove API availability.
-4. Solution: inspect rights and run backend in isolation, compare identical synthetic attempts, reuse whole service or selected modules only on measured benefit and safety. Preserve shared PL adapter and migration/rollback contract.
-5. Files: sources.py, grader.py, feedback.py, graph.py, store.py and versioned adapters only where needed.
-6. Tests: equivalence/discrepancy matrix, schema migration, security/fallback, actual PL E2E.
-7. Acceptance: evidence-based reuse/keep/rebuild decision with no duplicate authoritative grade or identity store.
-8. Dependencies: repository access and rights from researchers.
-9. Risks: incompatible SQL/ontology, unsupported Neo4j/Postgres assumptions and unnecessary rewrites.
-10. Complexity: medium assessment, implementation conditional. Human access only; engineering autonomous.
+## P3.2 — Legacy backend reuse; later EM/adaptive projects — pending external evidence
 
-## P3 — Research extensions
-
-### P3.1 Instructor-reviewed graph and defensible mastery — pending review
-
-1. Current state: preserved real graph/review UI, nine flags, eight provisional edges, beta heuristic profiles.
-2. Problem: unreviewed directions/mappings and heuristic counts are not validated instructor alignment or mastery.
-3. Evidence: graph audit and RESEARCH_LIMITATIONS.md; no instructor ratings.
-4. Solution: version instructor decisions with rubric/evidence, resolve mappings and direction contradictions, evaluate retrieval/diagnosis on held-out rated attempts, then compare calibrated knowledge tracing only if data justify it.
-5. Files: graph.py, mapping.json, store.py, review scripts/UI and research rubrics; real review artifacts remain access-controlled.
-6. Tests: overlay audit history, blind interrater agreement, mapping/diagnosis accuracy and calibration/temporal leakage tests.
-7. Acceptance: reviewed graph coverage and uncertainty published with rights; profiles explicitly calibrated or kept descriptive; no unsupported learning claim.
-8. Dependencies: instructor time and authorized examples.
-9. Risks: small corpus, observer bias, concept overlap and provisional-edge confounding.
-10. Complexity: medium engineering, high empirical effort. Human pedagogical judgments; tooling autonomous.
-
-### P3.2 Controlled learning study; later EM/adaptive projects — NOT_RUN
-
-1. Current state: paired technical harness and future experiment design; EM and project generation absent.
-2. Problem: no evidence of student learning benefit, study power or adaptive-project safety.
-3. Evidence: synthetic-only data, no live inference and no authorized learner study.
-4. Solution: preregister a powered Baseline/RAG/KG study after P0/P2/P3.1 gates; blind feedback ratings, measure transfer/retention and clustered uncertainty. Consider EM/adaptive assignments as a separate instructor-defined extension only after SQL validation.
-5. Files: evaluation harness, research protocol/rubrics, approved data pipeline; new EM schema only after requirements exist.
-6. Tests: reproducibility/provenance, assignment leakage, valid outcome capture, missingness/randomization audit and independent analysis review.
-7. Acceptance: approved protocol, appropriate sample/power and transparent null/positive results; no adaptive production rollout based on fixture success.
-8. Dependencies: professor/research authorization, participants/course schedule, statistician/design agreement and approved resources.
-9. Risks: contamination, underpowering, inequitable feedback, measurement confounds and scope growth.
-10. Complexity: high research program. Human approvals/design decisions; implementation and reproducibility work autonomous.
+1. State: reuse framework exists; original backend source/schema unavailable; EM/project generation absent.
+2. Problem: cannot justify replacement or new pedagogical scope without contracts/requirements.
+3. Evidence: LEGACY_SYSTEM_INTEGRATION.md; no backend access or EM rubric.
+4. Solution: inspect authorized backend rights/runtime and compare identical synthetic attempts before reuse; retain current stable boundaries. Treat EM/adaptive assignments as a separate later instructor-defined study.
+5. Files: selected grader/feedback/graph/store/source adapters only if needed; legacy integration/research docs.
+6. Tests: contract/equivalence/security/migration/E2E and assignment leakage/reproducibility where applicable.
+7. Acceptance: evidence-based reuse decision with no duplicated authoritative grader/identity store; approved EM requirements before code.
+8. Dependencies: researcher repository access/rights and professor priorities.
+9. Risks: incompatible dialect/ontology, unnecessary rewrites and scope expansion.
+10. Complexity/responsibility: medium assessment/high extensions; human access/requirements, autonomous engineering.

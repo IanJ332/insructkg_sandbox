@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — Cross-validation follow-up, unreleased
+
+- Added explicit synthetic post-submission authorization, strictly prior minimized history, distinct-history deterministic feedback and reproducible demonstrations. Anonymous PL hook behavior is stated precisely.
+- Added supported scoped API snapshot polling, deferred pending grades, namespaced IDs, atomic checkpoints/CAS, explicit CSV reconciliation and consistency/failure tests.
+- Completed actual non-generative CPU ingestion profiles with upstream source unchanged; generation guard and chunk-provenance checks preserve research separation.
+- Corrected local extraction credential requirements, added metadata-only readiness and pinned future Windows/Ollama/WSL2-vLLM deployment recipes. No model inference or production deployment ran.
+- Fixed stale bundled PostgreSQL socket restart risk through clean owned-service shutdown; preserved failed-run evidence and all original tests.
+
 ## 0.2.0 — Phase 2, 2026-10-14
 
 - Independently reproduced the original 43 tests, five HTTP checks, real PL assessment and 27-record store; saved local recovery snapshots.

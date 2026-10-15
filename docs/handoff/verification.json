@@ -1,221 +1,637 @@
 {
+  "phase": "cross_validation_followup",
   "snapshot_date": "2026-10-14",
+  "timezone": "America/Chicago",
   "repository": "https://github.com/IanJ332/insructkg_sandbox",
   "visibility": "PUBLIC",
   "branch": "engineering/phase2-hardening",
-  "implementation_sha": "11b803ed91a91520d053427acf79740607c81eff",
-  "documentation_note": "Documentation-only commits can follow; compare CI headSha and git rev-parse HEAD.",
-  "baseline": {
-    "tests": 43,
-    "passed": 43,
+  "implementation_sha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+  "documentation_note": "Documentation-only commits may follow; verify final branch head/PR checks separately.",
+  "pull_request": "https://github.com/IanJ332/insructkg_sandbox/pull/1",
+  "pull_request_draft": true,
+  "merged": false,
+  "tests": {
+    "accepted_distinct": 83,
+    "retained": 83,
+    "new_followup": 38,
+    "distinct_total": 121,
+    "passed": 121,
     "failed": 0,
     "skipped": 0,
-    "http_checks": 5,
-    "synthetic_records": 27
-  },
-  "tests": {
-    "distinct": 83,
-    "new_vs_baseline": 40,
     "public_suite": {
-      "tests": 81,
-      "passed": 81,
-      "failed": 0,
-      "skipped": 0,
-      "local_seconds": 55.002
+      "tests": 119,
+      "passed": 119,
+      "seconds": 47.941
     },
-    "research_suite": {
+    "real_graph_suite": {
       "tests": 2,
       "passed": 2,
-      "failed": 0,
-      "skipped": 0
+      "seconds": 0.077
     },
-    "note": "81 was also executed against local research data; repeated runs are not additional distinct tests."
+    "new_categories": {
+      "personalization": 9,
+      "synchronization_including_lifecycle": 22,
+      "local_backend_metadata": 5,
+      "shutdown": 2
+    }
+  },
+  "personalization": {
+    "local_synthetic_post_submission": "PASS",
+    "distinct_histories_same_current_sql": "PASS",
+    "strict_prior_cutoff": "PASS",
+    "subject_isolation_and_minimization": "PASS",
+    "immediate_pl_historical_personalization": "NOT_IMPLEMENTED",
+    "hosted_authentication": "NOT_RUN",
+    "actual_learner_personalization": "NOT_VERIFIED",
+    "live_llm_personalization": "BLOCKED",
+    "profile": "beta-heuristic-v1",
+    "evidence": "artifacts/followup/personalization-demo.json"
+  },
+  "feedback": {
+    "prompt_version": "siip-feedback-v3",
+    "live_generative_inference": "BLOCKED",
+    "actual_generative_calls": 0,
+    "blocker": "Explicit user instruction: no paid APIs or generative model inference",
+    "origins": [
+      "prairielearn_hook_immediate",
+      "local_analytics_recomputed",
+      "authorized_post_submission_replay"
+    ],
+    "kg_grounding": "Context/provisional hints implemented; semantic grounding and instructor alignment NOT_VERIFIED"
+  },
+  "synchronization": {
+    "contract_and_mock_http": "PASS",
+    "authenticated_live_pl_api": "NOT_RUN",
+    "token_created": false,
+    "cli_scope": "local_synthetic_only",
+    "polling": "documented complete assessment-instance submission list; no invented cursor",
+    "idempotence_late_events_pending_profiles": "PASS",
+    "atomic_checkpoint_cas": "PASS",
+    "csv_fallback": "PASS",
+    "csv_overlap": "explicit scope alias required; fail closed on ambiguity",
+    "real_records_accessed": false
   },
   "actual_local_e2e": {
     "status": "PASS",
     "browser_submissions": 5,
     "actual_pl_submission_ids": [
-      11,
-      12,
-      13,
-      14,
-      15
+      16,
+      17,
+      18,
+      19,
+      20
     ],
-    "csv_new_records": 10,
-    "records_before": 27,
-    "records_after": 37,
+    "records_before": 37,
+    "records_after": 42,
     "live_model_calls": 0,
-    "evidence": "artifacts/phase2/e2e/result.json"
+    "path": "actual PL UI \u2192 feedback/retry \u2192 supported CSV \u2192 repository \u2192 analytics",
+    "evidence": "artifacts/followup/e2e/result.json"
   },
   "analytics": {
     "synthetic_students": 5,
-    "records": 37,
-    "correct": 19,
-    "incorrect": 18,
+    "records": 42,
+    "correct": 22,
+    "incorrect": 20,
     "synthetic_fixture_records": 22,
-    "local_pl_export_records": 15
+    "local_pl_export_records": 20
   },
   "persistence": {
     "status": "PASS",
-    "pl_submission_ids": 15,
-    "record_count": 37,
-    "comparison": "Exact ordered IDs and full normalized-record SHA256 across stop/start",
-    "evidence": "artifacts/phase2/restart.log"
+    "pl_submission_ids": 20,
+    "normalized_records": 42,
+    "comparison": "Exact IDs and full normalized-record SHA256 across clean shutdown/restart",
+    "evidence": "artifacts/followup/persistence-restart.log",
+    "schema_migrations": [
+      1,
+      2
+    ]
   },
-  "quality": {
-    "status": "PASS",
-    "ruff": "all maintained Python",
-    "mypy": "strict on configuration.py, observability.py, ingestion.py only",
-    "config": "owned JSON, IDs, TOML, loopback Compose/image",
-    "pip_check": "PASS",
-    "wheel_files": 23
+  "ingestion": {
+    "cpu_variant": "PASS",
+    "profiles": {
+      "ingest-native": {
+        "status": "PASS",
+        "profile": "cpu_native_no_generative_enrichment_v1",
+        "wall_seconds": 163.00644334700064,
+        "import_seconds": 23.808559724000588,
+        "chunks": 13,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          7,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "text_characters": 2852,
+        "stages": {
+          "model_initialization": {
+            "calls": 1,
+            "active_seconds": 11.207500319999781
+          },
+          "page_backend_load": {
+            "calls": 17,
+            "active_seconds": 0.4653575890024513
+          },
+          "preprocessing_model": {
+            "calls": 51,
+            "active_seconds": 9.578015599997343
+          },
+          "page_backend_get_page_image": {
+            "calls": 23,
+            "active_seconds": 10.351517355999931
+          },
+          "page_backend_get_segmented_page": {
+            "calls": 29,
+            "active_seconds": 0.7145715839960758
+          },
+          "ocr_model": {
+            "calls": 51,
+            "active_seconds": 0.0014333609960885951
+          },
+          "layout_model": {
+            "calls": 27,
+            "active_seconds": 99.78644955199616
+          },
+          "table_model": {
+            "calls": 27,
+            "active_seconds": 68.70666817000165
+          },
+          "assemble_model": {
+            "calls": 51,
+            "active_seconds": 0.059615948000100616
+          },
+          "reading_order_model": {
+            "calls": 1,
+            "active_seconds": 0.1245122979998996
+          },
+          "hybrid_chunk_generation": {
+            "calls": 15,
+            "active_seconds": 0.19340191499668435
+          }
+        },
+        "effective_settings": {
+          "do_formula_enrichment": false,
+          "do_code_enrichment": false,
+          "do_ocr": false,
+          "ocr": "Tesseract CLI",
+          "device": "cpu",
+          "threads": 2
+        },
+        "generative_inference_calls": 0
+      },
+      "ingest-tesseract": {
+        "status": "PASS",
+        "profile": "cpu_tesseract_no_generative_enrichment_v1",
+        "wall_seconds": 268.2540652690004,
+        "import_seconds": 50.56787098299901,
+        "chunks": 13,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "text_characters": 8303,
+        "stages": {
+          "model_initialization": {
+            "calls": 1,
+            "active_seconds": 19.008806318001007
+          },
+          "page_backend_load": {
+            "calls": 17,
+            "active_seconds": 0.6503038870032469
+          },
+          "preprocessing_model": {
+            "calls": 51,
+            "active_seconds": 6.664373413994326
+          },
+          "page_backend_get_page_image": {
+            "calls": 40,
+            "active_seconds": 18.95902556999863
+          },
+          "page_backend_get_segmented_page": {
+            "calls": 29,
+            "active_seconds": 0.63106501499351
+          },
+          "ocr_model": {
+            "calls": 27,
+            "active_seconds": 157.75635618600427
+          },
+          "layout_model": {
+            "calls": 27,
+            "active_seconds": 110.68161125199913
+          },
+          "table_model": {
+            "calls": 27,
+            "active_seconds": 72.280737047
+          },
+          "assemble_model": {
+            "calls": 51,
+            "active_seconds": 0.01658560198484338
+          },
+          "reading_order_model": {
+            "calls": 1,
+            "active_seconds": 0.26037468199865543
+          },
+          "hybrid_chunk_generation": {
+            "calls": 15,
+            "active_seconds": 0.42422560900376993
+          }
+        },
+        "effective_settings": {
+          "do_formula_enrichment": false,
+          "do_code_enrichment": false,
+          "do_ocr": true,
+          "ocr": "Tesseract CLI",
+          "device": "cpu",
+          "threads": 2
+        },
+        "generative_inference_calls": 0,
+        "blocked_generation_calls": 0,
+        "generation_guard": "Transformers GenerationMixin.generate raises before inference"
+      }
+    },
+    "formula_code_enrichment": "NOT_RUN; generative VLM disabled",
+    "original_settings_600s": "historical FAIL; precise attribution not proven",
+    "fresh_concepts_roles_clusters_pairs_relations": "BLOCKED/NOT_RUN",
+    "new_chunks_promoted_to_rag": false,
+    "semantic_content_review": "NOT_RUN",
+    "upstream_modified": false
   },
-  "security": {
-    "publication_audit": "PASS",
-    "full_reachable_history_scanned": true,
-    "unreviewed_secret_findings": 0,
-    "restricted_paths": 0,
+  "windows_gpu": {
+    "guide": "docs/engineering/WINDOWS_GPU_READINESS.md",
+    "official_recipe_versions": {
+      "ollama": "0.40.4",
+      "vllm_server": "0.31.0",
+      "research_inprocess_vllm": "0.19.1"
+    },
+    "hardware_execution": "NOT_RUN",
+    "model_selected": false,
+    "model_server_installed": false,
+    "local_credentials_contract": "PASS; paid key not required",
+    "chat_json_mode_contract": "PASS mocked",
+    "extraction_responses_protocol": "NOT_VERIFIED",
+    "metadata_probe_actual_server": "NOT_RUN",
+    "upstream_constructor_no_network": "PASS; local API base URL and placeholder accepted; local vLLM factory initialized without paid key, engine, vLLM import or inference",
+    "constructor_evidence": "artifacts/followup/upstream-backend-constructor.log"
+  },
+  "quality_security_build": {
+    "ruff_format": "PASS",
+    "mypy": "PASS, three typed boundaries only",
+    "configuration": "PASS",
     "bandit_findings": 0,
-    "dev_dependency_known_vulnerabilities": 0,
-    "scope": "Integration scripts/package and pinned dev dependencies; not entire PL/research image/model stack"
+    "known_dev_pin_vulnerabilities": 0,
+    "publication_unreviewed_findings": 0,
+    "code_only_wheel_version": "0.2.1",
+    "wheel_files": 26,
+    "raw_data_published": false
   },
-  "kg": {
-    "mode_a": "PASS",
-    "judgments": 469,
-    "non_null": 319,
-    "null": 150,
-    "concepts": 121,
-    "instructor_approved": false,
-    "developer_provisional_edges": 8,
-    "review_flags": 9,
-    "mode_b": "BLOCKED",
-    "cpu_exact_lock_build": "PASS",
-    "no_network_import": "PASS",
-    "ingest": "FAIL",
-    "ingest_exit_code": 124,
-    "ingest_timeout_seconds": 600,
-    "actual_fresh_chunks": null,
-    "actual_fresh_concepts": null,
-    "actual_fresh_roles": null,
-    "actual_fresh_clusters": null,
-    "actual_fresh_pairs": null,
-    "actual_fresh_relations": null,
-    "note": "No chunks written. Later stages NOT_RUN. Missing counts mean unavailable, not successful zero-node extraction."
-  },
-  "feedback": {
-    "contract_tests": "PASS",
-    "live_inference": "BLOCKED",
-    "blocker": "Explicit user instruction: Keep inference blocked; no paid usage",
-    "paired_deterministic_outputs": 63,
-    "live_model_calls": 0,
-    "observed_cost": null,
-    "prompt_version": "siip-feedback-v2",
-    "human_quality_review": "NOT_RUN"
-  },
-  "hosted_deployment": "BLOCKED",
-  "real_student_pilot": "BLOCKED",
-  "research_approvals": "NOT_ASSERTED",
   "ci_runs": [
     {
       "conclusion": "success",
-      "databaseId": 38636169671,
-      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+      "databaseId": 38662343514,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
       "name": "Security",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169671"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343514"
     },
     {
       "conclusion": "success",
-      "databaseId": 38636169643,
-      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+      "databaseId": 38662343534,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
       "name": "CI",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662343534"
     },
     {
       "conclusion": "success",
-      "databaseId": 38636169814,
-      "headSha": "11b803ed91a91520d053427acf79740607c81eff",
-      "name": "Local platform integration",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38635909603,
-      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
-      "name": "CI",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909603"
-    },
-    {
-      "conclusion": "success",
-      "databaseId": 38635909388,
-      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+      "databaseId": 38662337951,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
       "name": "Security",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909388"
-    },
-    {
-      "conclusion": "failure",
-      "databaseId": 38635909605,
-      "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
-      "name": "Local platform integration",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909605"
-    },
-    {
-      "conclusion": "failure",
-      "databaseId": 38635364319,
-      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
-      "name": "Local platform integration",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364319"
-    },
-    {
-      "conclusion": "failure",
-      "databaseId": 38635364492,
-      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
-      "name": "CI",
-      "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364492"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337951"
     },
     {
       "conclusion": "success",
-      "databaseId": 38635364514,
-      "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+      "databaseId": 38662337898,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337898"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38662337887,
+      "headSha": "47626e6c0326fb0cee59e61beceaebd76f071c6a",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661434306,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
       "name": "Security",
       "status": "completed",
-      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364514"
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434306"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661434300,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661434300"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429192,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "Security",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429192"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429182,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "CI",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429182"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 38661429257,
+      "headSha": "f9589ce7f80ac37917368958d0407eeb9bb8006d",
+      "name": "Local platform integration",
+      "status": "completed",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38661429257"
     }
   ],
-  "local_evidence_policy": "Raw logs, PDF/text/graph outputs, databases, exports, model caches, screenshots and traces are ignored and not published. Public CI supplies rerunnable synthetic evidence.",
-  "known_unsuccessful_experiments": [
-    "Initial socket permission denial corrected with authorized local execution",
-    "Intermediate API handler and HTTP reset bugs corrected and rerun",
-    "Cold PL compilation readiness and whitespace-sensitive browser selector corrected; actual attempts preserved",
-    "First GitHub Python3.11 pyee pin and same-file fixture initializer corrected; run links retained",
-    "Actual unmodified upstream ingest exit124 remains unresolved"
+  "blockers": [
+    "Live generative use explicitly forbidden",
+    "Actual authorized PL API token/canary not run",
+    "Hosted authenticated identity/delivery/privacy approvals absent",
+    "Windows NVIDIA host/driver/VRAM/model unavailable",
+    "OCR/graph/instructor and learning-study validation pending",
+    "Fresh graph downstream stages and Responses backend compatibility unverified"
   ],
-  "source_ci_status": "PASS",
-  "pull_request": "https://github.com/IanJ332/insructkg_sandbox/pull/1",
-  "pull_request_draft": true,
+  "failed_experiments_retained": [
+    "Original-settings 600s ingestion timeout",
+    "Initial tuple-vs-persisted-JSON replay assertion corrected",
+    "macOS temporary-directory symlink assertion corrected",
+    "Actual official-container stale PostgreSQL socket startup failure; recovered by owned-container recreation preserving volume; shutdown fixed and rerun"
+  ],
+  "accepted_phase2_snapshot": {
+    "snapshot_date": "2026-10-14",
+    "repository": "https://github.com/IanJ332/insructkg_sandbox",
+    "visibility": "PUBLIC",
+    "branch": "engineering/phase2-hardening",
+    "implementation_sha": "11b803ed91a91520d053427acf79740607c81eff",
+    "documentation_note": "Documentation-only commits can follow; compare CI headSha and git rev-parse HEAD.",
+    "baseline": {
+      "tests": 43,
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "http_checks": 5,
+      "synthetic_records": 27
+    },
+    "tests": {
+      "distinct": 83,
+      "new_vs_baseline": 40,
+      "public_suite": {
+        "tests": 81,
+        "passed": 81,
+        "failed": 0,
+        "skipped": 0,
+        "local_seconds": 55.002
+      },
+      "research_suite": {
+        "tests": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "note": "81 was also executed against local research data; repeated runs are not additional distinct tests."
+    },
+    "actual_local_e2e": {
+      "status": "PASS",
+      "browser_submissions": 5,
+      "actual_pl_submission_ids": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "csv_new_records": 10,
+      "records_before": 27,
+      "records_after": 37,
+      "live_model_calls": 0,
+      "evidence": "artifacts/phase2/e2e/result.json"
+    },
+    "analytics": {
+      "synthetic_students": 5,
+      "records": 37,
+      "correct": 19,
+      "incorrect": 18,
+      "synthetic_fixture_records": 22,
+      "local_pl_export_records": 15
+    },
+    "persistence": {
+      "status": "PASS",
+      "pl_submission_ids": 15,
+      "record_count": 37,
+      "comparison": "Exact ordered IDs and full normalized-record SHA256 across stop/start",
+      "evidence": "artifacts/phase2/restart.log"
+    },
+    "quality": {
+      "status": "PASS",
+      "ruff": "all maintained Python",
+      "mypy": "strict on configuration.py, observability.py, ingestion.py only",
+      "config": "owned JSON, IDs, TOML, loopback Compose/image",
+      "pip_check": "PASS",
+      "wheel_files": 23
+    },
+    "security": {
+      "publication_audit": "PASS",
+      "full_reachable_history_scanned": true,
+      "unreviewed_secret_findings": 0,
+      "restricted_paths": 0,
+      "bandit_findings": 0,
+      "dev_dependency_known_vulnerabilities": 0,
+      "scope": "Integration scripts/package and pinned dev dependencies; not entire PL/research image/model stack"
+    },
+    "kg": {
+      "mode_a": "PASS",
+      "judgments": 469,
+      "non_null": 319,
+      "null": 150,
+      "concepts": 121,
+      "instructor_approved": false,
+      "developer_provisional_edges": 8,
+      "review_flags": 9,
+      "mode_b": "BLOCKED",
+      "cpu_exact_lock_build": "PASS",
+      "no_network_import": "PASS",
+      "ingest": "FAIL",
+      "ingest_exit_code": 124,
+      "ingest_timeout_seconds": 600,
+      "actual_fresh_chunks": null,
+      "actual_fresh_concepts": null,
+      "actual_fresh_roles": null,
+      "actual_fresh_clusters": null,
+      "actual_fresh_pairs": null,
+      "actual_fresh_relations": null,
+      "note": "No chunks written. Later stages NOT_RUN. Missing counts mean unavailable, not successful zero-node extraction."
+    },
+    "feedback": {
+      "contract_tests": "PASS",
+      "live_inference": "BLOCKED",
+      "blocker": "Explicit user instruction: Keep inference blocked; no paid usage",
+      "paired_deterministic_outputs": 63,
+      "live_model_calls": 0,
+      "observed_cost": null,
+      "prompt_version": "siip-feedback-v2",
+      "human_quality_review": "NOT_RUN"
+    },
+    "hosted_deployment": "BLOCKED",
+    "real_student_pilot": "BLOCKED",
+    "research_approvals": "NOT_ASSERTED",
+    "ci_runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38636169671,
+        "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+        "name": "Security",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169671"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38636169643,
+        "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+        "name": "CI",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169643"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38636169814,
+        "headSha": "11b803ed91a91520d053427acf79740607c81eff",
+        "name": "Local platform integration",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38635909603,
+        "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+        "name": "CI",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909603"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38635909388,
+        "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+        "name": "Security",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909388"
+      },
+      {
+        "conclusion": "failure",
+        "databaseId": 38635909605,
+        "headSha": "86e860a314f37554dfe264a9d91a9c2a36316377",
+        "name": "Local platform integration",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635909605"
+      },
+      {
+        "conclusion": "failure",
+        "databaseId": 38635364319,
+        "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+        "name": "Local platform integration",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364319"
+      },
+      {
+        "conclusion": "failure",
+        "databaseId": 38635364492,
+        "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+        "name": "CI",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364492"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38635364514,
+        "headSha": "122164ad1b68e57e3161d3b4637bbf45ee2462fb",
+        "name": "Security",
+        "status": "completed",
+        "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38635364514"
+      }
+    ],
+    "local_evidence_policy": "Raw logs, PDF/text/graph outputs, databases, exports, model caches, screenshots and traces are ignored and not published. Public CI supplies rerunnable synthetic evidence.",
+    "known_unsuccessful_experiments": [
+      "Initial socket permission denial corrected with authorized local execution",
+      "Intermediate API handler and HTTP reset bugs corrected and rerun",
+      "Cold PL compilation readiness and whitespace-sensitive browser selector corrected; actual attempts preserved",
+      "First GitHub Python3.11 pyee pin and same-file fixture initializer corrected; run links retained",
+      "Actual unmodified upstream ingest exit124 remains unresolved"
+    ],
+    "source_ci_status": "PASS",
+    "pull_request": "https://github.com/IanJ332/insructkg_sandbox/pull/1",
+    "pull_request_draft": true,
+    "fresh_runner_e2e": {
+      "status": "PASS",
+      "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814",
+      "browser_submissions": 5,
+      "records_before": 21,
+      "records_after": 26,
+      "restart_pl_ids": 5,
+      "restart_records": 26,
+      "persistence": "Exact IDs and normalized-record hashes preserved",
+      "corpus": "Original synthetic contract graph and lesson; distinct from local research Mode A",
+      "live_llm_calls": 0
+    },
+    "documentation_ci": {
+      "revision": "5de2dd7",
+      "ci": "PASS",
+      "security": "PASS",
+      "note": "Later evidence-only commit may follow; final branch checks are visible on the draft PR."
+    }
+  },
+  "ci_status": "PASS",
   "fresh_runner_e2e": {
     "status": "PASS",
-    "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38636169814",
-    "browser_submissions": 5,
-    "records_before": 21,
-    "records_after": 26,
-    "restart_pl_ids": 5,
-    "restart_records": 26,
-    "persistence": "Exact IDs and normalized-record hashes preserved",
-    "corpus": "Original synthetic contract graph and lesson; distinct from local research Mode A",
-    "live_llm_calls": 0
-  },
-  "documentation_ci": {
-    "revision": "5de2dd7",
-    "ci": "PASS",
-    "security": "PASS",
-    "note": "Later evidence-only commit may follow; final branch checks are visible on the draft PR."
+    "url": "https://github.com/IanJ332/insructkg_sandbox/actions/runs/38662337887",
+    "initial_synthetic_records": 21,
+    "after_csv_records": 26,
+    "actual_pl_submissions": 5,
+    "restart_exact_ids_hashes": "PASS",
+    "corpus": "Original synthetic contract fixture; distinct from actual local research graph",
+    "live_model_calls": 0
   }
 }

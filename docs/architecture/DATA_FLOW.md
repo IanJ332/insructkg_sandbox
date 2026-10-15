@@ -10,3 +10,5 @@
 8. Profiles aggregate latest executed outcomes by concept-linked question. Timestamp-filtered prior persisted history is used for feedback. Analytics refreshes from the persistent repository.
 
 The same grading/feedback components process original synthetic batch attempts, but source labels distinguish fixtures from actual PL exports. Model outputs, existing research judgments, provisional edges and fresh pipeline outputs must never share an invented provenance label. Batch feedback uses already-persisted as-of history; records prepared within the same uncommitted batch are not a sequential tutoring session.
+
+Follow-up path: documented scoped API GET (mock verified) → normalize/minimize/map synthetic identity → validate full snapshot → atomic new attempts + checkpoint → event-time profile → explicit trusted synthetic principal → strictly prior concept aggregates → post-submission personalized feedback. The actual PL→CSV fallback is retained. See [lifecycle and authorization](PERSONALIZED_FEEDBACK_LIFECYCLE.md).

@@ -2,7 +2,11 @@
 
 Original integration code for a local SQL learning research prototype. Three **actual PrairieLearn** questions share a bounded SQLite grader, concept diagnosis, Baseline/RAG/KG feedback interface, and synthetic instructor analytics. Immediate feedback is stored by PrairieLearn; an explicit supported CSV export/import connects its attempts to longitudinal profiles.
 
-Phase 2 reproduced the original 43 tests, expanded to **83 distinct tests** (81 public-fixture tests and two local research tests), and exercised five real browser submissions through feedback, correction, export, persistence and analytics. The local store now has 37 synthetic records across five students. **Live model inference is BLOCKED by the user's instruction: no paid usage.** Existing real KG loading passes; fresh upstream ingestion timed out after 600 seconds in a working isolated CPU environment. No fresh concepts or relations are claimed.
+The accepted Phase 2 prototype is preserved and extended. **121 distinct tests pass** (119 public + 2 local research), including 38 new cross-validation regressions. Actual PL browser submissions/feedback/retries/CSV import and exact restart checks pass. The local store now has 42 synthetic records across 5 students. **Live generative inference remains BLOCKED**; no paid API or production deployment ran.
+
+Historical personalization is verified only in the **local post-submission synthetic service**, using contrasting prior histories for identical current SQL. The immediate PL hook remains history-free. Supported API snapshot synchronization is mock/contract verified; authenticated live polling and hosted learner identity/delivery are not claimed. Existing CSV fallback stays intact.
+
+Actual non-generative Docling CPU ingestion now completes 13 chunks with native or Tesseract OCR, with original upstream source preserved and generative enrichment disabled. This is not a fresh completed KG or proof that original VLM settings succeeded. [Lifecycle](docs/architecture/PERSONALIZED_FEEDBACK_LIFECYCLE.md) · [Sync](docs/engineering/SUBMISSION_SYNCHRONIZATION.md) · [CPU profiling](docs/engineering/INGESTION_PROFILING.md) · [Windows GPU readiness](docs/engineering/WINDOWS_GPU_READINESS.md) · [Feedback claim distinctions](docs/research/FEEDBACK_CAPABILITIES.md)
 
 [Current status](docs/handoff/CURRENT_STATUS.md) · [External review packet](docs/handoff/EXTERNAL_REVIEW_PACKET.md) · [Next implementation plan](docs/handoff/NEXT_IMPLEMENTATION_PLAN.md) · [Documentation index](docs/README.md)
 

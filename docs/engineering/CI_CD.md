@@ -4,9 +4,9 @@ Three workflows use immutable checkout/setup-python action SHAs, `contents: read
 
 | Workflow | Triggers | Executed checks |
 |---|---|---|
-| ci.yml | push, PR, manual | Python 3.11/3.13; exact dev pins; synthetic initialization; configuration; pip integrity; Ruff/format; strict mypy on three typed boundaries; 81 deterministic tests; wheel inventory |
+| ci.yml | push, PR, manual | Python 3.11/3.13; exact dev pins; synthetic initialization; configuration; pip integrity; Ruff/format; strict mypy on three typed boundaries; 119 deterministic tests; wheel inventory |
 | security.yml | push, PR, manual | Full reachable Git history + prospective files scan; restricted-path audit; Bandit; pip-audit of exact dev pins |
-| integration.yml | relevant workflow/E2E/Compose pushes, manual | Official pinned PL; five actual browser submissions/feedback/retries; instructor CSV export; atomic import; analytics; stop/start exact-record persistence; always stops services |
+| integration.yml | relevant workflow/E2E/Compose/script/course pushes, manual | Official pinned PL; five actual browser submissions/feedback/retries; instructor CSV export; atomic import; analytics; stop/start exact-record persistence; always stops services |
 
 See [verification.json](../handoff/verification.json) for executed run URLs and actual status. A workflow file is not evidence that a run passed. Local research graph tests and fresh extraction are separate from public CI. No tests are conditionally skipped to manufacture a green result.
 
