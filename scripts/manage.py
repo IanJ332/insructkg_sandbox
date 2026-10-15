@@ -20,15 +20,11 @@ COMPOSE = [
     "-f",
     str(ROOT / "infrastructure/compose.yaml"),
 ]
-PYTHON = (
-    str(ROOT / ".venv/bin/python")
-    if (ROOT / ".venv/bin/python").exists()
-    else (
-        str(ROOT / ".venv/Scripts/python.exe")
-        if (ROOT / ".venv/Scripts/python.exe").exists()
-        else sys.executable
-    )
-)
+if sys.platform == "win32":
+    _venv_py = ROOT / ".venv/Scripts/python.exe"
+else:
+    _venv_py = ROOT / ".venv/bin/python"
+PYTHON = str(_venv_py) if _venv_py.is_file() else sys.executable
 
 
 def run(command, **kwargs):
@@ -91,14 +87,28 @@ def dashboard_start():
 def dashboard_stop():
     pidfile = ROOT / "artifacts/dashboard.pid"
     if pidfile.exists():
-        pid = int(pidfile.read_text())
+        pid = int(pidfile.read_text().strip())
         # Validate process identity before sending any signal.
         if sys.platform == "win32":
             import signal
 
             try:
-                os.kill(pid, signal.SIGTERM)
-            except (ProcessLookupError, OSError):
+                proc = subprocess.run(
+                    [
+                        "powershell",
+                        "-NoProfile",
+                        "-Command",
+                        f"(Get-CimInstance Win32_Process -Filter 'ProcessId = {pid}').CommandLine",
+                    ],
+                    text=True,
+                    capture_output=True,
+                    timeout=5,
+                )
+                observed = proc.stdout.strip().replace("\\", "/")
+                target = str(ROOT / "scripts/dashboard.py").replace("\\", "/")
+                if target in observed or "scripts/dashboard.py" in observed:
+                    os.kill(pid, signal.SIGTERM)
+            except (subprocess.SubprocessError, ProcessLookupError, OSError):
                 pass
         else:
             observed = subprocess.run(
@@ -111,7 +121,8 @@ def dashboard_stop():
                     os.kill(pid, signal.SIGTERM)
                 except ProcessLookupError:
                     pass
-        pidfile.unlink()
+        if pidfile.exists():
+            pidfile.unlink()
 
 
 def stop_services():
@@ -186,7 +197,7 @@ if cmd == "check":
 elif cmd == "install":
     if not (ROOT / ".venv").exists():
         run([sys.executable, "-m", "venv", ".venv"])
-    run([str(ROOT / ".venv/bin/python"), "-m", "pip", "install", "-r", "requirements-dev.txt"])
+    run([PYTHON, "-m", "pip", "install", "-r", "requirements-dev.txt"])
 elif cmd == "init":
     for name in ["prepare.py", "expected.py", "graph_audit.py", "seed.py"]:
         script(name)

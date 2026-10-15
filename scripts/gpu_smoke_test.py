@@ -5,7 +5,6 @@ Runs Tests A-F and measures exact GPU, VRAM, RAM, CPU, and latency.
 import ctypes
 import http.client
 import json
-import os
 import re
 import subprocess
 import sys
@@ -17,12 +16,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
-from siip.configuration import ProviderConfig
 from siip.feedback import (
     CompatibleProvider,
-    build_context,
     generate_feedback,
-    valid_output,
 )
 from siip.grader import QUESTIONS, grade
 
@@ -187,9 +183,7 @@ def test_c_structured_json():
 
     try:
         parsed = json.loads(content)
-        has_required_keys = {"observed_error", "candidate_concepts", "hint"}.issubset(
-            parsed.keys()
-        )
+        has_required_keys = {"observed_error", "candidate_concepts", "hint"}.issubset(parsed.keys())
         concepts_valid = isinstance(parsed.get("candidate_concepts"), list) and all(
             c in ["LEFT_OUTER_JOIN", "INNER_JOIN", "NULL_SEMANTICS", "JOIN_CONDITION"]
             for c in parsed.get("candidate_concepts", [])
@@ -257,9 +251,7 @@ def test_e_feedback_integration():
     assert grade_res["score"] == 0
     assert grade_res["status"] == "semantic_error"
 
-    provider = CompatibleProvider(
-        f"{OLLAMA_BASE_URL}/v1", MODEL_ID, timeout=14, max_tokens=450
-    )
+    provider = CompatibleProvider(f"{OLLAMA_BASE_URL}/v1", MODEL_ID, timeout=14, max_tokens=450)
 
     results = {}
     for mode in ["baseline", "kg"]:
