@@ -3,6 +3,9 @@
   "name": "SIIP SQL",
   "title": "SIIP Synthetic SQL Research Sandbox",
   "timezone": "America/Chicago",
+  "options": {
+    "questionsReceiveUserData": true
+  },
   "topics": [
     {
       "name": "SQL",

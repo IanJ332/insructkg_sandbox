@@ -58,14 +58,16 @@ def load_graphs():
 
 
 def diagnosis(qid, result):
-    concepts = QUESTIONS[qid]["concepts"] if result["status"] == "semantic_error" else []
+    concepts = QUESTIONS[qid]["concepts"] if result.get("status") == "semantic_error" else []
+    obs = result.get("observation")
+    evidence = [{"source": "deterministic_execution", "observation": obs}] if obs else []
     return {
         "question_id": qid,
-        "grading_status": result["status"],
-        "observed_error": result["observation"],
+        "grading_status": result.get("status", "unknown"),
+        "observed_error": obs,
         "candidate_concepts": concepts,
         "diagnosis_confidence": None,
-        "evidence": [{"source": "deterministic_execution", "observation": result["observation"]}],
+        "evidence": evidence,
         "diagnosis_source": "deterministic_rule",
         "interpretation": "Possible gaps; not a definitive diagnosis.",
     }
@@ -306,17 +308,17 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None):
         ("context_error_fallback" if context_error else "deterministic_fallback"),
         "deterministic-rules-v1",
     )
-    if result["score"]:
+    if result.get("score"):
         text = "Your result matches all grading cases. Explain to yourself how the query treats unmatched rows before moving on."
-    elif result["observation"] == "missing_unmatched_rows":
+    elif result.get("observation") == "missing_unmatched_rows":
         text = "Your result omits employees without a matching department. Consider which join preserves rows from the employee table when there is no match."
-    elif result["observation"] == "missing_nonnull_unmatched_reference":
+    elif result.get("observation") == "missing_nonnull_unmatched_reference":
         text = "Your result misses an employee with a nonempty department reference that has no matching row. A missing reference and a missing match are different cases. Which joined side reveals the absence of a match?"
-    elif result["status"] == "compilation_error":
+    elif result.get("status") == "compilation_error":
         text = "The SQL parser could not compile this statement. Check punctuation, keywords, and the structure of your join condition."
-    elif result["status"] == "unsupported_query":
+    elif result.get("status") == "unsupported_query":
         text = "This sandbox accepts one read-only query using the exercise tables and supported SQL functions. Remove additional statements or unsupported operations."
-    elif result["status"] == "execution_error":
+    elif result.get("status") == "execution_error":
         text = "The query could not execute within sandbox constraints. Check table and column names, query complexity, and supported functions."
     else:
         text = "The result differs from the task. Check which rows should match, which should remain unmatched, the join condition, and the requested columns."

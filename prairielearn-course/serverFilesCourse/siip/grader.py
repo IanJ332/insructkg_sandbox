@@ -95,4 +95,8 @@ def grade(question_id, sql):
 
 def public_grade(result):
     """Never send hidden rows, reference SQL or raw engine error text to a model/student."""
-    return {k: result[k] for k in ["status", "score", "observation"]}
+    return {
+        "status": result.get("status", "unknown"),
+        "score": result.get("score", 0),
+        "observation": result.get("observation", result.get("status", "unknown")),
+    }

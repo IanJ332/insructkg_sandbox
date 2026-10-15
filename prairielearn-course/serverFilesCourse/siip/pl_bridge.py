@@ -1,15 +1,18 @@
 """Supported PL hook. Feedback failure must never change a completed SQL grade.
 Decouples deterministic SQL grading from synchronous generative LLM inference.
+Enforces safe synthetic student identity resolution and fail-closed personalization.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
 import time
 import uuid
 
 from .feedback import configured_provider, generate_feedback
 from .grader import QUESTIONS, grade
+from .identity import resolve_student_identity
 from .observability import event
 
 
@@ -21,10 +24,11 @@ def generate_question(data, qid):
 def grade_question(data, qid):
     started = time.monotonic()
     correlation = str(uuid.uuid4())
-    sql = data["submitted_answers"].get("sql", "")
+    sql = data.get("submitted_answers", {}).get("sql", "")
     result = grade(qid, sql)
     latency = round((time.monotonic() - started) * 1000, 3)
     data["score"] = float(result["score"])
+    data["partial_scores"] = data.get("partial_scores", {})
     data["partial_scores"]["sql"] = {"score": float(result["score"]), "weight": 1}
     event(
         "grade_completed",
@@ -55,29 +59,58 @@ def grade_question(data, qid):
                 or "artifacts/feedback_jobs.sqlite3"
             )
             job_repo = FeedbackJobRepository(repo_path)
-            # Default to synthetic identity in sandbox; real student identity is never used
-            student_id = "S001"
-            job = job_repo.enqueue(
-                attempt_id=f"pl-sub-{correlation}",
-                student_id=student_id,
-                question_id=qid,
-                submitted_sql=sql,
-                grading=result,
-                mode="kg",
-            )
-            job_id = job.job_id
-            # Immediate feedback returned to student is deterministic baseline
-            feedback = generate_feedback(qid, sql, result, mode="baseline")
-            feedback["inference_status"] = "async_job_queued"
-            feedback["job_id"] = job_id
+
+            student_id, is_trusted, id_reason = resolve_student_identity(data)
+            if is_trusted and student_id:
+                # Deterministic stable attempt ID from submission_id or student/question/sql/variant hash
+                sub_id = data.get("submission_id") or data.get("variant_id")
+                if sub_id:
+                    attempt_id = f"pl-{sub_id}"
+                else:
+                    variant_seed = data.get("variant_seed", 0)
+                    sig = hashlib.sha256(
+                        f"{student_id}:{qid}:{sql}:{variant_seed}".encode()
+                    ).hexdigest()[:20]
+                    attempt_id = f"sub-{sig}"
+
+                job = job_repo.enqueue(
+                    attempt_id=attempt_id,
+                    student_id=student_id,
+                    question_id=qid,
+                    submitted_sql=sql,
+                    grading=result,  # job_repo minimizes this to public_grade
+                    mode="kg",
+                )
+                job_id = job.job_id
+                feedback = generate_feedback(qid, sql, result, mode="baseline")
+                feedback["inference_status"] = "async_job_queued"
+                feedback["job_id"] = job_id
+                feedback["personalization_status"] = "personalized_async_queued"
+                feedback["student_id"] = student_id
+            else:
+                # Fail closed: trusted identity unavailable. Return clearly labeled non-personalized feedback.
+                feedback = generate_feedback(qid, sql, result, mode="baseline")
+                feedback["inference_status"] = "immediate_baseline_non_personalized"
+                feedback["personalization_status"] = f"non_personalized_{id_reason}"
+                feedback["student_id"] = None
+                job_id = None
         else:
-            feedback = generate_feedback(qid, sql, result, mode="kg", provider=provider)
+            student_id, is_trusted, id_reason = resolve_student_identity(data)
+            mode = "kg" if is_trusted else "baseline"
+            feedback = generate_feedback(qid, sql, result, mode=mode, provider=provider)
+            feedback["personalization_status"] = (
+                "personalized_synchronous" if is_trusted else f"non_personalized_{id_reason}"
+            )
+            feedback["student_id"] = student_id
     except Exception as exc:
         feedback = generate_feedback(qid, sql, result, mode="baseline")
         feedback["inference_status"] = "feedback_error_fallback"
         feedback["error_details"] = type(exc).__name__
+        feedback["personalization_status"] = "non_personalized_error_fallback"
+        feedback["student_id"] = None
         event("feedback_failed", correlation_id=correlation, error_type=type(exc).__name__)
 
+    data["feedback"] = data.get("feedback", {})
     data["feedback"].update(
         {
             "status": result["status"],
@@ -87,6 +120,8 @@ def grade_question(data, qid):
             + (", ".join(feedback["evidence_references"]) or "unavailable")
             + ". Graph support is provisional; original judgments await instructor review.",
             "inference": feedback["inference_status"] + " · " + feedback["model_identifier"],
+            "job_id": job_id,
+            "student_id": feedback.get("student_id"),
             "siip": {
                 "feedback_origin": "prairielearn_hook_immediate",
                 "question_id": qid,
@@ -96,6 +131,8 @@ def grade_question(data, qid):
                 "grading_latency_ms": latency,
                 "feedback": feedback,
                 "job_id": job_id,
+                "student_id": feedback.get("student_id"),
+                "personalization_status": feedback.get("personalization_status"),
             },
         }
     )

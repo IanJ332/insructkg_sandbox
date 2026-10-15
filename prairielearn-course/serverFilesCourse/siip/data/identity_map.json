@@ -1,0 +1,12 @@
+{
+  "101": "S001",
+  "102": "S002",
+  "103": "S003",
+  "104": "S004",
+  "105": "S005",
+  "2": "S001",
+  "student@example.com": "S001",
+  "student2@example.com": "S002",
+  "student3@example.com": "S003",
+  "synthetic_student@illinois.edu": "S001"
+}

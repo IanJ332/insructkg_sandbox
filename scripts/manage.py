@@ -20,11 +20,14 @@ COMPOSE = [
     "-f",
     str(ROOT / "infrastructure/compose.yaml"),
 ]
-if sys.platform == "win32":
-    _venv_py = ROOT / ".venv/Scripts/python.exe"
-else:
-    _venv_py = ROOT / ".venv/bin/python"
-PYTHON = str(_venv_py) if _venv_py.is_file() else sys.executable
+
+
+def get_python():
+    if sys.platform == "win32":
+        venv_py = ROOT / ".venv/Scripts/python.exe"
+    else:
+        venv_py = ROOT / ".venv/bin/python"
+    return str(venv_py) if venv_py.is_file() else sys.executable
 
 
 def run(command, **kwargs):
@@ -32,7 +35,7 @@ def run(command, **kwargs):
 
 
 def script(name, *args):
-    return run([PYTHON, str(ROOT / "scripts" / name), *args])
+    return run([get_python(), str(ROOT / "scripts" / name), *args])
 
 
 def prerequisites():
@@ -63,7 +66,7 @@ def dashboard_start():
             return
     log = (ROOT / "artifacts/dashboard.log").open("a")
     p = subprocess.Popen(
-        [PYTHON, str(ROOT / "scripts/dashboard.py")],
+        [get_python(), str(ROOT / "scripts/dashboard.py")],
         cwd=ROOT,
         stdout=log,
         stderr=subprocess.STDOUT,
@@ -126,7 +129,93 @@ def dashboard_stop():
             pidfile.unlink()
 
 
+def worker_start():
+    pidfile = ROOT / "artifacts/worker.pid"
+    (ROOT / "artifacts").mkdir(exist_ok=True)
+    if pidfile.exists():
+        try:
+            old_pid = int(pidfile.read_text().strip())
+            if sys.platform == "win32":
+                ps_bin = shutil.which("powershell") or "powershell"
+                proc = subprocess.run(  # nosec B607
+                    [
+                        ps_bin,
+                        "-NoProfile",
+                        "-Command",
+                        f"Get-Process -Id {old_pid} -ErrorAction SilentlyContinue",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                )
+                if proc.returncode == 0:
+                    print("SIIP feedback worker already running (PID", old_pid, ")")
+                    return
+            else:
+                os.kill(old_pid, 0)
+                print("SIIP feedback worker already running (PID", old_pid, ")")
+                return
+        except (ValueError, OSError, subprocess.SubprocessError):
+            pass
+
+    log = (ROOT / "artifacts/worker.log").open("a")
+    p = subprocess.Popen(
+        [get_python(), str(ROOT / "scripts/feedback_worker.py"), "--poll-interval", "0.5"],
+        cwd=ROOT,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    pidfile.write_text(str(p.pid))
+    print("Feedback worker PID", p.pid)
+
+
+def worker_stop():
+    pidfile = ROOT / "artifacts/worker.pid"
+    if pidfile.exists():
+        try:
+            pid = int(pidfile.read_text().strip())
+            if sys.platform == "win32":
+                import signal
+
+                try:
+                    ps_bin = shutil.which("powershell") or "powershell"
+                    proc = subprocess.run(
+                        [
+                            ps_bin,
+                            "-NoProfile",
+                            "-Command",
+                            f"(Get-CimInstance Win32_Process -Filter 'ProcessId = {pid}').CommandLine",
+                        ],
+                        text=True,
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    observed = proc.stdout.strip().replace("\\", "/")
+                    target = str(ROOT / "scripts/feedback_worker.py").replace("\\", "/")
+                    if target in observed or "scripts/feedback_worker.py" in observed:
+                        os.kill(pid, signal.SIGTERM)
+                except (subprocess.SubprocessError, ProcessLookupError, OSError):
+                    pass
+            else:
+                observed = subprocess.run(
+                    ["/bin/ps", "-p", str(pid), "-o", "command="], text=True, capture_output=True
+                ).stdout
+                if str(ROOT / "scripts/feedback_worker.py") in observed:
+                    import signal
+
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+        except ValueError:
+            pass
+        if pidfile.exists():
+            pidfile.unlink()
+
+
 def stop_services():
+    worker_stop()
     dashboard_stop()
     # The official image starts PostgreSQL as a background process. A container
     # stop alone can leave a socket lock in its writable layer across restarts.
@@ -142,16 +231,25 @@ def stop_services():
             COMPOSE + ["exec", "-T", "prairielearn", "pg_isready", "-q"], cwd=ROOT
         )
         if ready.returncode == 0:
-            run(
-                COMPOSE
-                + ["exec", "-T", "prairielearn", "/PrairieLearn/scripts/start_postgres.sh", "stop"],
-                timeout=75,
-            )
+            try:
+                run(
+                    COMPOSE
+                    + [
+                        "exec",
+                        "-T",
+                        "prairielearn",
+                        "/PrairieLearn/scripts/start_postgres.sh",
+                        "stop",
+                    ],
+                    timeout=75,
+                )
+            except subprocess.CalledProcessError:
+                pass
     run(COMPOSE + ["stop"])
 
 
 def tests(pattern=None):
-    command = [PYTHON, "-m", "unittest", "discover", "-s", "tests", "-v"]
+    command = [get_python(), "-m", "unittest", "discover", "-s", "tests", "-v"]
     if pattern:
         command += ["-k", pattern]
     p = subprocess.run(
@@ -172,6 +270,8 @@ parser.add_argument(
         "init",
         "start-pl",
         "start-dashboard",
+        "start-worker",
+        "stop-worker",
         "start",
         "seed",
         "graph",
@@ -196,9 +296,11 @@ cmd = args.command
 if cmd == "check":
     prerequisites()
 elif cmd == "install":
-    if not (ROOT / ".venv").exists():
-        run([sys.executable, "-m", "venv", ".venv"])
-    run([PYTHON, "-m", "pip", "install", "-r", "requirements-dev.txt"])
+    venv_dir = ROOT / ".venv"
+    if not venv_dir.exists():
+        run([sys.executable, "-m", "venv", str(venv_dir)])
+    target_py = get_python()
+    run([target_py, "-m", "pip", "install", "-r", "requirements-dev.txt"])
 elif cmd == "init":
     for name in ["prepare.py", "expected.py", "graph_audit.py", "seed.py"]:
         script(name)
@@ -206,9 +308,14 @@ elif cmd == "start-pl":
     run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
 elif cmd == "start-dashboard":
     dashboard_start()
+elif cmd == "start-worker":
+    worker_start()
+elif cmd == "stop-worker":
+    worker_stop()
 elif cmd == "start":
     run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
     dashboard_start()
+    worker_start()
 elif cmd == "seed":
     script("seed.py")
 elif cmd == "graph":
@@ -220,23 +327,30 @@ elif cmd == "test-feedback":
 elif cmd == "test":
     tests()
 elif cmd == "test-research":
-    run([PYTHON, "-m", "unittest", "discover", "-s", "research_tests", "-v"])
+    run([get_python(), "-m", "unittest", "discover", "-s", "research_tests", "-v"])
 elif cmd == "test-public":
     script("init_public.py")
     run(
-        [PYTHON, "-m", "unittest", "discover", "-s", "tests", "-v"],
+        [get_python(), "-m", "unittest", "discover", "-s", "tests", "-v"],
         env={**os.environ, "SIIP_DATA_DIR": str(ROOT / "artifacts/public-data")},
     )
 elif cmd == "quality":
-    run([PYTHON, "-m", "ruff", "check", "."])
-    run([PYTHON, "-m", "ruff", "format", "--check", "."])
-    run([PYTHON, "-m", "mypy"])
+    run([get_python(), "-m", "ruff", "check", "."])
+    run([get_python(), "-m", "ruff", "format", "--check", "."])
+    run([get_python(), "-m", "mypy"])
     script("validate_config.py")
 elif cmd == "build":
-    run([PYTHON, "-m", "pip", "wheel", "--no-deps", ".", "--wheel-dir", "artifacts/dist"])
+    run([get_python(), "-m", "pip", "wheel", "--no-deps", ".", "--wheel-dir", "artifacts/dist"])
     script("check_wheel.py")
 elif cmd == "e2e":
-    run([PYTHON, str(ROOT / "tests/e2e/prairielearn_flow.py"), "--ack-local-synthetic"])
+    env = dict(os.environ)
+    d_cache = Path("D:/AI/Cache/Playwright")
+    if d_cache.is_dir() and "PLAYWRIGHT_BROWSERS_PATH" not in env:
+        env["PLAYWRIGHT_BROWSERS_PATH"] = str(d_cache)
+    run(
+        [get_python(), str(ROOT / "tests/e2e/prairielearn_flow.py"), "--ack-local-synthetic"],
+        env=env,
+    )
 elif cmd == "evaluate":
     script("evaluate.py")
 elif cmd == "fresh-preflight":
@@ -263,6 +377,7 @@ elif cmd == "demo":
     script("evaluate.py")
     run(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "300"])
     dashboard_start()
+    worker_start()
     print(
         "Open http://localhost:3000/pl and http://127.0.0.1:8080; follow docs/DEMO.md. UI actions are manual; fixture runs do not prove UI success."
     )

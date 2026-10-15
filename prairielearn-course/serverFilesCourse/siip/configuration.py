@@ -22,7 +22,7 @@ class ProviderConfig:
         if self.provider not in {"deterministic", "local", "compatible"}:
             raise ValueError("Unknown feedback provider")
         if (
-            not 0.1 <= self.timeout_seconds <= 15
+            not 0.1 <= self.timeout_seconds <= 60.0
             or not 32 <= self.max_tokens <= 500
             or not 0 <= self.retries <= 2
         ):

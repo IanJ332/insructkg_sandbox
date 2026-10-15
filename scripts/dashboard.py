@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 from siip.feedback import generate_feedback, load_graphs
 from siip.grader import QUESTIONS, grade
+from siip.jobs import FeedbackJobRepository
 from siip.observability import event
 from siip.store import STUDENTS, SubmissionRepository
 
@@ -239,6 +240,125 @@ def compare(params):
     return shell("Feedback lab", body + "</div>")
 
 
+def get_jobs_repo():
+    jobs_db = os.environ.get("SIIP_FEEDBACK_JOBS_DB") or str(
+        ROOT / "artifacts/jobs/feedback_jobs.sqlite3"
+    )
+    return FeedbackJobRepository(jobs_db)
+
+
+def feedback_page(job_id, student_id):
+    if not job_id:
+        return shell(
+            "Feedback delivery",
+            "<section><h2>Learner feedback delivery</h2>"
+            "<p class='muted'>Enter a job ID and your synthetic student principal to retrieve AI feedback.</p>"
+            "<form method='GET' action='/feedback'>"
+            "<label>Job ID: <input name='job_id' placeholder='job-...' required></label> "
+            "<label>Student ID: <input name='student_id' placeholder='S001' required></label> "
+            "<button type='submit'>Retrieve feedback</button></form></section>",
+        ), 200
+
+    if not student_id:
+        return shell(
+            "Authentication required",
+            "<section><h2>Authentication required</h2>"
+            "<p>Access denied: Knowledge of a job ID alone is not authorization. "
+            "Please provide an authorized synthetic student principal (<code>?student_id=...</code>).</p></section>",
+        ), 401
+
+    repo = get_jobs_repo()
+    job = repo.get(job_id)
+    if not job:
+        return shell(
+            "Job not found",
+            f"<section><h2>Feedback job not found</h2><p>No job record exists for <code>{esc(job_id)}</code>.</p></section>",
+        ), 404
+
+    if job.student_id != student_id:
+        return shell(
+            "Access denied",
+            f"<section><h2 style='color:#991b1b;'>403 Forbidden: Learner mismatch</h2>"
+            f"<p>Access Denied: Job <code>{esc(job_id)}</code> was generated for student <code>{esc(job.student_id)}</code>, "
+            f"not requesting principal <code>{esc(student_id)}</code>.</p></section>",
+        ), 403
+
+    status_badge_color = {
+        "completed": "#2e7d32",
+        "processing": "#f57c00",
+        "pending": "#1976d2",
+        "failed": "#d32f2f",
+    }.get(job.status, "#555")
+
+    body = f"""
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Personalized AI feedback</h2>
+        <div>
+          <span class="badge" style="background:#e0f2fe;color:#0369a1;">Learner: {esc(job.student_id)}</span>
+          <span class="badge" style="background:{status_badge_color};color:white;margin-left:8px;">{esc(job.status.upper())}</span>
+        </div>
+      </div>
+      <p><strong>Question:</strong> {esc(job.question_id)} &middot; <strong>Attempt ID:</strong> <code>{esc(job.attempt_id)}</code></p>
+      <h3>Submitted SQL</h3>
+      <pre style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">{esc(job.submitted_sql)}</pre>
+      <p><strong>Deterministic grading:</strong> Score: {job.grading.get("score")} &middot; Status: {esc(job.grading.get("status"))} &middot; Observation: {esc(job.grading.get("observation"))}</p>
+    </section>
+    """
+
+    if job.status == "completed" and job.result:
+        res = job.result
+        body += f"""
+        <section style="border-left:4px solid #087674;">
+          <h3>Pedagogical guidance</h3>
+          <p style="font-size:17px;line-height:1.6;">{
+            esc(res.get("feedback_text", "No guidance generated."))
+        }</p>
+          <h4>Possible concept gaps</h4>
+          <p>{esc(", ".join(res.get("candidate_concepts", [])) or "None identified")}</p>
+          <h4>Lecture grounding references</h4>
+          <p>{esc(", ".join(res.get("evidence_references", [])) or "None cited")}</p>
+        </section>
+        <section>
+          <h3>Provenance & evaluation grounding</h3>
+          {
+            table(
+                ["Property", "Value"],
+                [
+                    ["Model identifier", esc(job.model_identifier or "unknown")],
+                    ["Prompt version", esc(job.prompt_version or "unknown")],
+                    ["Knowledge graph digest", esc(job.graph_version or "unknown")],
+                    ["Inference latency", f"{job.latency_ms:.2f} ms" if job.latency_ms else "N/A"],
+                    ["Created timestamp", esc(job.created_at)],
+                    ["Completed timestamp", esc(job.completed_at or "N/A")],
+                    ["Attempt ID", esc(job.attempt_id)],
+                    ["Job ID", esc(job.job_id)],
+                ],
+            )
+        }
+        </section>
+        """
+    elif job.status in ("pending", "processing"):
+        body += f"""
+        <section style="background:#fffbeb;border:1px solid #fde68a;">
+          <h3>Inference in progress</h3>
+          <p>This feedback job is currently being processed by the background GPU worker.</p>
+          <p>Status: <strong>{esc(job.status)}</strong> &middot; Started at: {esc(job.started_at or "Waiting in queue")}</p>
+          <p><small>Refresh this page or check back shortly to view the grounded AI explanation.</small></p>
+        </section>
+        """
+    elif job.status == "failed":
+        body += f"""
+        <section style="background:#fef2f2;border:1px solid #fecaca;">
+          <h3 style="color:#991b1b;">Inference failure</h3>
+          <p>Generation encountered an error: {esc(job.error or "Unknown failure")}</p>
+          <p>Deterministic baseline feedback was safely retained in PrairieLearn.</p>
+        </section>
+        """
+
+    return shell(f"Feedback · {job.student_id}", body), 200
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         # BaseHTTPRequestHandler logs raw request URLs; query parameters can contain SQL.
@@ -293,6 +413,52 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(graph_page())
             elif parsed.path == "/compare":
                 self.send(compare(params))
+            elif parsed.path == "/feedback":
+                job_id = params.get("job_id", [None])[0]
+                student_id = params.get("student_id", [None])[0]
+                html_body, code = feedback_page(job_id, student_id)
+                self.send(html_body, code)
+            elif parsed.path == "/api/feedback":
+                job_id = params.get("job_id", [None])[0]
+                student_id = (
+                    self.headers.get("X-Synthetic-Student-Id")
+                    or params.get("student_id", [None])[0]
+                )
+                if not job_id:
+                    self.send(
+                        json.dumps({"error": "Missing job_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                if not student_id:
+                    self.send(
+                        json.dumps({"error": "Authentication required: Missing student principal"}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                repo_jobs = get_jobs_repo()
+                job = repo_jobs.get(job_id)
+                if not job:
+                    self.send(
+                        json.dumps({"error": "Job not found"}),
+                        404,
+                        content="application/json",
+                    )
+                    return
+                if job.student_id != student_id:
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": f"Forbidden: Learner mismatch. Job belongs to {job.student_id}"
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
+                self.send(json.dumps(job.to_dict()), 200, content="application/json")
             elif parsed.path == "/api/analytics":
                 self.send(json.dumps(repo.analytics()), content="application/json")
             elif parsed.path == "/health":
