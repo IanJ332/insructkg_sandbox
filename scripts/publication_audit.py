@@ -87,14 +87,20 @@ def run_audit(history=True):
                 target = Path(temporary) / (oid + "-" + Path(path).name)
                 target.write_bytes(content)
                 scan_files.append(str(target))
-        result = subprocess.run(
-            [sys.executable, "-m", "detect_secrets", "scan", "--no-verify", *scan_files],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        data = json.loads(result.stdout)
+        batch_size = 50
+        merged_results = {}
+        for i in range(0, len(scan_files), batch_size):
+            chunk = scan_files[i : i + batch_size]
+            result = subprocess.run(
+                [sys.executable, "-m", "detect_secrets", "scan", "--no-verify", *chunk],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            chunk_data = json.loads(result.stdout)
+            merged_results.update(chunk_data.get("results", {}))
+        data = {"results": merged_results}
         for path, entries in data.get("results", {}).items():
             for entry in entries:
                 if (
