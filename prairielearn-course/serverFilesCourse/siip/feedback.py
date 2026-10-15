@@ -12,8 +12,37 @@ from .grader import DATA, QUESTIONS, public_grade
 from .graph import ConceptGraph
 from .observability import event
 
-PROMPT_VERSION = "siip-feedback-v2"
+PROMPT_VERSION = "siip-feedback-v3"
 MODES = {"baseline", "rag", "kg"}
+
+
+def minimize_mastery(qid, mastery):
+    """Only bounded, question-relevant aggregates may enter a model context."""
+    if not isinstance(mastery, dict):
+        return {}
+    selected = {}
+    for concept in QUESTIONS[qid]["concepts"]:
+        value = mastery.get(concept)
+        if not isinstance(value, dict):
+            continue
+        estimate = value.get("mastery_estimate")
+        questions = value.get("denominator")
+        count = value.get("attempt_count")
+        if (
+            isinstance(estimate, (int, float))
+            and not isinstance(estimate, bool)
+            and 0 <= estimate <= 1
+            and type(questions) is int
+            and 0 < questions <= len(QUESTIONS)
+            and type(count) is int
+            and questions <= count <= 1_000_000
+        ):
+            selected[concept] = {
+                "mastery_estimate": estimate,
+                "question_count": questions,
+                "evidence_count": count,
+            }
+    return selected
 
 
 def load_graphs():
@@ -90,7 +119,7 @@ def build_context(qid, sql, result, mode, mastery=None):
             {
                 "target_concepts": concepts,
                 "diagnosis": diagnosis(qid, result),
-                "student_mastery": mastery or {},
+                "student_mastery": minimize_mastery(qid, mastery),
                 "development_relationships": [
                     {
                         "source": e["source"],
@@ -269,6 +298,9 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None):
             "prerequisites": [],
         }
     context["_question_id"] = qid
+    history = minimize_mastery(qid, mastery) if mode == "kg" else {}
+    if history:
+        context["student_mastery"] = history
     error, usage = context_error, None
     status, model = (
         ("context_error_fallback" if context_error else "deterministic_fallback"),
@@ -309,6 +341,21 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None):
                 + "."
             )
         obj["feedback_text"] = text
+    if history:
+        concept, evidence = next(iter(history.items()))
+        label = concept.replace("_", " ").lower()
+        if evidence["mastery_estimate"] < 0.5:
+            obj["feedback_text"] += (
+                " Earlier attempts suggest revisiting "
+                + label
+                + "; this is a descriptive history signal, not a mastery diagnosis."
+            )
+        else:
+            obj["feedback_text"] += (
+                " Earlier attempts provide positive evidence for "
+                + label
+                + "; apply that idea here. This estimate is an unvalidated heuristic."
+            )
     if provider is not None and context_error is None:
         try:
             generated, usage = provider.generate(context)
@@ -340,6 +387,11 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None):
         "latency_ms": round((time.monotonic() - started) * 1000, 3),
         "token_usage": usage,
         "estimated_cost": None,
+        "historical_personalization": {
+            "status": "provided_concept_evidence" if history else "none",
+            "concept_count": len(history),
+            "evidence_kind": "descriptive_beta_heuristic" if history else None,
+        },
         "context_status": "unavailable" if context_error else "available",
         "graph_status": ("unavailable" if context_error else "provisional_and_unreviewed")
         if mode == "kg"

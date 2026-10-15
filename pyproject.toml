@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "siip-sql-sandbox"
-version = "0.2.0"
+version = "0.2.1"
 description = "Synthetic local PrairieLearn and InstructKG integration research sandbox"
 requires-python = ">=3.11"
 dependencies = []

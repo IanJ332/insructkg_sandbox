@@ -34,6 +34,9 @@ class SubmissionRepository:
                     question_id TEXT NOT NULL, timestamp TEXT NOT NULL, source TEXT NOT NULL,
                     assessment_id TEXT NOT NULL, record TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS attempts_student_time ON attempts(student_id,timestamp);""")
+            db.executescript("""CREATE TABLE IF NOT EXISTS sync_checkpoints(
+                scope TEXT PRIMARY KEY, state TEXT NOT NULL);
+                INSERT OR IGNORE INTO schema_version VALUES(2);""")
             db.commit()
 
     def connect(self):
@@ -130,12 +133,21 @@ class SubmissionRepository:
     def process(self, record, mode="kg", provider=None):
         return self.process_many([record], mode, provider)[0]
 
-    def process_many(self, records, mode="kg", provider=None):
+    def process_many(
+        self, records, mode="kg", provider=None, *, sync_checkpoint=None, include_commit_stats=False
+    ):
         from time import monotonic
 
         from .observability import event
 
         normalized = [self.normalize(record) for record in records]
+        if sync_checkpoint is not None:
+            if (
+                set(sync_checkpoint) != {"scope", "previous", "state"}
+                or not isinstance(sync_checkpoint["scope"], str)
+                or not isinstance(sync_checkpoint["state"], dict)
+            ):
+                raise ValueError("Invalid synchronization checkpoint")
         prepared = []
         for record in normalized:
             aid, sid, qid = record["attempt_id"], record["student_id"], record["question_id"]
@@ -161,7 +173,7 @@ class SubmissionRepository:
                 score=result["score"],
                 latency_ms=grading_latency_ms,
             )
-            history = self.profile(sid, as_of=record["timestamp"])
+            history = self.profile(sid, as_of=record["timestamp"], before=True)
             feedback = generate_feedback(
                 qid, record["submitted_sql"], result, mode, history["concepts"], provider
             )
@@ -179,9 +191,18 @@ class SubmissionRepository:
                 }
             )
         saved_records = []
+        inserted_count = 0
         with closing(self.connect()) as db:
             try:
                 db.execute("BEGIN IMMEDIATE")
+                if sync_checkpoint is not None:
+                    saved = db.execute(
+                        "SELECT state FROM sync_checkpoints WHERE scope=?",
+                        (sync_checkpoint["scope"],),
+                    ).fetchone()
+                    previous = json.loads(saved[0]) if saved else None
+                    if previous != sync_checkpoint["previous"]:
+                        raise ValueError("Synchronization checkpoint changed; retry poll")
                 for output in prepared:
                     existing = db.execute(
                         "SELECT record FROM attempts WHERE attempt_id=?", (output["attempt_id"],)
@@ -204,15 +225,46 @@ class SubmissionRepository:
                             ),
                         )
                         saved_records.append(output)
+                        inserted_count += 1
+                if sync_checkpoint is not None:
+                    db.execute(
+                        "INSERT INTO sync_checkpoints VALUES(?,?) "
+                        "ON CONFLICT(scope) DO UPDATE SET state=excluded.state",
+                        (
+                            sync_checkpoint["scope"],
+                            json.dumps(sync_checkpoint["state"], sort_keys=True),
+                        ),
+                    )
                 db.commit()
             except Exception:
                 db.rollback()
                 event("persistence_failed", error_type="transaction_rollback")
                 raise
         event("persistence_completed", record_count=len(saved_records), status="committed")
-        return saved_records
+        return (
+            {"records": saved_records, "inserted_count": inserted_count}
+            if include_commit_stats
+            else saved_records
+        )
 
-    def records(self, student_id=None, as_of=None):
+    def checkpoint_state(self, scope):
+        with closing(self.connect()) as db:
+            row = db.execute(
+                "SELECT state FROM sync_checkpoints WHERE scope=?", (scope,)
+            ).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def attempt_for_student(self, attempt_id, student_id):
+        with closing(self.connect()) as db:
+            row = db.execute(
+                "SELECT record FROM attempts WHERE attempt_id=? AND student_id=?",
+                (attempt_id, student_id),
+            ).fetchone()
+        if row is None:
+            raise PermissionError("Feedback access denied")
+        return json.loads(row[0])
+
+    def records(self, student_id=None, as_of=None, *, before=False):
         with closing(self.connect()) as db:
             if student_id is None:
                 rows = db.execute(
@@ -224,12 +276,16 @@ class SubmissionRepository:
                     (student_id,),
                 ).fetchall()
         records = [json.loads(row[0]) for row in rows]
-        return [r for r in records if as_of is None or r["timestamp"] <= as_of]
+        return [
+            r
+            for r in records
+            if as_of is None or (r["timestamp"] < as_of if before else r["timestamp"] <= as_of)
+        ]
 
-    def profile(self, student_id, as_of=None):
+    def profile(self, student_id, as_of=None, *, before=False):
         if student_id not in STUDENTS:
             raise ValueError("Unknown student")
-        records = self.records(student_id, as_of)
+        records = self.records(student_id, as_of, before=before)
         grouped = defaultdict(list)
         for record in records:
             for concept in record["concepts"]:
