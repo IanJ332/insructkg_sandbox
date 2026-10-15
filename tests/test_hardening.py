@@ -11,6 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
@@ -149,7 +150,7 @@ class PersistenceHardeningTests(unittest.TestCase):
         self.assertEqual(self.repo.records(), [])
 
     def test_database_insert_failure_rolls_back(self):
-        with self.repo.connect() as db:
+        with closing(self.repo.connect()) as db:
             db.executescript(
                 "CREATE TRIGGER fail_insert BEFORE INSERT ON attempts WHEN NEW.attempt_id='reject' BEGIN SELECT RAISE(ABORT,'test failure'); END;"
             )

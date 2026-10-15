@@ -14,8 +14,21 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPOSE = ["docker", "compose", "-f", str(ROOT / "infrastructure/compose.yaml")]
-PYTHON = str(ROOT / ".venv/bin/python") if (ROOT / ".venv/bin/python").exists() else sys.executable
+COMPOSE = [
+    shutil.which("docker") or "docker",
+    "compose",
+    "-f",
+    str(ROOT / "infrastructure/compose.yaml"),
+]
+PYTHON = (
+    str(ROOT / ".venv/bin/python")
+    if (ROOT / ".venv/bin/python").exists()
+    else (
+        str(ROOT / ".venv/Scripts/python.exe")
+        if (ROOT / ".venv/Scripts/python.exe").exists()
+        else sys.executable
+    )
+)
 
 
 def run(command, **kwargs):
@@ -80,16 +93,24 @@ def dashboard_stop():
     if pidfile.exists():
         pid = int(pidfile.read_text())
         # Validate process identity before sending any signal.
-        observed = subprocess.run(
-            ["/bin/ps", "-p", str(pid), "-o", "command="], text=True, capture_output=True
-        ).stdout
-        if str(ROOT / "scripts/dashboard.py") in observed:
+        if sys.platform == "win32":
             import signal
 
             try:
                 os.kill(pid, signal.SIGTERM)
-            except ProcessLookupError:
+            except (ProcessLookupError, OSError):
                 pass
+        else:
+            observed = subprocess.run(
+                ["/bin/ps", "-p", str(pid), "-o", "command="], text=True, capture_output=True
+            ).stdout
+            if str(ROOT / "scripts/dashboard.py") in observed:
+                import signal
+
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
         pidfile.unlink()
 
 

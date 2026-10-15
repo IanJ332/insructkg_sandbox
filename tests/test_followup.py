@@ -691,6 +691,10 @@ class ShutdownContractTests(unittest.TestCase):
                 "if 'pg_isready' in args: sys.exit(int(os.environ['SIIP_STOP_TEST_READY']))\n"
             )
             fake.chmod(0o755)
+            if sys.platform == "win32":
+                (binary / "docker.cmd").write_text(
+                    f'@echo off\r\n"{sys.executable}" "{fake}" %*\r\n'
+                )
             log = root / "commands.jsonl"
             subprocess.run(
                 [sys.executable, str(root / "scripts/manage.py"), "stop"],

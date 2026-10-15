@@ -121,6 +121,9 @@ def main():
                 re.compile(r"Total\s+points:\s*3\s*/\s*3")
             )
             page.screenshot(path=str(out / "assessment.png"), full_page=True)
+            # Switch back to instructor view to access instructor downloads.
+            page.locator("#navbarDropdown").click()
+            page.locator("#navbar-user-view-authn-instructor").click()
             # Authorized, supported instructor UI export; no PAT creation or internal DB writes.
             page.goto(args.base_url + assessment_path + "/downloads")
             export = page.get_by_role("link", name=re.compile("_all_submissions.csv$"))
