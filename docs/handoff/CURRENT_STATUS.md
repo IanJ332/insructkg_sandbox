@@ -1,26 +1,18 @@
-# Current status — Phase 2 cross-validation follow-up
+# Current status — Phase 4.2 Engineering Closure
 
-Snapshot date: 2026-10-14, America/Chicago. Implementation snapshot: **d65028a41b81be9b120f21734ece6e5edabdb864** on `engineering/phase2-hardening`, [draft PR1](https://github.com/IanJ332/insructkg_sandbox/pull/1), unmerged. Documentation-only commits may follow; [verification.json](verification.json) keys executed CI to exact source SHAs. All accepted 83distinct tests are retained.
+Snapshot date: 2026-10-15, America/Chicago. Implementation snapshot: **07b1b16a0f7020e2eaafd347ba210222e8577c88** on `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 188 distinct public tests pass (56.71s). All GitHub Actions workflows (CI, Security, Local platform integration) are verified green.
 
 | Area | Status | Actual result/evidence | Boundary |
 |---|---|---|---|
-| Public deterministic suite | PASS |119/119,0fail/skip,37.968s; artifacts/followup/public-tests-owner-scope.log | Mock API/model transports; original public fixtures |
-| Real existing graph suite | PASS |2/2; research-tests-final.log | Actual469 judgments/121 nodes; original graph unreviewed |
-| Local personalized feedback | PASS, synthetic | Same current SQL/grade, contrasting S001/S002 prior histories produce different feedback; demo + regressions | Post-submission service only; no learner-login/learning-effect claim |
-| Privacy/temporal boundaries | PASS, synthetic | Subject-scoped attempt query, explicit principal, exclusive cutoff, relevant numeric aggregates, cross-subject denial tests | Principal factory is local trusted code, not institutional authentication |
-| Immediate PL feedback | PASS, history-free | Actual 3 questions/5 new browser submissions, feedback/retry and CSV import | No trusted identity/history in hook; no unauthorized lookup |
-| API synchronization | PASS contract / live NOT_RUN | Mapping/dedup/late/incremental/profile/permissions/errors/rollback/CAS/CSV reconciliation tests | Local mock HTTP only; no PL token created or live API queried |
-| CSV fallback | PASS | Verified actual PL export/import preserved | CSV remains explicit and supported |
-| Local store/analytics | PASS |5 synthetic students;42 records,22 correct/20 incorrect;22 fixture +20 PL-export records | Synthetic only; profiles descriptive, not validated mastery |
-| Restart/persistence | PASS | Exact20 PL submission IDs and42 record hashes survive clean stop/start | Own sandbox only; no volume deletion |
-| Non-generative fresh ingestion | PASS, named CPU variant | Native13 chunks/163.01s; guarded Tesseract13 chunks/268.25s,16 cited pages, zero generation attempts | Original upstream serialization/chunker; enrichment disabled externally |
-| Original-settings600s failure | Historical FAIL | Preserved logs; exact stage attribution unproven | Generative enrichment intentionally not rerun |
-| Fresh concepts/roles/clusters/pairs/relations | BLOCKED / NOT_RUN | No generative inference permitted | Fresh chunks are not a completed KG or automatically promoted RAG corpus |
-| Local endpoint/backend readiness | PASS contracts | Configurable endpoint/model/JSON mode/limits/errors; dry-run plans need no paid key for local backends | Actual Ollama/vLLM/GPU execution NOT_RUN |
-| Windows GPU deployment | NOT_RUN; guide ready | Official-release pins, read-only readiness script and documented Windows/WSL2 recipes | Future hardware/driver/model unknown; no installations/serving |
-| Live generative inference | BLOCKED | Explicit user instruction; zero actual generative calls | Mock transport success is not live inference |
-| CI/security/publication | PASS | [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813272), [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663813399), [actual PL E2E/restart](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38663808887) passed on implementation snapshot; 26-file code-only 0.2.1 wheel | No raw research/material/runtime artifacts published |
-| Hosted learner integration / pilot | BLOCKED | Identity/auth/data/research/instructor permissions unavailable | No CS418, real records, production deployment or merge |
+| Public deterministic suite | PASS | 188/188, 0 fail/skip, 56.71s | Includes authorization, submission identity, queue topology, and personalization suites |
+| Cryptographic authorization | PASS | HMAC-SHA256 signed tickets (?ticket=...) and session tokens; zero identity disclosure on 401/403 | Local synthetic authentication; production SSO remains an institutional requirement |
+| Submission identity & idempotency | PASS | Distinct provisional attempts (prov-{student}-{qid}-{uuid}); idempotent authoritative (pl-{id}); reconciliation API | Live PL hooks generate provisional attempts; reconciled during ingestion |
+| Single-owner SQLite queue | PASS | Durable host SQLite queue; WAL mode + PRAGMA busy_timeout; monotonic lease_token fencing | Windows host owns DB; Docker container communicates via HTTP POST /api/queue/enqueue |
+| Historical personalization | PASS | Worker auto-queries prior mastery (as_of < created_at); distinct low/high guidance; clean unpersonalized labeling | Pedagogical KG grounding decoupled from learner attempt history |
+| Async browser delivery | PASS | Playwright test (1.55s) verifies PL submit -> deterministic grade -> queue -> worker -> browser retrieval -> 403 check | Mock worker inference in fast automated test; live Ollama verified in canary |
+| Live local GPU canary | PASS | 1 bounded Qwen3 8B canary on RTX 5070 Ti: live_success, 10.28s latency, 107 completion tokens | Model qwen3:8b Q4_K_M on 127.0.0.1:11434; citations ['public:lesson:2'] |
+| Remote CI / Security / Integration | PASS | [CI (38687222671)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222671), [Security (38687222662)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222662), [Integration (38687222773)](https://github.com/IanJ332/insructkg_sandbox/actions/runs/38687222773) | 100% green on commit 07b1b16 |
+| Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Technical architecture frozen and ready for offline research evaluation |
 
 ## What personalization means here
 
