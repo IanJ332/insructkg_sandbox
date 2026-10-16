@@ -1207,7 +1207,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(overview(repo))
             elif parsed.path == "/login":
                 is_dev_mode = (
-                    os.environ.get("SIIP_ENV") == "development"
+                    os.environ.get("SIIP_ENV", "development") == "development"
                     or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
                 )
                 if not is_dev_mode:
@@ -1669,7 +1669,7 @@ class Handler(BaseHTTPRequestHandler):
             # Route 0a: Synthetic demo login form submission
             if self.path == "/login":
                 is_dev_mode = (
-                    os.environ.get("SIIP_ENV") == "development"
+                    os.environ.get("SIIP_ENV", "development") == "development"
                     or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
                 )
                 if not is_dev_mode:
@@ -1779,7 +1779,7 @@ class Handler(BaseHTTPRequestHandler):
             # Route 1: Synthetic local authentication session endpoint
             if self.path == "/api/auth/synthetic-session":
                 is_dev_mode = (
-                    os.environ.get("SIIP_ENV") == "development"
+                    os.environ.get("SIIP_ENV", "development") == "development"
                     or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
                 )
                 if not is_dev_mode:

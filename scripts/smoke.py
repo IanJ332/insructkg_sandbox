@@ -47,7 +47,7 @@ checks.append("Unauthenticated student access fails closed (401)")
 # Authenticate via synthetic session issuance
 login_data = json.dumps({"student_id": "S003"}).encode("utf-8")
 login_req = urllib.request.Request(
-    "http://127.0.0.1:8080/login",
+    "http://127.0.0.1:8080/api/auth/synthetic-session",
     data=login_data,
     headers={"Content-Type": "application/json"},
     method="POST",
