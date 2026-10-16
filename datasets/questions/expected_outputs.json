@@ -100,5 +100,39 @@
         "Gina"
       ]
     ]
+  },
+  "sql_join_04": {
+    "A": [
+      [
+        "Engineering",
+        2
+      ],
+      [
+        "Research",
+        0
+      ],
+      [
+        "Sales",
+        1
+      ]
+    ],
+    "B": [
+      [
+        "Engineering",
+        2
+      ],
+      [
+        "Operations",
+        0
+      ],
+      [
+        "Research",
+        1
+      ],
+      [
+        "Sales",
+        1
+      ]
+    ]
   }
 }

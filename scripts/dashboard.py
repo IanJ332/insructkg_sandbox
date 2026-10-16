@@ -15,18 +15,115 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
+import time
+
+from siip.em_models import EMDimension, EMReviewStatus
+from siip.em_repository import EMRepository
 from siip.feedback import generate_feedback, load_graphs
 from siip.grader import QUESTIONS, grade
 from siip.identity import (
     create_signed_session_token,
     create_signed_ticket,
+    extract_session_token,
+    generate_csrf_token,
+    is_instructor_principal,
+    is_student_principal,
+    verify_csrf_token,
     verify_service_request,
-    verify_signed_session_token,
+    verify_signed_session_token_role,
     verify_signed_ticket,
 )
 from siip.jobs import AttemptConflictError, FeedbackJobRepository, JobQueueFullError
 from siip.observability import event
+from siip.pl_bridge import grade_question
+from siip.project_generator import ProjectRepository, generate_personalized_project
+from siip.project_models import STUDENT_INTEREST_PROFILES
+from siip.recommender import recommend_next_activity
 from siip.store import STUDENTS, SubmissionRepository
+from siip.survey_instruments import get_evaluation_instruments
+
+
+class RequestAuth:
+    """Central authorization policy evaluator for dashboard endpoints."""
+
+    def __init__(self, handler: BaseHTTPRequestHandler):
+        self.handler = handler
+        self.headers = handler.headers
+        self.raw_token = extract_session_token(self.headers)
+        self.principal: str | None = None
+        self.role: str | None = None
+        self.is_valid = False
+        self.is_service = verify_service_request(self.headers)
+        self.csrf_token: str | None = None
+
+        if self.raw_token:
+            p, r = verify_signed_session_token_role(self.raw_token)
+            if p and r:
+                if r == "student" and (is_student_principal(p) or p in STUDENTS):
+                    self.principal = p
+                    self.role = "student"
+                    self.is_valid = True
+                elif r == "instructor" and is_instructor_principal(p):
+                    self.principal = p
+                    self.role = "instructor"
+                    self.is_valid = True
+                if self.is_valid:
+                    self.csrf_token = generate_csrf_token(self.raw_token)
+
+    @property
+    def has_credential(self) -> bool:
+        return bool(self.raw_token or self.is_service)
+
+    def require_instructor(self) -> tuple[bool, int, str]:
+        if self.is_service:
+            return True, 200, ""
+        if not self.raw_token:
+            return False, 401, "Authentication required. Missing session credentials."
+        if not self.is_valid:
+            return False, 401, "Invalid or expired session credentials."
+        if self.role == "student":
+            return False, 403, "Forbidden: Synthetic students cannot perform instructor actions."
+        if self.role == "instructor":
+            return True, 200, ""
+        return False, 403, "Forbidden: Instructor authorization required."
+
+    def require_student_or_instructor(
+        self, target_student_id: str | None = None
+    ) -> tuple[bool, int, str]:
+        if self.is_service:
+            return True, 200, ""
+        if not self.raw_token:
+            return False, 401, "Authentication required. Missing session credentials."
+        if not self.is_valid:
+            return False, 401, "Invalid or expired session credentials."
+        if self.role == "instructor":
+            return True, 200, ""
+        if self.role == "student":
+            if target_student_id and self.principal != target_student_id:
+                return (
+                    False,
+                    403,
+                    f"Forbidden: Student {self.principal} cannot access records for {target_student_id}.",
+                )
+            return True, 200, ""
+        return False, 403, "Forbidden: Role not authorized."
+
+    def verify_csrf(self, body_params: dict) -> tuple[bool, int, str]:
+        supplied_csrf = (
+            body_params.get("csrf_token", [None])[0]
+            if isinstance(body_params.get("csrf_token"), list)
+            else body_params.get("csrf_token")
+        )
+        if not supplied_csrf:
+            supplied_csrf = self.headers.get("X-CSRF-Token")
+        if (
+            not self.csrf_token
+            or not supplied_csrf
+            or not verify_csrf_token(self.raw_token or "", str(supplied_csrf))
+        ):
+            return False, 403, "Forbidden: Invalid or missing CSRF token."
+        return True, 200, ""
+
 
 REPO = None
 STYLE = """body{margin:0;background:#f2f5f7;color:#172b3a;font:16px/1.55 system-ui}header{background:#132e40;color:white;padding:28px 6%}main{max-width:1150px;margin:30px auto;padding:0 24px}h1{margin:0}h2{font-size:22px}a{color:#087674}nav a{color:#b9eeee;margin-right:22px}section,.card{background:white;border:1px solid #dce4e8;border-radius:12px;padding:22px;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.metric{font-size:34px;font-weight:650}table{border-collapse:collapse;width:100%;text-align:left}td,th{padding:10px;border-bottom:1px solid #e4e9ec;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}summary{cursor:pointer;color:#087674}textarea{width:98%;height:100px;font:14px monospace}button{background:#087674;color:white;border:0;border-radius:6px;padding:12px 20px;cursor:pointer}select{padding:9px}small,.muted{color:#526672}.badge{background:#fff0d4;color:#744800;padding:3px 10px;border-radius:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}@media(max-width:760px){.cards,.grid{grid-template-columns:1fr}td,th{padding:6px}}"""
@@ -58,50 +155,202 @@ def shell(title, body):
         + esc(title)
         + " · SIIP</title><style>"
         + STYLE
-        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
+        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/projects">Projects</a><a href="/instruments">Instruments</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="/practice">Practice</a><a href="/login">Demo login</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
         + body
         + "</main></html>"
     )
 
 
+def login_page(auth=None, message=None, redirect_url="/"):
+    error_banner = (
+        f'<div style="background:#fee2e2;border-left:4px solid #dc2626;padding:12px;margin-bottom:16px;color:#991b1b;">{esc(message)}</div>'
+        if message
+        else ""
+    )
+    current_status = ""
+    if auth and auth.is_valid:
+        current_status = f"""
+        <div style="background:#dcfce7;border-left:4px solid #16a34a;padding:12px;margin-bottom:16px;color:#166534;">
+          Logged in as <strong>{esc(auth.principal)}</strong> (Role: <strong>{esc(auth.role)}</strong>).
+          <form method="POST" action="/logout" style="margin-top:8px;">
+            <button type="submit" style="background:#dc2626;padding:6px 12px;font-size:13px;">Log Out</button>
+          </form>
+        </div>
+        """
+
+    body = f"""
+    <section style="max-width:540px;margin:40px auto;">
+      <span class="badge" style="background:#fef3c7;color:#92400e;margin-bottom:12px;display:inline-block;">
+        SYNTHETIC LOCAL DEMO AUTHENTICATION ONLY
+      </span>
+      <h2>Research Demo Login</h2>
+      <p class="muted">
+        Choose a synthetic principal to simulate local interactive flows; this session mechanism is strictly isolated within the demonstration environment.
+      </p>
+      {error_banner}
+      {current_status}
+      <form method="POST" action="/login">
+        <input type="hidden" name="redirect" value="{esc(redirect_url)}">
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-weight:600;margin-bottom:4px;">Select Synthetic Principal:</label>
+          <select name="principal" style="width:100%;font-size:15px;padding:8px;">
+            <optgroup label="Course Instructors">
+              <option value="instructor_alawini">instructor_alawini (Lead PI / Instructor)</option>
+              <option value="prof-alawini">prof-alawini (Co-Instructor)</option>
+              <option value="instructor-admin">instructor-admin (Administrative Instructor)</option>
+            </optgroup>
+            <optgroup label="Synthetic Students (Track A)">
+              <option value="S001">S001 (Alice · Clinical Healthcare Interest)</option>
+              <option value="S002">S002 (Bob · Urban Transit &amp; Logistics Interest)</option>
+              <option value="S003">S003 (Carol · Climate Science Interest)</option>
+              <option value="S004">S004 (David · Fintech &amp; Fraud Interest)</option>
+              <option value="S005">S005 (Eve · Gaming &amp; Interactive Graphics Interest)</option>
+            </optgroup>
+          </select>
+        </div>
+        <button type="submit" style="width:100%;padding:10px;font-weight:600;">Sign In to Demo Session</button>
+      </form>
+    </section>
+    """
+    return shell("Demo Login", body)
+
+
 def overview(repo):
     data = repo.analytics()
+    em_repo = get_em_repo()
+    all_evidence = em_repo.list_all_evidence()
+    accepted_em = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.ACCEPTED)
+
+    proj_repo = get_project_repo()
+    all_projects = proj_repo.list_all_projects()
+    approved_proj = sum(1 for p in all_projects if p.instructor_approval_status == "APPROVED")
+
     cards = "".join(
         '<div class="card"><div class="metric">' + str(v) + "</div>" + esc(k) + "</div>"
         for k, v in [
             ("Synthetic students", data["student_count"]),
-            ("Attempts", data["attempt_count"]),
-            ("Correct", data["correct"]),
-            ("Needs revision", data["attempt_count"] - data["correct"]),
+            ("Submissions", data["attempt_count"]),
+            ("EM reflections", f"{len(all_evidence)} ({accepted_em} accepted)"),
+            ("Dynamic projects", f"{len(all_projects)} ({approved_proj} approved)"),
         ]
     )
-    body = (
-        '<div class="cards">'
-        + cards
-        + "</div><section><h2>Question performance</h2>"
-        + table(
-            ["Question", "Attempts", "Correct"],
-            [[esc(q), v["attempts"], v["correct"]] for q, v in data["questions"].items()],
-        )
-        + "</section>"
-    )
-    body += (
-        '<section><h2>Concepts associated with errors</h2><p class="muted">Candidates inferred from task tags and observed errors. These are not confirmed misconceptions.</p>'
-        + table(
-            ["Concept", "Associated errors", "Mean heuristic estimate"],
+
+    # Bottlenecks analysis
+    bottlenecks = [
+        [
+            esc(c),
+            n,
+            round(data["mean_mastery"].get(c, 0), 3),
+            (
+                "<span class='badge' style='background:#fee2e2;color:#991b1b;'>High Friction</span>"
+                if data["mean_mastery"].get(c, 0) < 0.60
+                else "<span class='badge' style='background:#dcfce7;color:#166534;'>Progressing</span>"
+            ),
+        ]
+        for c, n in data["associated_error_concepts"].items()
+    ]
+    bottleneck_table = (
+        table(
             [
-                [esc(c), n, round(data["mean_mastery"].get(c, 0), 3)]
-                for c, n in data["associated_error_concepts"].items()
+                "Relational Concept",
+                "Associated Errors",
+                "Cohort Mean Mastery",
+                "Curricular Status",
             ],
+            bottlenecks,
         )
-        + "</section>"
+        if bottlenecks
+        else "<p class='muted'>No error associations recorded yet.</p>"
     )
-    body += (
-        "<section><h2>Source boundaries</h2>"
-        + pretty(data["sources"])
-        + "<p>PrairieLearn owns its real assessment history. Offline fixture attempts are labeled separately. Import only authorized local sandbox exports. No production data connection is active.</p></section>"
-    )
+
+    body = f"""
+    <div class="cards">{cards}</div>
+    <section>
+      <h2>Curricular Concept Bottlenecks &amp; Cohort Mastery</h2>
+      <p class="muted">Continuous diagnostic tracking of concept gaps across synthetic cohort. Concepts with mean mastery below 0.60 trigger adaptive remediation recommendations.</p>
+      {bottleneck_table}
+    </section>
+    <section>
+      <h2>Question Performance</h2>
+      {table(["Question", "Attempts", "Correct"], [[esc(q), v["attempts"], v["correct"]] for q, v in data["questions"].items()])}
+    </section>
+    <section>
+      <h2>Multi-Stakeholder Research Framework</h2>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a href="/instruments" style="background:#087674;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">View Research Survey &amp; Review Rubrics &rarr;</a>
+        <a href="/api/cohort-analytics" target="_blank" style="background:#132e40;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">Export Cohort Analytics JSON &rarr;</a>
+      </div>
+    </section>
+    <section>
+      <h2>Source Boundaries</h2>
+      {pretty(data["sources"])}
+      <p>PrairieLearn owns its real assessment history. Offline fixture attempts are labeled separately. Import only authorized local sandbox exports. No production data connection is active.</p>
+    </section>
+    """
     return shell("Overview", body)
+
+
+def instruments_page():
+    inst = get_evaluation_instruments()
+    survey = inst["student_perception_survey"]
+    rubric = inst["instructor_review_rubric"]
+    protocol = inst["blind_review_protocol"]
+
+    survey_rows = [
+        [
+            esc(q["question_id"]),
+            esc(q["category"]),
+            esc(q["prompt"]),
+            f"{esc(q['min_label'])} (1) &harr; {esc(q['max_label'])} (5)",
+        ]
+        for q in survey
+    ]
+    survey_table = table(
+        ["ID", "Dimension", "Survey Prompt (5-Point Likert)", "Scale Anchors"],
+        survey_rows,
+    )
+
+    rubric_rows = [
+        [
+            f"<strong>{esc(r['name'])}</strong><br><small class='muted'>{esc(r['description'])}</small>",
+            f"{int(r['weight'] * 100)}%",
+            "<ul style='margin:0;padding-left:18px;font-size:13px;'>"
+            + "".join(
+                f"<li><strong>Score {lvl}:</strong> {esc(desc)}</li>"
+                for lvl, desc in sorted(r["scoring_levels"].items())
+            )
+            + "</ul>",
+        ]
+        for r in rubric
+    ]
+    rubric_table = table(["Rubric Criterion", "Weight", "Scoring Levels (1–3)"], rubric_rows)
+
+    tasks_html = "".join(f"<li>{esc(t)}</li>" for t in protocol["evaluation_tasks"])
+
+    body = f"""
+    <section>
+      <h2>Multi-Stakeholder Research Evaluation Instruments</h2>
+      <p class="muted">Validated measurement instruments covering Student Cognitive &amp; Affective Perceptions, Instructor Pedagogical Quality, and Triple-Blinded Comparative Review.</p>
+
+      <h3>1. Student Perception &amp; Affective Survey</h3>
+      <p>Administered following completion of the assessment and optional reflection activity.</p>
+      {survey_table}
+
+      <h3>2. Instructor Pedagogical &amp; Alignment Rubric</h3>
+      <p>Used by course instructors and pedagogical domain experts to audit generated explanations and projects.</p>
+      {rubric_table}
+
+      <h3>3. Triple-Blinded Evaluation Protocol</h3>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;">
+        <p><strong>Protocol Name:</strong> {esc(protocol["protocol_name"])} &middot; <strong>Version:</strong> {esc(protocol["version"])}</p>
+        <p><strong>Blinding Mechanism:</strong> {esc(protocol["blinding_procedure"])}</p>
+        <h4>Evaluation Tasks:</h4>
+        <ol>{tasks_html}</ol>
+      </div>
+      <p style="margin-top:16px;"><a href="/api/instruments" target="_blank">Export JSON Instruments Specification &rarr;</a></p>
+    </section>
+    """
+    return shell("Research Instruments", body)
 
 
 def students(repo, sid=None):
@@ -154,6 +403,102 @@ def students(repo, sid=None):
         )
         + "</section>"
     )
+
+    em_repo = get_em_repo()
+    em_summary = em_repo.student_em_summary(sid)
+    em_status_badge = (
+        '<span class="badge" style="background:#fee2e2;color:#991b1b;">INSUFFICIENT_EVIDENCE</span>'
+        if em_summary["has_insufficient_evidence"]
+        else '<span class="badge" style="background:#dcfce7;color:#166534;">OBSERVED_EVIDENCE_RECORDED</span>'
+    )
+    em_rows = [
+        [
+            esc(r["created_at"][:19].replace("T", " ")),
+            esc(r["question_id"]),
+            f"<strong>{esc(r['dimension'])}</strong>",
+            esc(r["evidence_excerpt"][:90] + ("..." if len(r["evidence_excerpt"]) > 90 else "")),
+            f"<span class='badge' style='background:{'#dcfce7' if r['review_status'] == 'ACCEPTED' else '#fef3c7'};color:{'#166534' if r['review_status'] == 'ACCEPTED' else '#92400e'};'>{esc(r['review_status'])}</span>",
+            esc(r.get("reviewer_id") or "Pending Review"),
+        ]
+        for r in em_summary["records"]
+    ]
+    em_table_html = (
+        table(["Date (UTC)", "Question", "Dim", "Excerpt", "Status", "Reviewer"], em_rows)
+        if em_rows
+        else "<p class='muted'>No EM reflection responses recorded for this student yet.</p>"
+    )
+
+    body += f"""
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Entrepreneurial Mindset (EM) Behavioral Evidence</h2>
+        {em_status_badge}
+      </div>
+      <p class="muted"><strong>Methodological Boundary:</strong> {esc(em_summary["disclaimer"])}</p>
+      <div class="cards" style="margin-bottom:16px;">
+        <div class="card"><div class="metric">{em_summary["total_observations"]}</div>Total observations</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["C"]}</div>Curiosity (C) accepted</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["X"]}</div>Connections (X) accepted</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["V"]}</div>Creating Value (V) accepted</div>
+      </div>
+      {em_table_html}
+    </section>
+    """
+
+    # Adaptive Next-Activity Recommendation
+    rec = recommend_next_activity(sid, profile)
+    body += f"""
+    <section style="border-left:4px solid #0284c7;background:#f0f9ff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="color:#0369a1;margin:0 0 6px 0;">Adaptive Next-Activity Recommendation</h2>
+        <span class="badge" style="background:#0284c7;color:white;font-weight:600;">{esc(rec["recommended_question_id"])}</span>
+      </div>
+      <p style="font-size:17px;font-weight:600;margin:6px 0;">{esc(rec["question_title"])}</p>
+      <p><strong>Pedagogical Rationale:</strong> {esc(rec["rationale"])}</p>
+      <p><strong>Target concepts:</strong> {esc(", ".join(rec["target_concepts"]))} &middot; <strong>Triggered policy:</strong> <code>{esc(rec["rule_id"])}</code></p>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:10px;">
+        <a href="http://localhost:3000/pl/course_instance/1/assessment/1" style="display:inline-block;background:#087674;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:600;">Launch in PrairieLearn &rarr;</a>
+      </div>
+    </section>
+    """
+
+    # Dynamic Personalized Project
+    proj_repo = get_project_repo()
+    student_projects = proj_repo.list_projects_for_student(sid)
+    interest_info = STUDENT_INTEREST_PROFILES.get(sid, {})
+    interest_label = interest_info.get("label", "General Relational Applications")
+    interest_context = interest_info.get("context", "")
+
+    proj_rows = [
+        [
+            f"<a href='/projects?id={esc(p.project_id)}'><code>{esc(p.project_id)}</code></a>",
+            esc(p.title),
+            f"<span class='badge' style='background:{'#dcfce7' if p.instructor_approval_status == 'APPROVED' else '#fef3c7'};color:{'#166534' if p.instructor_approval_status == 'APPROVED' else '#92400e'};'>{esc(p.instructor_approval_status)}</span>",
+            f"<a href='/projects?id={esc(p.project_id)}'>View Project Brief &rarr;</a>",
+        ]
+        for p in student_projects
+    ]
+    proj_table = (
+        table(["Project ID", "Title", "Status", "Action"], proj_rows)
+        if proj_rows
+        else "<p class='muted'>No personalized projects generated for this student yet.</p>"
+    )
+
+    body += f"""
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Personalized Dynamic Project</h2>
+        <span class="badge" style="background:#e0f2fe;color:#0369a1;">Domain: {esc(interest_label)}</span>
+      </div>
+      <p class="muted">{esc(interest_context)}</p>
+      <form method="POST" action="/api/projects/generate" style="margin-bottom:16px;">
+        <input type="hidden" name="student_id" value="{esc(sid)}">
+        <button type="submit" style="background:#087674;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Generate Personalized Project for {esc(sid)}</button>
+      </form>
+      {proj_table}
+    </section>
+    """
+
     body += (
         '<section><h2>Add a synthetic attempt</h2><p>This form exercises the shared engine and updates this synthetic profile. Use the PrairieLearn link for actual platform submissions.</p><form method="post" action="/attempt"><input type="hidden" name="student_id" value="'
         + esc(sid)
@@ -162,6 +507,170 @@ def students(repo, sid=None):
         + '</select></label><p><label>SQL query<textarea name="sql" required maxlength="12000"></textarea></label></p><button>Evaluate and update synthetic profile</button></form></section>'
     )
     return shell("Student " + sid, body)
+
+
+def projects_page(project_id=None, is_learner=False, csrf_token=None, learner_sid=None):
+    csrf = csrf_token or ""
+    project_repo = get_project_repo()
+    if project_id:
+        proj = project_repo.get_project(project_id)
+        if not proj:
+            return shell(
+                "Project Not Found",
+                "<section><h2>404 Not Found</h2><p>Project not found.</p></section>",
+            )
+
+        milestones_html = ""
+        for m in proj.milestones:
+            rank_label = {1: "Foundational", 2: "Intermediate", 3: "Advanced"}.get(
+                m.difficulty_rank, "Core"
+            )
+            rank_color = {1: "#0369a1", 2: "#d97706", 3: "#b91c1c"}.get(
+                m.difficulty_rank, "#087674"
+            )
+            rank_bg = {1: "#e0f2fe", 2: "#fef3c7", 3: "#fee2e2"}.get(m.difficulty_rank, "#f0fdf4")
+
+            # Answer key concealment: never show reference SQL solution in learner view
+            solution_html = ""
+            if not is_learner:
+                solution_html = f"""
+                <details style="margin-top:8px;">
+                  <summary>Reference SQL Solution (Grading Ground Truth)</summary>
+                  <pre style="background:#1e293b;color:#f8fafc;padding:12px;border-radius:6px;margin-top:6px;">{esc(m.reference_sql)}</pre>
+                </details>
+                """
+
+            milestones_html += f"""
+            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px;background:#f8fafc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h4 style="margin:0 0 6px 0;">Milestone {m.milestone_index}: {esc(m.title)}</h4>
+                <span class="badge" style="background:{rank_bg};color:{rank_color};font-weight:600;">Rank {m.difficulty_rank} ({rank_label}) &middot; Depth {m.concept_depth}</span>
+              </div>
+              <p><strong>Task:</strong> {esc(m.task_description)}</p>
+              <p><strong>Target concepts:</strong> {esc(", ".join(m.target_concepts))}</p>
+              <p class="muted"><strong>Rubric:</strong> {esc(m.evaluation_rubric)}</p>
+              {solution_html}
+            </div>
+            """
+
+        status_color = "#166534" if proj.instructor_approval_status == "APPROVED" else "#92400e"
+        status_bg = "#dcfce7" if proj.instructor_approval_status == "APPROVED" else "#fef3c7"
+
+        # Pending approval notice for unapproved projects in learner view
+        pending_notice = ""
+        if is_learner and proj.instructor_approval_status != "APPROVED":
+            pending_notice = """
+            <div style="background:#fef3c7;border-left:4px solid #d97706;padding:14px;border-radius:6px;margin-bottom:18px;color:#92400e;">
+              <strong>Pending Instructor Approval:</strong> This personalized project has not yet been approved by course instructors. Reference solutions and official milestone submissions remain locked until approved.
+            </div>
+            """
+
+        # Instructor review form is strictly withheld from learner view
+        review_controls_html = ""
+        if not is_learner:
+            review_controls_html = f"""
+            <h3>Instructor Review & Approval</h3>
+            <form method="POST" action="/api/projects/review" style="display:flex;gap:10px;align-items:center;">
+              <input type="hidden" name="project_id" value="{esc(proj.project_id)}">
+              <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+              <input type="text" name="notes" placeholder="Instructor feedback notes..." value="{esc(proj.instructor_notes or "")}" style="padding:8px;width:300px;border:1px solid #cbd5e1;border-radius:6px;">
+              <button type="submit" name="status" value="APPROVED" style="background:#16a34a;">Approve Project</button>
+              <button type="submit" name="status" value="REVISED" style="background:#d97706;">Request Revision</button>
+            </form>
+            """
+        else:
+            review_controls_html = "<p class='muted'>Learner view &middot; Reference solutions and review controls are withheld.</p>"
+
+        body = f"""
+        <section>
+          {pending_notice}
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>{esc(proj.title)}</h2>
+            <span class="badge" style="background:{status_bg};color:{status_color};font-size:14px;">Status: {esc(proj.instructor_approval_status)}</span>
+          </div>
+          <p><span class="badge" style="background:#e0f2fe;color:#0369a1;">Domain: {esc(proj.domain_interest)}</span> &middot; <span class="badge" style="background:#f1f5f9;color:#334155;">Learner: <a href="/students?id={esc(proj.student_id)}">{esc(proj.student_id)}</a></span> &middot; <span class="badge" style="background:#fef3c7;color:#92400e;">SYNTHETIC_COURSE_MATERIAL</span></p>
+          <h3>Scenario Narrative</h3>
+          <p style="font-size:17px;line-height:1.6;background:#f8fafc;padding:14px;border-left:4px solid #087674;border-radius:4px;">{esc(proj.scenario_narrative)}</p>
+
+          <h3>Relational Database Schema (SQLite DDL)</h3>
+          <pre style="background:#1e293b;color:#f8fafc;padding:14px;border-radius:8px;font-size:13px;">{esc(proj.schema_ddl)}</pre>
+
+          <h3>Milestones & Task Decomposition</h3>
+          {milestones_html}
+
+          {review_controls_html}
+          <p style="margin-top:16px;"><a href="/projects">&larr; Back to all projects</a></p>
+        </section>
+        """
+        return shell(f"Project · {proj.title}", body)
+
+    # All projects list view
+    if is_learner:
+        all_projects = project_repo.list_projects_for_student(learner_sid) if learner_sid else []
+    else:
+        all_projects = project_repo.list_all_projects()
+    rows = []
+    for p in all_projects:
+        st_color = "#166534" if p.instructor_approval_status == "APPROVED" else "#92400e"
+        st_bg = "#dcfce7" if p.instructor_approval_status == "APPROVED" else "#fef3c7"
+        rows.append(
+            [
+                f"<a href='/projects?id={esc(p.project_id)}'><code>{esc(p.project_id)}</code></a>",
+                f"<a href='/students?id={esc(p.student_id)}'>{esc(p.student_id)}</a>",
+                f"<span class='badge' style='background:#e0f2fe;color:#0369a1;'>{esc(p.domain_interest)}</span>",
+                esc(p.title),
+                f"<span class='badge' style='background:{st_bg};color:{st_color};'>{esc(p.instructor_approval_status)}</span>",
+                f"<a href='/projects?id={esc(p.project_id)}'>View Brief &amp; Tasks &rarr;</a>",
+            ]
+        )
+
+    table_html = (
+        table(["Project ID", "Learner", "Domain", "Title", "Status", "Action"], rows)
+        if rows
+        else "<p class='muted'>No dynamic projects generated yet.</p>"
+    )
+
+    if is_learner and learner_sid:
+        gen_forms = f"""
+        <div class="card">
+          <h4>{esc(learner_sid)}</h4>
+          <p class="muted">{esc(STUDENT_INTEREST_PROFILES.get(learner_sid, {}).get("label", "General"))}</p>
+          <form method="POST" action="/api/projects/generate">
+            <input type="hidden" name="student_id" value="{esc(learner_sid)}">
+            <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+            <button type="submit" style="padding:6px 12px;font-size:13px;">Generate My Project</button>
+          </form>
+        </div>
+        """
+    else:
+        gen_forms = "".join(
+            f"""
+            <div class="card">
+              <h4>{esc(sid)}</h4>
+              <p class="muted">{esc(STUDENT_INTEREST_PROFILES.get(sid, {}).get("label", "General"))}</p>
+              <form method="POST" action="/api/projects/generate">
+                <input type="hidden" name="student_id" value="{esc(sid)}">
+                <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+                <button type="submit" style="padding:6px 12px;font-size:13px;">Generate Project</button>
+              </form>
+            </div>
+            """
+            for sid in STUDENTS
+        )
+
+    body = f"""
+    <section>
+      <h2>Personalized Dynamic SQL Projects</h2>
+      <p class="muted">Grounded, open-ended multi-table projects tailored to student domain interests and diagnosed concept gaps. All specifications include verified SQLite schemas and deterministic grading rubrics.</p>
+      <h3>Quick Project Generator</h3>
+      <div class="cards" style="margin-bottom:24px;">
+        {gen_forms}
+      </div>
+      <h3>Generated Project Registry</h3>
+      {table_html}
+    </section>
+    """
+    return shell("Dynamic Projects", body)
 
 
 def graph_page():
@@ -218,6 +727,94 @@ def graph_page():
     return shell("Graph review", body + "</section>")
 
 
+def em_review_page(filter_status=None, csrf_token=None):
+    csrf = csrf_token or ""
+    em_repo = get_em_repo()
+    all_evidence = em_repo.list_all_evidence()
+
+    proposed_count = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.PROPOSED)
+    accepted_count = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.ACCEPTED)
+    other_count = sum(
+        1
+        for e in all_evidence
+        if e.review_status in (EMReviewStatus.REJECTED, EMReviewStatus.NEEDS_REVISION)
+    )
+
+    filtered = [
+        e for e in all_evidence if filter_status is None or e.review_status.value == filter_status
+    ]
+
+    rows = []
+    for ev in filtered:
+        st = ev.review_status.value
+        status_color = (
+            "#166534" if st == "ACCEPTED" else ("#b91c1c" if st == "REJECTED" else "#92400e")
+        )
+        status_bg = (
+            "#dcfce7" if st == "ACCEPTED" else ("#fee2e2" if st == "REJECTED" else "#fef3c7")
+        )
+        action_form = f"""
+        <form method="POST" action="/api/em/review" style="display:flex;gap:6px;align-items:center;">
+          <input type="hidden" name="evidence_id" value="{esc(ev.evidence_id)}">
+          <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+          <input type="text" name="instructor_notes" placeholder="Notes..." value="{esc(ev.instructor_notes or "")}" style="padding:4px;font-size:12px;width:120px;border:1px solid #cbd5e1;border-radius:4px;">
+          <button type="submit" name="review_status" value="ACCEPTED" style="background:#16a34a;padding:5px 9px;font-size:12px;">Accept</button>
+          <button type="submit" name="review_status" value="REJECTED" style="background:#dc2626;padding:5px 9px;font-size:12px;">Reject</button>
+          <button type="submit" name="review_status" value="NEEDS_REVISION" style="background:#d97706;padding:5px 9px;font-size:12px;">Revise</button>
+        </form>
+        """
+        rows.append(
+            [
+                f"<a href='/students?id={esc(ev.student_id)}'>{esc(ev.student_id)}</a>",
+                esc(ev.question_id),
+                f"<strong>{esc(ev.dimension.value)}</strong>",
+                f"<span title='{esc(ev.evidence_excerpt)}'>{esc(ev.evidence_excerpt[:90] + ('...' if len(ev.evidence_excerpt) > 90 else ''))}</span>",
+                f"<small>{esc(ev.classification_method)} ({ev.confidence:.2f})</small>",
+                f"<span class='badge' style='background:{status_bg};color:{status_color};'>{esc(st)}</span>",
+                action_form,
+            ]
+        )
+
+    table_html = (
+        table(
+            [
+                "Student",
+                "Question",
+                "Dim",
+                "Evidence Excerpt",
+                "Classification",
+                "Status",
+                "Actions",
+            ],
+            rows,
+        )
+        if rows
+        else "<p class='muted'>No evidence records matching current filter.</p>"
+    )
+
+    body = f"""
+    <section>
+      <h2>Instructor Entrepreneurial Mindset (EM) Evidence Review</h2>
+      <p class="muted">Review, validate, or revise behavioral EM reflection evidence submitted by synthetic learners. Model-proposed and rule-inferred observations remain provisional until accepted here.</p>
+      <div class="cards" style="margin-bottom:20px;">
+        <div class="card"><div class="metric">{len(all_evidence)}</div>Total records</div>
+        <div class="card"><div class="metric" style="color:#d97706;">{proposed_count}</div>Pending review</div>
+        <div class="card"><div class="metric" style="color:#16a34a;">{accepted_count}</div>Accepted</div>
+        <div class="card"><div class="metric" style="color:#64748b;">{other_count}</div>Rejected / Revision</div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <strong>Filter:</strong>
+        <a href="/em-review" style="margin:0 8px;font-weight:{"bold" if not filter_status else "normal"}">All</a> &middot;
+        <a href="/em-review?status=PROPOSED" style="margin:0 8px;font-weight:{"bold" if filter_status == "PROPOSED" else "normal"}">Pending (PROPOSED)</a> &middot;
+        <a href="/em-review?status=ACCEPTED" style="margin:0 8px;font-weight:{"bold" if filter_status == "ACCEPTED" else "normal"}">Accepted (ACCEPTED)</a> &middot;
+        <a href="/em-review?status=REJECTED" style="margin:0 8px;font-weight:{"bold" if filter_status == "REJECTED" else "normal"}">Rejected (REJECTED)</a>
+      </div>
+      {table_html}
+    </section>
+    """
+    return shell("EM Evidence Review", body)
+
+
 def compare(params):
     qid = params.get("question_id", ["sql_join_02"])[0]
     sql = params.get("sql", [QUESTIONS["sql_join_01"]["reference_sql"]])[0]
@@ -247,11 +844,92 @@ def compare(params):
     return shell("Feedback lab", body + "</div>")
 
 
+def practice_page(
+    qid="sql_join_04", grading_result=None, feedback_data=None, csrf_token=None, auth=None
+):
+    csrf = csrf_token or ""
+    if qid not in QUESTIONS:
+        qid = "sql_join_04"
+    q_info = QUESTIONS[qid]
+
+    submission_receipt_html = ""
+    if grading_result:
+        score = grading_result.get("score", 0.0)
+        status = grading_result.get("grading_status") or grading_result.get("status", "unknown")
+        status_color = "#166534" if score == 1.0 or status == "correct" else "#b91c1c"
+        status_bg = "#dcfce7" if score == 1.0 or status == "correct" else "#fee2e2"
+        fb_url = feedback_data.get("feedback_url") if feedback_data else ""
+        job_id = feedback_data.get("job_id") if feedback_data else ""
+
+        fb_link_html = ""
+        if fb_url:
+            fb_link_html = f"""
+            <div style="margin-top:14px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;">
+              <strong>Async AI Feedback Available:</strong> Job <code>{esc(job_id)}</code> &middot;
+              <a id="ai-feedback-link" href="{esc(fb_url)}" style="font-weight:600;color:#087674;">View Grounded AI Explanation &rarr;</a>
+            </div>
+            """
+
+        submission_receipt_html = f"""
+        <div style="background:#ffffff;border:2px solid {"#16a34a" if score == 1.0 or status == "correct" else "#dc2626"};border-radius:8px;padding:18px;margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="margin:0;">PrairieLearn Grading Receipt</h3>
+            <span class="badge" style="background:{status_bg};color:{status_color};font-size:14px;font-weight:600;">{esc(status.upper())} &middot; Score: {int(score * 100)}%</span>
+          </div>
+          <p><strong>Guidance:</strong> {esc(grading_result.get("observation") or status)}</p>
+          {fb_link_html}
+        </div>
+        """
+
+    options_html = "".join(
+        f"<option value='{q}' {'selected' if q == qid else ''}>{q} · {QUESTIONS[q]['statement'][:60]}...</option>"
+        for q in QUESTIONS
+    )
+
+    body = f"""
+    <section>
+      <h2>PrairieLearn Interactive SQL Practice</h2>
+      <p class="muted">Live browser submission exercising authentic PrairieLearn bridge grading, deterministic score calculation, and asynchronous grounded feedback dispatch.</p>
+      {submission_receipt_html}
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin-bottom:20px;">
+        <h3>Question: <code>{esc(qid)}</code></h3>
+        <p style="font-size:15px;line-height:1.5;"><strong>Prompt:</strong> {esc(q_info["statement"])}</p>
+        <p class="muted"><strong>Schema:</strong> Employees(employee_id INTEGER, name TEXT, department_id INTEGER); Departments(department_id INTEGER, department_name TEXT).</p>
+      </div>
+      <form method="POST" action="/practice">
+        <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:600;margin-bottom:4px;">Select Problem:</label>
+          <select name="question_id" onchange="window.location.href='/practice?id=' + this.value" style="padding:6px 10px;font-size:14px;">
+            {options_html}
+          </select>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:600;margin-bottom:4px;">Your SQL Query:</label>
+          <textarea id="sql" name="sql" rows="6" style="width:100%;box-sizing:border-box;padding:10px;font-family:monospace;font-size:14px;border:1px solid #cbd5e1;border-radius:6px;" placeholder="-- Enter SQL query here"></textarea>
+        </div>
+        <button type="submit" id="submit-query" style="background:#087674;color:white;padding:10px 20px;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Submit Query for Grading</button>
+      </form>
+    </section>
+    """
+    return shell(f"Practice · {qid}", body)
+
+
 def get_jobs_repo():
     jobs_db = os.environ.get("SIIP_FEEDBACK_JOBS_DB") or str(
         ROOT / "artifacts/jobs/feedback_jobs.sqlite3"
     )
     return FeedbackJobRepository(jobs_db)
+
+
+def get_em_repo():
+    em_db = os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3")
+    return EMRepository(em_db)
+
+
+def get_project_repo():
+    db_path = os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3")
+    return ProjectRepository(db_path)
 
 
 def authenticate_feedback_request(headers, params, job_id):
@@ -267,18 +945,12 @@ def authenticate_feedback_request(headers, params, job_id):
             return auth_student, None
         return None, (401, {"error": "Invalid, expired, or mismatched feedback ticket."})
 
-    # 2. Try session token (Authorization: Bearer <token> or X-Synthetic-Session)
-    auth_header = headers.get("Authorization", "")
-    session_token = None
-    if auth_header.startswith("Bearer "):
-        session_token = auth_header[7:].strip()
-    elif headers.get("X-Synthetic-Session"):
-        session_token = headers.get("X-Synthetic-Session").strip()
-
+    # 2. Try session token (Authorization: Bearer <token>, X-Synthetic-Session, or Cookie)
+    session_token = extract_session_token(headers)
     if session_token:
-        auth_student = verify_signed_session_token(session_token)
-        if auth_student:
-            return auth_student, None
+        p, r = verify_signed_session_token_role(session_token)
+        if p and (r == "student" or is_student_principal(p) or is_instructor_principal(p)):
+            return p, None
         return None, (401, {"error": "Invalid or expired session token."})
 
     # 3. Neither ticket nor session token provided. Never accept unverified student_id!
@@ -294,7 +966,8 @@ def authenticate_feedback_request(headers, params, job_id):
     )
 
 
-def feedback_page(job_id, headers, params):
+def feedback_page(job_id, headers, params, csrf_token=None):
+    csrf = csrf_token or ""
     if not job_id:
         return shell(
             "Feedback delivery",
@@ -393,6 +1066,68 @@ def feedback_page(job_id, headers, params):
             }
             </section>
             """
+
+        em_repo = get_em_repo()
+        em_prompt = em_repo.get_prompt_for_question(learner_view["question_id"])
+        if em_prompt:
+            existing_resp = em_repo.get_response_for_student_question(
+                auth_student, learner_view["question_id"]
+            )
+            ticket_val = params.get("ticket", [""])[0] if params else ""
+            if existing_resp:
+                ev_records = [
+                    e
+                    for e in em_repo.get_evidence_for_student(auth_student)
+                    if e.question_id == learner_view["question_id"]
+                ]
+                latest_ev = ev_records[0] if ev_records else None
+                status_str = latest_ev.review_status.value if latest_ev else "PROPOSED"
+                status_color = "#166534" if status_str == "ACCEPTED" else "#92400e"
+                status_bg = "#dcfce7" if status_str == "ACCEPTED" else "#fef3c7"
+                body += f"""
+                <section style="border-left:4px solid #f59e0b;background:#fefce8;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Entrepreneurial Mindset (EM) Reflection</h3>
+                    <span class="badge" style="background:{status_bg};color:{status_color};">Status: {esc(status_str)}</span>
+                  </div>
+                  <p><strong>{esc(em_prompt.info_box_focus)}</strong></p>
+                  <blockquote style="margin:8px 0;padding:8px 16px;background:#ffffff;border-left:3px solid #d97706;border-radius:4px;">
+                    <em>"{esc(em_prompt.prompt_text)}"</em>
+                  </blockquote>
+                  <h4>Your submitted reflection</h4>
+                  <pre style="background:#ffffff;padding:12px;border-radius:6px;border:1px solid #e2e8f0;font-family:system-ui,sans-serif;font-size:14px;white-space:pre-wrap;">{esc(existing_resp.response_text)}</pre>
+                  <p class="muted" style="font-size:13px;">Submitted: {esc(existing_resp.submitted_at[:19].replace("T", " "))} UTC &middot; Reflection is recorded and queued for instructor review. It does not affect your grading score.</p>
+                </section>
+                """
+            else:
+                body += f"""
+                <section style="border-left:4px solid #f59e0b;background:#fefce8;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Entrepreneurial Mindset (EM) Reflection (Optional)</h3>
+                    <span class="badge" style="background:#fef3c7;color:#92400e;">Dimension: {esc(em_prompt.dimension.value)}</span>
+                  </div>
+                  <p><strong>{esc(em_prompt.info_box_focus)}</strong></p>
+                  <p class="muted">{esc(em_prompt.why_it_matters)}</p>
+                  <blockquote style="margin:8px 0;padding:8px 16px;background:#ffffff;border-left:3px solid #d97706;border-radius:4px;">
+                    <em>"{esc(em_prompt.prompt_text)}"</em>
+                  </blockquote>
+                  <form method="POST" action="/api/em/reflection">
+                    <input type="hidden" name="student_id" value="{esc(auth_student)}">
+                    <input type="hidden" name="question_id" value="{esc(learner_view["question_id"])}">
+                    <input type="hidden" name="prompt_id" value="{esc(em_prompt.prompt_id)}">
+                    <input type="hidden" name="attempt_id" value="{esc(job.attempt_id)}">
+                    <input type="hidden" name="job_id" value="{esc(job_id)}">
+                    <input type="hidden" name="ticket" value="{esc(ticket_val)}">
+                    <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+                    <p><label for="reflection_text"><strong>Your Reflection:</strong></label></p>
+                    <textarea id="reflection_text" name="reflection_text" rows="4" style="width:100%;box-sizing:border-box;margin:6px 0 12px 0;padding:10px;font:14px system-ui;border:1px solid #cbd5e1;border-radius:6px;" placeholder="Share your perspective on how this query connects to broader organizational decisions or systems..." required></textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span class="muted" style="font-size:13px;">Voluntary reflection for research. Does not affect your PrairieLearn grade.</span>
+                      <button type="submit" style="background:#087674;color:white;padding:9px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Submit Reflection</button>
+                    </div>
+                  </form>
+                </section>
+                """
     elif status in ("pending", "processing"):
         body += f"""
         <section style="background:#fffbeb;border:1px solid #fde68a;">
@@ -466,18 +1201,350 @@ class Handler(BaseHTTPRequestHandler):
             return self.send("Request too large", 414)
         params = parse_qs(parsed.query)
         repo = self.server.repository
+        auth = RequestAuth(self)
         try:
             if parsed.path == "/":
                 self.send(overview(repo))
+            elif parsed.path == "/login":
+                is_dev_mode = (
+                    os.environ.get("SIIP_ENV", "development") == "development"
+                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+                )
+                if not is_dev_mode:
+                    self.send(
+                        "Synthetic login is disabled outside isolated development mode. "
+                        "Institutional SSO authentication required.",
+                        403,
+                    )
+                    return
+                redirect_url = params.get("redirect", ["/"])[0]
+                self.send(login_page(auth=auth, redirect_url=redirect_url))
+            elif parsed.path == "/logout":
+                self.send_response(303)
+                self.send_header("Set-Cookie", "siip_session=; Path=/; Max-Age=0")
+                self.send_header("Set-Cookie", "siip_csrf=; Path=/; Max-Age=0")
+                self.send_header("Location", "/login")
+                self.send_header("Connection", "close")
+                self.close_connection = True
+                self.end_headers()
             elif parsed.path == "/students":
-                self.send(students(repo, params.get("id", [None])[0]))
+                sid = params.get("id", [None])[0]
+                if sid is not None and sid not in STUDENTS:
+                    self.send("Invalid student_id", 400)
+                    return
+                if not auth.has_credential:
+                    self.send("Authentication required to view student records.", 401)
+                    return
+                if not auth.is_valid:
+                    self.send("Invalid or expired session credentials.", 401)
+                    return
+                if auth.role == "student":
+                    if sid is None:
+                        sid = auth.principal
+                    elif sid != auth.principal:
+                        self.send(
+                            f"Forbidden: Student {auth.principal} cannot access records for {sid}.",
+                            403,
+                        )
+                        return
+                    self.send(students(repo, sid))
+                elif auth.role == "instructor":
+                    self.send(students(repo, sid))
+                else:
+                    self.send("Forbidden", 403)
             elif parsed.path == "/graph":
                 self.send(graph_page())
+            elif parsed.path == "/em-review":
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    self.send(err, code)
+                    return
+                status_filter = params.get("status", [None])[0]
+                self.send(em_review_page(status_filter, csrf_token=auth.csrf_token))
+            elif parsed.path == "/projects":
+                if not auth.has_credential:
+                    self.send("Authentication required. Please log in.", 401)
+                    return
+                if not auth.is_valid:
+                    self.send("Invalid or expired session credentials.", 401)
+                    return
+                project_id = params.get("id", [None])[0]
+                if auth.role == "student":
+                    if project_id:
+                        proj = get_project_repo().get_project(project_id)
+                        if not proj:
+                            self.send("Project not found", 404)
+                            return
+                        if proj.student_id != auth.principal:
+                            self.send("Forbidden: Cannot view another student's project.", 403)
+                            return
+                    self.send(
+                        projects_page(
+                            project_id,
+                            is_learner=True,
+                            csrf_token=auth.csrf_token,
+                            learner_sid=auth.principal,
+                        )
+                    )
+                elif auth.role == "instructor":
+                    self.send(
+                        projects_page(project_id, is_learner=False, csrf_token=auth.csrf_token)
+                    )
+                else:
+                    self.send("Forbidden", 403)
+            elif parsed.path == "/api/recommendation":
+                sid = params.get("student_id", [None])[0]
+                if not sid or sid not in STUDENTS:
+                    self.send(
+                        json.dumps({"error": "Invalid or missing student_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                if not auth.has_credential and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Authentication required. Missing credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.has_credential and not auth.is_valid and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Invalid or expired session credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.role == "student" and auth.principal != sid:
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": f"Forbidden: Student {auth.principal} cannot access recommendations for {sid}."
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
+                st_profile = repo.profile(sid)
+                rec = recommend_next_activity(sid, st_profile)
+                self.send(json.dumps(rec), 200, content="application/json")
+            elif parsed.path == "/api/projects":
+                if not auth.has_credential and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Authentication required. Missing credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.has_credential and not auth.is_valid and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Invalid or expired session credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                project_repo = get_project_repo()
+                project_id = params.get("id", [None])[0]
+                if auth.role == "student":
+                    if project_id:
+                        proj = project_repo.get_project(project_id)
+                        if not proj:
+                            self.send(
+                                json.dumps({"error": "Project not found"}),
+                                404,
+                                content="application/json",
+                            )
+                            return
+                        if proj.student_id != auth.principal:
+                            self.send(
+                                json.dumps(
+                                    {"error": "Forbidden: Cannot view another student's project"}
+                                ),
+                                403,
+                                content="application/json",
+                            )
+                            return
+                        proj_dict = proj.to_dict()
+                        for m in proj_dict.get("milestones", []):
+                            m.pop("reference_sql", None)
+                        if proj.instructor_approval_status != "APPROVED":
+                            proj_dict["learner_notice"] = (
+                                "Pending Instructor Approval: Reference solutions and final milestone submissions remain locked until approved."
+                            )
+                        self.send(json.dumps(proj_dict), 200, content="application/json")
+                    else:
+                        projs = project_repo.list_projects_for_student(auth.principal)
+                        proj_dicts = [p.to_dict() for p in projs]
+                        for pd in proj_dicts:
+                            for m in pd.get("milestones", []):
+                                m.pop("reference_sql", None)
+                        self.send(
+                            json.dumps(proj_dicts),
+                            200,
+                            content="application/json",
+                        )
+                elif auth.role == "instructor" or auth.is_service:
+                    if project_id:
+                        proj = project_repo.get_project(project_id)
+                        if not proj:
+                            self.send(
+                                json.dumps({"error": "Project not found"}),
+                                404,
+                                content="application/json",
+                            )
+                            return
+                        self.send(json.dumps(proj.to_dict()), 200, content="application/json")
+                    else:
+                        sid = params.get("student_id", [None])[0]
+                        if sid:
+                            projs = project_repo.list_projects_for_student(sid)
+                        else:
+                            projs = project_repo.list_all_projects()
+                        proj_dicts = [p.to_dict() for p in projs]
+                        self.send(
+                            json.dumps(proj_dicts),
+                            200,
+                            content="application/json",
+                        )
+                else:
+                    self.send(json.dumps({"error": "Forbidden"}), 403, content="application/json")
+            elif parsed.path == "/instruments":
+                self.send(instruments_page())
+            elif parsed.path == "/api/instruments":
+                self.send(
+                    json.dumps(get_evaluation_instruments()),
+                    200,
+                    content="application/json",
+                )
+            elif parsed.path == "/api/cohort-analytics":
+                if not auth.has_credential and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Authentication required. Missing credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.has_credential and not auth.is_valid and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Invalid or expired session credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.role == "student":
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": "Forbidden: Synthetic students cannot access cohort analytics."
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
+                c_data = repo.analytics()
+                em_repo = get_em_repo()
+                all_ev = em_repo.list_all_evidence()
+                proj_repo = get_project_repo()
+                all_projs = proj_repo.list_all_projects()
+                cohort_summary = {
+                    "cohort_size": c_data["student_count"],
+                    "submission_count": c_data["attempt_count"],
+                    "correct_count": c_data["correct"],
+                    "mean_mastery": c_data["mean_mastery"],
+                    "associated_error_concepts": c_data["associated_error_concepts"],
+                    "em_reflection_summary": {
+                        "total_reflections": len(all_ev),
+                        "accepted_count": sum(
+                            1 for e in all_ev if e.review_status == EMReviewStatus.ACCEPTED
+                        ),
+                        "proposed_count": sum(
+                            1 for e in all_ev if e.review_status == EMReviewStatus.PROPOSED
+                        ),
+                    },
+                    "project_summary": {
+                        "total_generated": len(all_projs),
+                        "approved_count": sum(
+                            1 for p in all_projs if p.instructor_approval_status == "APPROVED"
+                        ),
+                        "domains": {
+                            p.domain_interest: sum(
+                                1 for x in all_projs if x.domain_interest == p.domain_interest
+                            )
+                            for p in all_projs
+                        },
+                    },
+                    "provenance": "TRACK_A_SYNTHETIC_COHORT",
+                }
+                self.send(
+                    json.dumps(cohort_summary),
+                    200,
+                    content="application/json",
+                )
+            elif parsed.path == "/api/em/summary":
+                sid = params.get("student_id", [None])[0]
+                if not sid or sid not in STUDENTS:
+                    self.send(
+                        json.dumps({"error": "Missing student_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                if not auth.has_credential and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Authentication required."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.has_credential and not auth.is_valid and not auth.is_service:
+                    self.send(
+                        json.dumps({"error": "Invalid or expired session credentials."}),
+                        401,
+                        content="application/json",
+                    )
+                    return
+                if auth.role == "student" and auth.principal != sid:
+                    self.send(
+                        json.dumps(
+                            {
+                                "error": f"Forbidden: Student {auth.principal} cannot access summary for {sid}."
+                            }
+                        ),
+                        403,
+                        content="application/json",
+                    )
+                    return
+                em_repo = get_em_repo()
+                self.send(
+                    json.dumps(em_repo.student_em_summary(sid)),
+                    200,
+                    content="application/json",
+                )
+            elif parsed.path == "/practice":
+                if not auth.has_credential:
+                    self.send_response(303)
+                    self.send_header(
+                        "Location",
+                        f"/login?redirect=/practice?id={params.get('id', ['sql_join_04'])[0]}",
+                    )
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+                if not auth.is_valid:
+                    self.send("Invalid or expired session credentials.", 401)
+                    return
+                qid = params.get("id", ["sql_join_04"])[0]
+                self.send(practice_page(qid=qid, csrf_token=auth.csrf_token, auth=auth))
             elif parsed.path == "/compare":
                 self.send(compare(params))
             elif parsed.path == "/feedback":
                 job_id = params.get("job_id", [None])[0]
-                html_body, code = feedback_page(job_id, self.headers, params)
+                html_body, code = feedback_page(
+                    job_id, self.headers, params, csrf_token=auth.csrf_token
+                )
                 self.send(html_body, code)
             elif parsed.path == "/api/feedback":
                 job_id = params.get("job_id", [None])[0]
@@ -568,11 +1635,18 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") == "cross-site":
             return self.send("Forbidden origin", 403)
         if self.path not in {
+            "/login",
+            "/logout",
+            "/practice",
             "/attempt",
             "/api/attempts",
             "/api/auth/synthetic-session",
             "/api/queue/enqueue",
             "/api/queue/reconcile",
+            "/api/em/reflection",
+            "/api/em/review",
+            "/api/projects/generate",
+            "/api/projects/review",
         }:
             return self.send("Not found", 404)
         if "Content-Length" not in self.headers:
@@ -590,11 +1664,122 @@ class Handler(BaseHTTPRequestHandler):
             if len(raw) != size:
                 raise ValueError("Incomplete payload")
             text = raw.decode("utf-8")
+            auth = RequestAuth(self)
+
+            # Route 0a: Synthetic demo login form submission
+            if self.path == "/login":
+                is_dev_mode = (
+                    os.environ.get("SIIP_ENV", "development") == "development"
+                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+                )
+                if not is_dev_mode:
+                    return self.send(
+                        "Synthetic login is disabled outside isolated development mode. "
+                        "Institutional SSO authentication required.",
+                        403,
+                    )
+                params = parse_qs(text, strict_parsing=True)
+                principal = params.get("principal", [None])[0]
+                redirect_url = params.get("redirect", ["/"])[0]
+                if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+                    redirect_url = "/"
+                if not principal or (
+                    principal not in STUDENTS
+                    and not is_student_principal(principal)
+                    and not is_instructor_principal(principal)
+                ):
+                    return self.send("Invalid synthetic principal", 400)
+                role = "instructor" if is_instructor_principal(principal) else "student"
+                token = create_signed_session_token(principal, role=role)
+                csrf = generate_csrf_token(token)
+                self.send_response(303)
+                self.send_header(
+                    "Set-Cookie",
+                    f"siip_session={token}; Path=/; HttpOnly; SameSite=Lax",
+                )
+                self.send_header(
+                    "Set-Cookie",
+                    f"siip_csrf={csrf}; Path=/; SameSite=Lax",
+                )
+                self.send_header("Location", redirect_url)
+                self.send_header("Connection", "close")
+                self.close_connection = True
+                self.end_headers()
+                return
+
+            # Route 0b: Synthetic demo logout form submission
+            if self.path == "/logout":
+                self.send_response(303)
+                self.send_header("Set-Cookie", "siip_session=; Path=/; Max-Age=0")
+                self.send_header("Set-Cookie", "siip_csrf=; Path=/; Max-Age=0")
+                self.send_header("Location", "/login")
+                self.send_header("Connection", "close")
+                self.close_connection = True
+                self.end_headers()
+                return
+
+            # Route 0c: PrairieLearn interactive practice query submission
+            if self.path == "/practice":
+                if not auth.has_credential:
+                    self.send("Authentication required. Please log in.", 401)
+                    return
+                if not auth.is_valid:
+                    self.send("Invalid or expired session credentials.", 401)
+                    return
+                params = parse_qs(text, strict_parsing=True)
+                csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                if not csrf_ok:
+                    self.send(csrf_err, csrf_code)
+                    return
+                qid = params.get("question_id", ["sql_join_04"])[0]
+                sql = params.get("sql", [""])[0]
+                if qid not in QUESTIONS or not sql.strip():
+                    self.send("Invalid question or query", 400)
+                    return
+
+                # Execute authentic PrairieLearn bridge grading
+                submission_data = {
+                    "submitted_answers": {"sql": sql},
+                    "options": {"user": {"user_id": 101, "uid": f"{auth.principal}@illinois.edu"}},
+                    "submission_id": int(time.time() * 1000) % 1000000,
+                    "partial_scores": {},
+                    "feedback": {},
+                }
+                grade_question(submission_data, qid)
+
+                # Record into submission repository for persistence and profile updates
+                fb_meta = submission_data.get("feedback", {})
+                siip_meta = fb_meta.get("siip", {})
+                siip_meta["score"] = float(submission_data.get("score", 0.0))
+                att_id = siip_meta.get("attempt_id") or f"pl-{submission_data['submission_id']}"
+                repo = self.server.repository
+                with self.server.ingestion_lock:
+                    repo.process(
+                        {
+                            "attempt_id": att_id,
+                            "student_id": auth.principal,
+                            "question_id": qid,
+                            "submitted_sql": sql,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "source": "synthetic_fixture",
+                        }
+                    )
+
+                self.send(
+                    practice_page(
+                        qid=qid,
+                        grading_result=siip_meta,
+                        feedback_data=fb_meta,
+                        csrf_token=auth.csrf_token,
+                        auth=auth,
+                    )
+                )
+                return
 
             # Route 1: Synthetic local authentication session endpoint
             if self.path == "/api/auth/synthetic-session":
                 is_dev_mode = (
-                    os.environ.get("SIIP_ENV") == "development"
+                    os.environ.get("SIIP_ENV", "development") == "development"
                     or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
                 )
                 if not is_dev_mode:
@@ -626,27 +1811,69 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send("JSON required", 415)
                 payload = json.loads(text)
                 sid = payload.get("student_id")
-                if not sid or sid not in STUDENTS:
+                iid = payload.get("instructor_id") or payload.get("principal")
+                role = payload.get("role")
+
+                if sid:
+                    if sid not in STUDENTS and not is_student_principal(sid):
+                        self.send(
+                            json.dumps({"error": "Invalid or unknown synthetic student principal"}),
+                            400,
+                            content="application/json",
+                        )
+                        return
+                    token = create_signed_session_token(sid, role="student")
+                    csrf = generate_csrf_token(token)
                     self.send(
-                        json.dumps({"error": "Invalid or unknown synthetic student principal"}),
+                        json.dumps(
+                            {
+                                "token": token,
+                                "student_id": sid,
+                                "principal": sid,
+                                "role": "student",
+                                "token_type": "Bearer",  # nosec B105
+                                "csrf_token": csrf,
+                                "expires_in": 86400,
+                            }
+                        ),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                elif iid or role == "instructor":
+                    principal = iid or "instructor-admin"
+                    if not is_instructor_principal(principal):
+                        self.send(
+                            json.dumps({"error": "Invalid or unknown instructor principal"}),
+                            400,
+                            content="application/json",
+                        )
+                        return
+                    token = create_signed_session_token(principal, role="instructor")
+                    csrf = generate_csrf_token(token)
+                    self.send(
+                        json.dumps(
+                            {
+                                "token": token,
+                                "instructor_id": principal,
+                                "principal": principal,
+                                "role": "instructor",
+                                "token_type": "Bearer",  # nosec B105
+                                "csrf_token": csrf,
+                                "expires_in": 86400,
+                            }
+                        ),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send(
+                        json.dumps({"error": "Missing student_id or instructor_id principal"}),
                         400,
                         content="application/json",
                     )
                     return
-                token = create_signed_session_token(sid)
-                self.send(
-                    json.dumps(
-                        {
-                            "token": token,
-                            "student_id": sid,
-                            "token_type": "Bearer",  # nosec B105
-                            "expires_in": 86400,
-                        }
-                    ),
-                    200,
-                    content="application/json",
-                )
-                return
 
             # Route 2: Durable host-owned queue enqueue endpoint
             if self.path == "/api/queue/enqueue":
@@ -806,6 +2033,390 @@ class Handler(BaseHTTPRequestHandler):
                     content="application/json",
                 )
                 return
+
+            # Route 3b: Entrepreneurial Mindset reflection submission
+            if self.path == "/api/em/reflection":
+                em_repo = get_em_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    sid = payload.get("student_id")
+                    qid = payload.get("question_id")
+                    pid = payload.get("prompt_id")
+                    aid = payload.get("attempt_id")
+                    refl_text = payload.get("reflection_text") or payload.get("response_text", "")
+                    job_id = payload.get("job_id", "")
+                    ticket = payload.get("ticket", "")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    sid = params.get("student_id", [None])[0]
+                    qid = params.get("question_id", [None])[0]
+                    pid = params.get("prompt_id", [None])[0]
+                    aid = params.get("attempt_id", [None])[0]
+                    refl_text = params.get("reflection_text", [None])[0] or ""
+                    job_id = params.get("job_id", [""])[0]
+                    ticket = params.get("ticket", [""])[0]
+
+                if not sid or not qid or not pid or not aid or not refl_text.strip():
+                    return self.send("Missing required fields for EM reflection", 400)
+
+                # --- Authentication & Caller Verification ---
+                if auth.has_credential:
+                    if not auth.is_valid:
+                        msg = "Invalid or expired session credentials."
+                        return (
+                            self.send(json.dumps({"error": msg}), 401, content="application/json")
+                            if is_json
+                            else self.send(msg, 401)
+                        )
+                    if auth.role == "student" and auth.principal != sid:
+                        msg = f"Forbidden: Student {auth.principal} cannot submit reflection for {sid}."
+                        return (
+                            self.send(json.dumps({"error": msg}), 403, content="application/json")
+                            if is_json
+                            else self.send(msg, 403)
+                        )
+                    if not is_json:
+                        csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                        if not csrf_ok:
+                            return self.send(csrf_err, csrf_code)
+                elif ticket:
+                    auth_student = verify_signed_ticket(ticket, job_id=job_id) if job_id else None
+                    if not auth_student:
+                        msg = "Authentication required. Invalid or mismatched reflection ticket."
+                        return (
+                            self.send(json.dumps({"error": msg}), 401, content="application/json")
+                            if is_json
+                            else self.send(msg, 401)
+                        )
+                    if auth_student != sid:
+                        msg = f"Forbidden: Feedback ticket is for {auth_student}, cannot submit for {sid}."
+                        return (
+                            self.send(json.dumps({"error": msg}), 403, content="application/json")
+                            if is_json
+                            else self.send(msg, 403)
+                        )
+                else:
+                    msg = "Authentication required. Missing session credentials or feedback ticket."
+                    return (
+                        self.send(json.dumps({"error": msg}), 401, content="application/json")
+                        if is_json
+                        else self.send(msg, 401)
+                    )
+
+                # --- Verify Target Attempt Existence and Ownership ---
+                target_attempt = None
+                with closing(self.server.repository.connect()) as db:
+                    row = db.execute(
+                        "SELECT student_id, question_id FROM attempts WHERE attempt_id = ?",
+                        (aid,),
+                    ).fetchone()
+                    if row:
+                        target_attempt = {"student_id": row[0], "question_id": row[1]}
+
+                if not target_attempt:
+                    jobs_repo = get_jobs_repo()
+                    job_obj = jobs_repo.get_by_attempt(aid)
+                    if not job_obj and job_id:
+                        job_obj = jobs_repo.get(job_id)
+                    if job_obj and (job_obj.attempt_id == aid or not aid):
+                        target_attempt = {
+                            "student_id": job_obj.student_id,
+                            "question_id": job_obj.question_id,
+                        }
+
+                if not target_attempt:
+                    msg = f"Attempt '{aid}' not found."
+                    return (
+                        self.send(json.dumps({"error": msg}), 404, content="application/json")
+                        if is_json
+                        else self.send(msg, 404)
+                    )
+
+                if target_attempt["student_id"] != sid:
+                    msg = f"Forbidden: Attempt '{aid}' belongs to {target_attempt['student_id']}, not {sid}."
+                    return (
+                        self.send(json.dumps({"error": msg}), 403, content="application/json")
+                        if is_json
+                        else self.send(msg, 403)
+                    )
+
+                if target_attempt["question_id"] != qid:
+                    msg = f"Question mismatch: Attempt '{aid}' is for question '{target_attempt['question_id']}', not '{qid}'."
+                    return (
+                        self.send(json.dumps({"error": msg}), 400, content="application/json")
+                        if is_json
+                        else self.send(msg, 400)
+                    )
+
+                prompt_obj = em_repo.get_prompt_for_question(qid)
+                if not prompt_obj or prompt_obj.prompt_id != pid:
+                    msg = (
+                        f"Prompt mismatch: Prompt '{pid}' does not match question activity '{qid}'."
+                    )
+                    return (
+                        self.send(json.dumps({"error": msg}), 400, content="application/json")
+                        if is_json
+                        else self.send(msg, 400)
+                    )
+
+                # --- Idempotency Policy ---
+                existing_resp = em_repo.get_response_for_attempt(sid, aid)
+                if existing_resp:
+                    existing_ev = em_repo.get_evidence_for_attempt(aid)
+                    if is_json:
+                        self.send(
+                            json.dumps(
+                                {
+                                    "status": "recorded",
+                                    "response_id": existing_resp.response_id,
+                                    "evidence_id": existing_ev.evidence_id if existing_ev else "",
+                                    "dimension": existing_ev.dimension.value if existing_ev else "",
+                                    "review_status": existing_ev.review_status.value
+                                    if existing_ev
+                                    else "PROPOSED",
+                                    "idempotent": True,
+                                }
+                            ),
+                            200,
+                            content="application/json",
+                        )
+                        return
+                    else:
+                        redirect_target = (
+                            f"/feedback?job_id={job_id}&ticket={ticket}"
+                            if job_id and ticket
+                            else f"/students?id={sid}"
+                        )
+                        self.send_response(303)
+                        self.send_header("Location", redirect_target)
+                        self.send_header("Connection", "close")
+                        self.close_connection = True
+                        self.end_headers()
+                        return
+
+                resp = em_repo.record_response(
+                    student_id=sid,
+                    question_id=qid,
+                    prompt_id=pid,
+                    attempt_id=aid,
+                    response_text=refl_text.strip(),
+                )
+                dim = prompt_obj.dimension if prompt_obj else EMDimension.CURIOSITY
+                concepts = QUESTIONS.get(qid, {}).get("concepts", ["relational_queries"])
+
+                ev = em_repo.create_evidence_record(
+                    student_id=sid,
+                    question_id=qid,
+                    dimension=dim,
+                    relevant_concepts=concepts,
+                    evidence_excerpt=refl_text.strip(),
+                    classification_method="student_reflection_provisional",
+                    model_or_rubric_version=prompt_obj.rubric_version
+                    if prompt_obj
+                    else "rubric-keen-v1",
+                    confidence=0.85,
+                    response_id=resp.response_id,
+                    attempt_id=aid,
+                )
+
+                if is_json:
+                    self.send(
+                        json.dumps(
+                            {
+                                "status": "recorded",
+                                "response_id": resp.response_id,
+                                "evidence_id": ev.evidence_id,
+                                "dimension": ev.dimension.value,
+                                "review_status": ev.review_status.value,
+                            }
+                        ),
+                        201,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    redirect_target = (
+                        f"/feedback?job_id={job_id}&ticket={ticket}"
+                        if job_id and ticket
+                        else f"/students?id={sid}"
+                    )
+                    self.send_response(303)
+                    self.send_header("Location", redirect_target)
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3c: Instructor review of EM evidence
+            if self.path == "/api/em/review":
+                em_repo = get_em_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    ev_id = payload.get("evidence_id")
+                    review_status = payload.get("review_status")
+                    notes = payload.get("instructor_notes")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    ev_id = params.get("evidence_id", [None])[0]
+                    review_status = params.get("review_status", [None])[0]
+                    notes = params.get("instructor_notes", [None])[0]
+
+                # Strict fail-closed instructor authorization
+                auth_ok, code, err_msg = auth.require_instructor()
+                if not auth_ok:
+                    return (
+                        self.send(json.dumps({"error": err_msg}), code, content="application/json")
+                        if is_json
+                        else self.send(err_msg, code)
+                    )
+
+                if not is_json:
+                    csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                    if not csrf_ok:
+                        return self.send(csrf_err, csrf_code)
+
+                reviewer = auth.principal if auth.principal else "instructor-service"
+
+                if not ev_id or not review_status:
+                    return self.send("Missing evidence_id or review_status", 400)
+
+                try:
+                    status_enum = EMReviewStatus(review_status)
+                except ValueError:
+                    return self.send(f"Invalid review_status: {review_status}", 400)
+
+                updated = em_repo.review_evidence(
+                    evidence_id=ev_id,
+                    status=status_enum,
+                    notes=notes,
+                    reviewer_id=reviewer,
+                )
+                if not updated:
+                    return self.send("Evidence record not found", 404)
+
+                if is_json:
+                    self.send(
+                        json.dumps(updated.to_dict()),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", "/em-review")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3d: Generate Personalized Dynamic Project
+            if self.path == "/api/projects/generate":
+                project_repo = get_project_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    sid = payload.get("student_id")
+                    domain = payload.get("interest")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    sid = params.get("student_id", [None])[0]
+                    domain = params.get("interest", [None])[0]
+
+                if not sid or sid not in STUDENTS:
+                    return self.send("Invalid student_id", 400)
+
+                auth_ok, code, err_msg = auth.require_student_or_instructor(target_student_id=sid)
+                if not auth_ok:
+                    return (
+                        self.send(json.dumps({"error": err_msg}), code, content="application/json")
+                        if is_json
+                        else self.send(err_msg, code)
+                    )
+
+                if not is_json:
+                    csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                    if not csrf_ok:
+                        return self.send(csrf_err, csrf_code)
+
+                repo = self.server.repository
+                st_profile = repo.profile(sid)
+                project = generate_personalized_project(
+                    student_id=sid, interest=domain, profile=st_profile
+                )
+                project_repo.save_project(project)
+
+                if is_json:
+                    self.send(
+                        json.dumps(project.to_dict()),
+                        201,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", f"/projects?id={project.project_id}")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3e: Review Personalized Dynamic Project
+            if self.path == "/api/projects/review":
+                project_repo = get_project_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    proj_id = payload.get("project_id")
+                    status_val = payload.get("status")
+                    notes = payload.get("notes")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    proj_id = params.get("project_id", [None])[0]
+                    status_val = params.get("status", [None])[0]
+                    notes = params.get("notes", [None])[0]
+
+                auth_ok, code, err_msg = auth.require_instructor()
+                if not auth_ok:
+                    return (
+                        self.send(json.dumps({"error": err_msg}), code, content="application/json")
+                        if is_json
+                        else self.send(err_msg, code)
+                    )
+
+                if not is_json:
+                    csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                    if not csrf_ok:
+                        return self.send(csrf_err, csrf_code)
+
+                reviewer = auth.principal if auth.principal else "instructor-service"
+
+                if not proj_id or not status_val:
+                    return self.send("Missing project_id or status", 400)
+
+                proj = project_repo.get_project(proj_id)
+                if not proj:
+                    return self.send("Project not found", 404)
+
+                proj.instructor_approval_status = status_val
+                proj.instructor_notes = notes
+                project_repo.save_project(proj)
+
+                if is_json:
+                    self.send(
+                        json.dumps(proj.to_dict()),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", f"/projects?id={proj.project_id}")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
 
             # Route 4: Analytics submission attempts
             if self.path == "/api/attempts":

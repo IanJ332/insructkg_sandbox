@@ -118,7 +118,7 @@ def main():
                 )
             page.goto(overview)
             expect(page.get_by_role("main")).to_contain_text(
-                re.compile(r"Total\s+points:\s*3\s*/\s*3")
+                re.compile(r"Total\s+points:\s*3\s*/\s*[34]")
             )
             page.screenshot(path=str(out / "assessment.png"), full_page=True)
             # Switch back to instructor view to access instructor downloads.
@@ -142,6 +142,11 @@ def main():
             ) as response:  # nosec B310: fixed loopback.
                 analytics = json.load(response)
             assert analytics["attempt_count"] == after
+            # Authenticate via synthetic login form before accessing protected learner history
+            page.goto("http://127.0.0.1:8080/login")
+            page.select_option("select[name='principal']", "S003")
+            page.click("button:has-text('Sign In to Demo Session')")
+            page.wait_for_load_state("networkidle")
             page.goto("http://127.0.0.1:8080/students?id=S003")
             expect(
                 page.get_by_role("heading", name="S003 · synthetic learning history", exact=True)

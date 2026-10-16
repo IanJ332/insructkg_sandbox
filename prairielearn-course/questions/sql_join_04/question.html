@@ -1,0 +1,23 @@
+<pl-question-panel>
+<h2>SQL Aggregation and Incomplete Records</h2>
+<p>{{params.statement}}</p>
+<p>SQLite dialect. Read-only SELECT queries only. Duplicate rows count.</p>
+<p>Employees(employee_id INTEGER, name TEXT, department_id INTEGER);<br>
+Departments(department_id INTEGER, department_name TEXT).</p>
+<p>Example: Departments: 10 Engineering, 20 Sales, 30 Research. If Research has 0 employees, return Research with headcount 0.</p>
+<p>This is a synthetic local research sandbox. Graph additions are provisional pending instructor review.</p>
+</pl-question-panel>
+<pl-string-input answers-name="sql" multiline="true" aria-label="SQL query" placeholder="Enter your SELECT query" show-help-text="false"></pl-string-input>
+<pl-submission-panel>
+<div class="alert alert-info" role="status">
+<p><strong>{{feedback.status}}</strong></p>
+<p>{{feedback.guidance}}</p>
+<p>{{feedback.concepts}}</p>
+<p>{{feedback.grounding}}</p>
+<p><small>{{feedback.inference}}</small></p>
+{{#feedback.feedback_url}}
+<p><small>Async Feedback Job: <code>{{feedback.job_id}}</code> &middot; <a href="{{feedback.feedback_url}}" target="_blank" rel="noopener noreferrer">View AI Explanation</a></small></p>
+{{/feedback.feedback_url}}
+</div>
+</pl-submission-panel>
+<pl-answer-panel><p>Review the feedback and reason about how outer joins preserve units with zero aggregate matches. A complete solution is withheld in this sandbox.</p></pl-answer-panel>

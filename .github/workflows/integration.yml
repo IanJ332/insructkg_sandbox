@@ -8,6 +8,14 @@ on:
       - 'scripts/**'
       - 'prairielearn-course/**'
       - 'requirements-dev.txt'
+  pull_request:
+    paths:
+      - '.github/workflows/integration.yml'
+      - 'tests/e2e/**'
+      - 'infrastructure/compose.yaml'
+      - 'scripts/**'
+      - 'prairielearn-course/**'
+      - 'requirements-dev.txt'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +25,9 @@ jobs:
     timeout-minutes: 25
     env:
       SIIP_FEEDBACK_PROVIDER: deterministic
+      SIIP_DATA_DIR: ${{ github.workspace }}/artifacts/public-data
+      SIIP_ENV: development
+      SIIP_ALLOW_SYNTHETIC_AUTH: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -27,12 +38,17 @@ jobs:
       - run: python scripts/manage.py install
       - run: .venv/bin/python -m playwright install --with-deps chromium
       - name: Initialize clearly synthetic graph/corpus in disposable runner
-        run: .venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
+        run: |
+          .venv/bin/python scripts/init_public.py
+          .venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
       - run: .venv/bin/python scripts/seed.py
       - run: .venv/bin/python scripts/manage.py start
       - run: .venv/bin/python scripts/smoke.py
       - name: Actual PL submission, feedback, retry, CSV persistence and analytics
         run: .venv/bin/python tests/e2e/prairielearn_flow.py --ack-local-synthetic
+      - name: Phase 5 Playwright Browser End-to-End Test Suites
+        run: |
+          .venv/bin/python -m unittest tests/e2e/test_browser_demos.py tests/e2e/test_em_lifecycle_browser.py tests/e2e/test_async_browser_flow.py tests/e2e/test_real_browser_e2e.py -v
       - name: Restart both services and verify persistence
         run: |
           .venv/bin/python scripts/persistence_probe.py before
