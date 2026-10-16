@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 sys.path.insert(0, str(ROOT))
 
+import sqlite3
+import tempfile
+
 from siip.authentic_history import build_authentic_student_history
 from siip.evidence_registry import EvidenceRegistry
 
@@ -28,25 +31,70 @@ from scripts.experiment_runner import (
 
 
 class TestAuthenticStudentHistory(unittest.TestCase):
-    """Verifies that student histories are strictly temporal and extracted from ANU DB."""
+    """Verifies that student histories are strictly temporal using a purpose-built SQLite fixture."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.TemporaryDirectory(prefix="siip-history-test-")
+        cls.fixture_db_path = Path(cls.temp_dir.name) / "Submission_fixture.sqlite"
+        conn = sqlite3.connect(cls.fixture_db_path)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE exercises_result (
+                submission_id INTEGER PRIMARY KEY,
+                student_id INTEGER,
+                exercise_id INTEGER,
+                is_correct INTEGER,
+                category TEXT,
+                submission_time TEXT
+            );
+            """
+        )
+        sample_rows = [
+            (162, 69, 1, 0, "partially correct", "2018-08-12 20:14:57.946042+10"),
+            (163, 69, 1, 1, "correct", "2018-08-12 20:28:16.418559+10"),
+            (164, 69, 2, 0, "partially correct", "2018-08-12 20:31:05.505491+10"),
+            (165, 69, 2, 0, "partially correct", "2018-08-12 20:31:48.024731+10"),
+            (166, 69, 2, 1, "correct", "2018-08-12 20:39:31.176388+10"),
+            (167, 69, 12, 1, "correct", "2018-08-12 20:45:57.846334+10"),
+            (168, 69, 4, 0, "partially correct", "2018-08-12 21:00:21.819207+10"),
+            (172, 69, 4, 1, "correct", "2018-08-12 22:18:13.078619+10"),
+            (173, 69, 5, 0, "partially correct", "2018-08-12 22:23:01.309167+10"),
+            (180, 69, 5, 1, "correct", "2018-08-12 22:48:30.014202+10"),
+        ]
+        cur.executemany(
+            "INSERT INTO exercises_result VALUES (?, ?, ?, ?, ?, ?);",
+            sample_rows,
+        )
+        conn.commit()
+        conn.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temp_dir.cleanup()
 
     def test_strict_temporal_cutoff(self):
         # Student 69 at 2018-08-12 21:00:21.819207+10 has exactly 6 prior submissions
-        hist = build_authentic_student_history(69, "2018-08-12 21:00:21.819207+10")
+        hist = build_authentic_student_history(
+            69, "2018-08-12 21:00:21.819207+10", db_path=self.fixture_db_path
+        )
         self.assertTrue(hist["has_valid_history"])
         self.assertEqual(hist["prior_attempts"], 6)
         self.assertEqual(hist["prior_submission_ids"], [162, 163, 164, 165, 166, 167])
         # Future submissions must be strictly excluded
-        self.assertGreater(hist["excluded_future_records_count"], 0)
+        self.assertEqual(hist["excluded_future_records_count"], 4)
         self.assertIn("SELECT_PROJECTION", hist["concept_mastery"])
 
     def test_student_with_zero_prior_attempts(self):
         # A timestamp before the student's first attempt yields zero prior attempts
-        hist = build_authentic_student_history(69, "2018-08-01 00:00:00+10")
+        hist = build_authentic_student_history(
+            69, "2018-08-01 00:00:00+10", db_path=self.fixture_db_path
+        )
         self.assertFalse(hist["has_valid_history"])
         self.assertEqual(hist["prior_attempts"], 0)
         self.assertEqual(hist["concept_mastery"], {})
-        self.assertGreater(hist["excluded_future_records_count"], 0)
+        self.assertEqual(hist["excluded_future_records_count"], 10)
 
 
 class TestEvidenceRegistry(unittest.TestCase):

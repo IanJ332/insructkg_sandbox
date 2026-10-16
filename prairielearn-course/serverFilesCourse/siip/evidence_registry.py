@@ -121,8 +121,8 @@ class EvidenceRegistry:
                             retrieval_score=None,
                         )
                     )
-                except Exception:
-                    pass
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    continue
 
         # 3. Synthetic contract fixture (explicitly marked synthetic)
         fixture_lesson = self.root / "tests/fixtures/lesson.md"

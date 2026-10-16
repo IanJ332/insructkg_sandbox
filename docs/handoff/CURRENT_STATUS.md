@@ -1,16 +1,18 @@
-# Current status — Phase 4.4 Scientific Evaluation Readiness & Genuine Evidence Grounding
+# Current status — Phase 5.0 CI Stabilization and Baseline Restoration
 
-Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`, targeting `engineering/phase2-hardening`. All 201 distinct public tests pass (52.8s). Code formatting, linting, Mypy strict typing, and configuration validation are 100% clean.
+Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`. All 201 distinct public tests pass (53.3s). Code formatting, linting, Mypy strict typing, and configuration validation are 100% clean.
 
 | Area | Status | Actual result/evidence | Boundary |
 |---|---|---|---|
-| Public deterministic suite | PASS | 201/201, 0 fail/skip, 52.84s | Adds Phase 4.4 scientific readiness suite (`test_scientific_readiness.py`) |
+| CI Public Deterministic Suite | PASS | 201/201, 0 fail/skip, 53.28s | SQLite test fixture decouples CI from local external D: drive; pure-Python Wilcoxon fallback |
+| CI Security & Secret Scanning | PASS | `scripts/publication_audit.py` PASS; Bandit: 0 issues; pip-audit: 0 vulnerabilities | Public dataset & model SHA-256 checksums explicitly allowlisted; no global scanner disabling |
+| Authentic ANU Integration Test | PASS | `research_tests/test_authentic_anu_dataset.py` verifies local ANU `Submission.sqlite` | Preserved separately from deterministic CI fixtures |
 | Authentic SQL benchmark audit | PASS | 25 cases audited: 7 distinct exercises (Ex 4,5,8,9,10,11,12; Ex 13 missing), 21 distinct students, 24 unique queries, 20/25 rule-based fallback | Original ANU labels preserved separately; heuristic patterns not presented as ground truth |
 | Authentic Evidence Registry | PASS | `siip/evidence_registry.py` registers source hashes, document IDs, approval statuses; 0/25 instructor-approved KG edges | Honest fail-closed eligibility; synthetic and unreviewed edges clearly distinguished |
 | Genuine student histories | PASS | `siip/authentic_history.py` extracts strictly prior ANU attempts (3–28 prior per student); future records excluded | Artificial mastery constants removed from real research condition |
 | Local Ollama inference pipeline | PASS | `scripts/experiment_runner.py` with `--dry-run` and `--execute`; local Qwen3 8B (digest `500a1f067a9f...`) on RTX 5070 Ti | Measured latency ~9.2s/call; idempotent result caching; full 125-call run held for authorization |
 | Single-blind review protocol | PASS | `artifacts/research/blind_review_packet.json` isolates prompts, condition labels, and treatments from reviewer | Key stored separately in `blind_review_key.json`; scoring template in `scoring_form.json` |
-| Statistical analysis suite | PASS | `scripts/analyze_results.py` implements paired Wilcoxon signed-rank, paired t-test, Cohen's d, r, 95% CIs, pairwise deletion | Explicitly labeled Exploratory Pilot ($N=25$); repeated students/exercises documented |
+| Statistical analysis suite | PASS | `scripts/analyze_results.py` implements paired Wilcoxon signed-rank, paired t-test, Cohen's d, r, 95% CIs, pairwise deletion | Pure-Python analytical fallback ensures CI portability without SciPy dependency; no swallowed errors |
 | Docker host deployment boundary | BLOCKED | Container `host.docker.internal:8080` cannot connect to Windows host default `127.0.0.1` binding without broadening access | Service key present but transport unreachable; marked BLOCKED per protocol; queue architecture preserved |
 | Hosted learner pilot | BLOCKED | Institutional SSO, IRB approval, authorized course materials | Offline research evaluation ready; live pilot held |
 

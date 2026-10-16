@@ -19,7 +19,7 @@ import json
 import math
 import statistics
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH_DIR = ROOT / "artifacts/research"
@@ -79,6 +79,75 @@ def compute_descriptive_stats(values: List[float]) -> Dict[str, Any]:
     }
 
 
+def _wilcoxon_pure_python(diffs: List[float]) -> Tuple[float, float, Optional[float]]:
+    """Pure-Python Wilcoxon signed-rank test fallback when SciPy is unavailable.
+
+    Returns:
+        (statistic, p_value, effect_size_r)
+    """
+    nonzero = [d for d in diffs if d != 0.0]
+    n_r = len(nonzero)
+    if n_r == 0:
+        return 0.0, 1.0, 0.0
+
+    sorted_items = sorted(enumerate(nonzero), key=lambda x: abs(x[1]))
+    ranks = [0.0] * n_r
+    tie_groups = []
+    i = 0
+    while i < n_r:
+        j = i
+        while j < n_r - 1 and abs(sorted_items[j + 1][1]) == abs(sorted_items[i][1]):
+            j += 1
+        tie_len = j - i + 1
+        if tie_len > 1:
+            tie_groups.append(tie_len)
+        avg_rank = (i + 1 + j + 1) / 2.0
+        for k in range(i, j + 1):
+            ranks[sorted_items[k][0]] = avg_rank
+        i = j + 1
+
+    w_plus = sum(r for r, val in zip(ranks, nonzero) if val > 0)
+    w_minus = sum(r for r, val in zip(ranks, nonzero) if val < 0)
+    stat = min(w_plus, w_minus)
+
+    mu = n_r * (n_r + 1) / 4.0
+    var = n_r * (n_r + 1) * (2 * n_r + 1) / 24.0
+    for t in tie_groups:
+        var -= (t**3 - t) / 48.0
+
+    if var <= 0:
+        return round(float(stat), 3), 1.0, 0.0
+
+    diff = stat - mu
+    if diff < 0:
+        z = (stat - mu + 0.5) / math.sqrt(var)
+    elif diff > 0:
+        z = (stat - mu - 0.5) / math.sqrt(var)
+    else:
+        z = 0.0
+
+    p_val = math.erfc(abs(z) / math.sqrt(2))
+    r_val = abs(z) / math.sqrt(n_r)
+    return round(float(stat), 3), round(float(p_val), 4), round(float(r_val), 3)
+
+
+def _ttest_rel_pure_python(x_vals: List[float], y_vals: List[float]) -> Tuple[float, float]:
+    """Pure-Python paired t-test fallback when SciPy is unavailable."""
+    n = len(x_vals)
+    diffs = [x - y for x, y in zip(x_vals, y_vals)]
+    mean_diff = statistics.mean(diffs)
+    std_diff = statistics.stdev(diffs) if n > 1 else 0.0
+    se = std_diff / math.sqrt(n) if n > 0 else 0.0
+    if se <= 1e-9:
+        t_stat = 0.0
+        p_val = 1.0 if abs(mean_diff) < 1e-9 else 0.0
+    else:
+        t_stat = mean_diff / se
+        z = abs(t_stat)
+        p_val = math.erfc(z / math.sqrt(2))
+    return round(float(t_stat), 3), round(float(p_val), 4)
+
+
 def compute_paired_comparison(
     pairs: List[Tuple[float, float]], name_x: str, name_y: str
 ) -> Dict[str, Any]:
@@ -101,12 +170,11 @@ def compute_paired_comparison(
     # Effect size: Cohen's d_z for paired samples
     cohen_d = round(mean_diff / std_diff, 3) if std_diff > 1e-6 else 0.0
 
-    # Wilcoxon signed-rank test and paired t-test via scipy if available
-    p_wilcoxon = None
-    stat_wilcoxon = None
-    wilcoxon_r = None
-    p_ttest = None
-    t_stat = None
+    stat_wilcoxon: Optional[float] = None
+    p_wilcoxon: Optional[float] = None
+    wilcoxon_r: Optional[float] = None
+    t_stat: Optional[float] = None
+    p_ttest: Optional[float] = None
 
     try:
         from scipy import stats
@@ -116,18 +184,25 @@ def compute_paired_comparison(
             w_res = stats.wilcoxon(diffs, zero_method="wilcox", correction=True)
             stat_wilcoxon = round(float(w_res.statistic), 3)
             p_wilcoxon = round(float(w_res.pvalue), 4)
-            # Wilcoxon r = Z / sqrt(2*N)
-            # Normal approx for Z
             if hasattr(w_res, "zstatistic"):
                 wilcoxon_r = round(abs(w_res.zstatistic) / math.sqrt(n), 3)
             else:
                 wilcoxon_r = None
+        else:
+            stat_wilcoxon = 0.0
+            p_wilcoxon = 1.0
+            wilcoxon_r = 0.0
 
         t_res = stats.ttest_rel([p[0] for p in valid_pairs], [p[1] for p in valid_pairs])
         t_stat = round(float(t_res.statistic), 3)
         p_ttest = round(float(t_res.pvalue), 4)
-    except Exception:
-        pass
+    except ImportError:
+        stat_wilcoxon, p_wilcoxon, wilcoxon_r = _wilcoxon_pure_python(diffs)
+        t_stat, p_ttest = _ttest_rel_pure_python(
+            [p[0] for p in valid_pairs], [p[1] for p in valid_pairs]
+        )
+    except Exception as exc:
+        raise ValueError(f"Statistical calculation error for {name_x} vs {name_y}: {exc}") from exc
 
     return {
         "comparison": f"{name_x} vs {name_y}",

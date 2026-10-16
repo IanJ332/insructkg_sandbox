@@ -351,7 +351,7 @@ class LocalOllamaClient:
         """Verify local Ollama server is running and model is present."""
         try:
             req = urllib.request.Request(f"{self.base_url}/api/tags")
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # nosec B310
                 data = json.loads(resp.read().decode("utf-8"))
             models = data.get("models", [])
             for m in models:
@@ -395,7 +395,7 @@ class LocalOllamaClient:
                     data=json.dumps(payload).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                 )
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # nosec B310
                     resp_data = json.loads(resp.read().decode("utf-8"))
 
                 latency = round(time.monotonic() - t0, 3)
@@ -438,7 +438,7 @@ def prepare_blind_review_packet(
     Excludes condition names, full prompts, and source-treatment metadata.
     Provides only task context, authentic student SQL, and anonymous feedback variants.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311
     blind_cases = []
     key_mapping = {}
 
@@ -604,8 +604,8 @@ def main():
                             print(f"[{idx}/{len(cases)}] {cid} Cond {cond}: Resumed from cache.")
                             results_by_case[cid][cond] = cached
                             continue
-                    except Exception:
-                        pass
+                    except (json.JSONDecodeError, OSError, KeyError):
+                        pass  # nosec B110 - corrupted cache entry falls through to re-execution
 
                 cond_spec = prompts[cond]
                 print(
