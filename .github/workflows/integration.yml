@@ -36,7 +36,9 @@ jobs:
       - run: python scripts/manage.py install
       - run: .venv/bin/python -m playwright install --with-deps chromium
       - name: Initialize clearly synthetic graph/corpus in disposable runner
-        run: .venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
+        run: |
+          .venv/bin/python scripts/init_public.py
+          .venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
       - run: .venv/bin/python scripts/seed.py
       - run: .venv/bin/python scripts/manage.py start
       - run: .venv/bin/python scripts/smoke.py

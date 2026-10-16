@@ -54,7 +54,7 @@ class RequestAuth:
         self.role: str | None = None
         self.is_valid = False
         self.is_service = verify_service_request(self.headers)
-        self.csrf_token = ""
+        self.csrf_token: str | None = None
 
         if self.raw_token:
             p, r = verify_signed_session_token_role(self.raw_token)
@@ -185,7 +185,7 @@ def login_page(auth=None, message=None, redirect_url="/"):
       </span>
       <h2>Research Demo Login</h2>
       <p class="muted">
-        Select a synthetic principal to simulate local interactive flows. This session mechanism is strictly isolated from hosted deployments.
+        Choose a synthetic principal to simulate local interactive flows; this session mechanism is strictly isolated within the demonstration environment.
       </p>
       {error_banner}
       {current_status}
@@ -509,7 +509,8 @@ def students(repo, sid=None):
     return shell("Student " + sid, body)
 
 
-def projects_page(project_id=None, is_learner=False, csrf_token="", learner_sid=None):
+def projects_page(project_id=None, is_learner=False, csrf_token=None, learner_sid=None):
+    csrf = csrf_token or ""
     project_repo = get_project_repo()
     if project_id:
         proj = project_repo.get_project(project_id)
@@ -571,7 +572,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token="", learner_sid=
             <h3>Instructor Review & Approval</h3>
             <form method="POST" action="/api/projects/review" style="display:flex;gap:10px;align-items:center;">
               <input type="hidden" name="project_id" value="{esc(proj.project_id)}">
-              <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+              <input type="hidden" name="csrf_token" value="{esc(csrf)}">
               <input type="text" name="notes" placeholder="Instructor feedback notes..." value="{esc(proj.instructor_notes or "")}" style="padding:8px;width:300px;border:1px solid #cbd5e1;border-radius:6px;">
               <button type="submit" name="status" value="APPROVED" style="background:#16a34a;">Approve Project</button>
               <button type="submit" name="status" value="REVISED" style="background:#d97706;">Request Revision</button>
@@ -636,7 +637,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token="", learner_sid=
           <p class="muted">{esc(STUDENT_INTEREST_PROFILES.get(learner_sid, {}).get("label", "General"))}</p>
           <form method="POST" action="/api/projects/generate">
             <input type="hidden" name="student_id" value="{esc(learner_sid)}">
-            <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+            <input type="hidden" name="csrf_token" value="{esc(csrf)}">
             <button type="submit" style="padding:6px 12px;font-size:13px;">Generate My Project</button>
           </form>
         </div>
@@ -649,7 +650,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token="", learner_sid=
               <p class="muted">{esc(STUDENT_INTEREST_PROFILES.get(sid, {}).get("label", "General"))}</p>
               <form method="POST" action="/api/projects/generate">
                 <input type="hidden" name="student_id" value="{esc(sid)}">
-                <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+                <input type="hidden" name="csrf_token" value="{esc(csrf)}">
                 <button type="submit" style="padding:6px 12px;font-size:13px;">Generate Project</button>
               </form>
             </div>
@@ -726,7 +727,8 @@ def graph_page():
     return shell("Graph review", body + "</section>")
 
 
-def em_review_page(filter_status=None, csrf_token=""):
+def em_review_page(filter_status=None, csrf_token=None):
+    csrf = csrf_token or ""
     em_repo = get_em_repo()
     all_evidence = em_repo.list_all_evidence()
 
@@ -754,7 +756,7 @@ def em_review_page(filter_status=None, csrf_token=""):
         action_form = f"""
         <form method="POST" action="/api/em/review" style="display:flex;gap:6px;align-items:center;">
           <input type="hidden" name="evidence_id" value="{esc(ev.evidence_id)}">
-          <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+          <input type="hidden" name="csrf_token" value="{esc(csrf)}">
           <input type="text" name="instructor_notes" placeholder="Notes..." value="{esc(ev.instructor_notes or "")}" style="padding:4px;font-size:12px;width:120px;border:1px solid #cbd5e1;border-radius:4px;">
           <button type="submit" name="review_status" value="ACCEPTED" style="background:#16a34a;padding:5px 9px;font-size:12px;">Accept</button>
           <button type="submit" name="review_status" value="REJECTED" style="background:#dc2626;padding:5px 9px;font-size:12px;">Reject</button>
@@ -843,8 +845,9 @@ def compare(params):
 
 
 def practice_page(
-    qid="sql_join_04", grading_result=None, feedback_data=None, csrf_token="", auth=None
+    qid="sql_join_04", grading_result=None, feedback_data=None, csrf_token=None, auth=None
 ):
+    csrf = csrf_token or ""
     if qid not in QUESTIONS:
         qid = "sql_join_04"
     q_info = QUESTIONS[qid]
@@ -894,7 +897,7 @@ def practice_page(
         <p class="muted"><strong>Schema:</strong> Employees(employee_id INTEGER, name TEXT, department_id INTEGER); Departments(department_id INTEGER, department_name TEXT).</p>
       </div>
       <form method="POST" action="/practice">
-        <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+        <input type="hidden" name="csrf_token" value="{esc(csrf)}">
         <div style="margin-bottom:12px;">
           <label style="display:block;font-weight:600;margin-bottom:4px;">Select Problem:</label>
           <select name="question_id" onchange="window.location.href='/practice?id=' + this.value" style="padding:6px 10px;font-size:14px;">
@@ -903,7 +906,7 @@ def practice_page(
         </div>
         <div style="margin-bottom:16px;">
           <label style="display:block;font-weight:600;margin-bottom:4px;">Your SQL Query:</label>
-          <textarea id="sql" name="sql" rows="6" style="width:100%;box-sizing:border-box;padding:10px;font-family:monospace;font-size:14px;border:1px solid #cbd5e1;border-radius:6px;" placeholder="SELECT ... FROM ..."></textarea>
+          <textarea id="sql" name="sql" rows="6" style="width:100%;box-sizing:border-box;padding:10px;font-family:monospace;font-size:14px;border:1px solid #cbd5e1;border-radius:6px;" placeholder="-- Enter SQL query here"></textarea>
         </div>
         <button type="submit" id="submit-query" style="background:#087674;color:white;padding:10px 20px;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Submit Query for Grading</button>
       </form>
@@ -963,7 +966,8 @@ def authenticate_feedback_request(headers, params, job_id):
     )
 
 
-def feedback_page(job_id, headers, params, csrf_token=""):
+def feedback_page(job_id, headers, params, csrf_token=None):
+    csrf = csrf_token or ""
     if not job_id:
         return shell(
             "Feedback delivery",
@@ -1114,7 +1118,7 @@ def feedback_page(job_id, headers, params, csrf_token=""):
                     <input type="hidden" name="attempt_id" value="{esc(job.attempt_id)}">
                     <input type="hidden" name="job_id" value="{esc(job_id)}">
                     <input type="hidden" name="ticket" value="{esc(ticket_val)}">
-                    <input type="hidden" name="csrf_token" value="{esc(csrf_token)}">
+                    <input type="hidden" name="csrf_token" value="{esc(csrf)}">
                     <p><label for="reflection_text"><strong>Your Reflection:</strong></label></p>
                     <textarea id="reflection_text" name="reflection_text" rows="4" style="width:100%;box-sizing:border-box;margin:6px 0 12px 0;padding:10px;font:14px system-ui;border:1px solid #cbd5e1;border-radius:6px;" placeholder="Share your perspective on how this query connects to broader organizational decisions or systems..." required></textarea>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
