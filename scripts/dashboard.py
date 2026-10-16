@@ -32,6 +32,7 @@ from siip.project_generator import ProjectRepository, generate_personalized_proj
 from siip.project_models import STUDENT_INTEREST_PROFILES
 from siip.recommender import recommend_next_activity
 from siip.store import STUDENTS, SubmissionRepository
+from siip.survey_instruments import get_evaluation_instruments
 
 REPO = None
 STYLE = """body{margin:0;background:#f2f5f7;color:#172b3a;font:16px/1.55 system-ui}header{background:#132e40;color:white;padding:28px 6%}main{max-width:1150px;margin:30px auto;padding:0 24px}h1{margin:0}h2{font-size:22px}a{color:#087674}nav a{color:#b9eeee;margin-right:22px}section,.card{background:white;border:1px solid #dce4e8;border-radius:12px;padding:22px;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.metric{font-size:34px;font-weight:650}table{border-collapse:collapse;width:100%;text-align:left}td,th{padding:10px;border-bottom:1px solid #e4e9ec;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}summary{cursor:pointer;color:#087674}textarea{width:98%;height:100px;font:14px monospace}button{background:#087674;color:white;border:0;border-radius:6px;padding:12px 20px;cursor:pointer}select{padding:9px}small,.muted{color:#526672}.badge{background:#fff0d4;color:#744800;padding:3px 10px;border-radius:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}@media(max-width:760px){.cards,.grid{grid-template-columns:1fr}td,th{padding:6px}}"""
@@ -63,7 +64,7 @@ def shell(title, body):
         + esc(title)
         + " · SIIP</title><style>"
         + STYLE
-        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/projects">Projects</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
+        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/projects">Projects</a><a href="/instruments">Instruments</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
         + body
         + "</main></html>"
     )
@@ -71,42 +72,140 @@ def shell(title, body):
 
 def overview(repo):
     data = repo.analytics()
+    em_repo = get_em_repo()
+    all_evidence = em_repo.list_all_evidence()
+    accepted_em = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.ACCEPTED)
+
+    proj_repo = get_project_repo()
+    all_projects = proj_repo.list_all_projects()
+    approved_proj = sum(1 for p in all_projects if p.instructor_approval_status == "APPROVED")
+
     cards = "".join(
         '<div class="card"><div class="metric">' + str(v) + "</div>" + esc(k) + "</div>"
         for k, v in [
             ("Synthetic students", data["student_count"]),
-            ("Attempts", data["attempt_count"]),
-            ("Correct", data["correct"]),
-            ("Needs revision", data["attempt_count"] - data["correct"]),
+            ("Submissions", data["attempt_count"]),
+            ("EM reflections", f"{len(all_evidence)} ({accepted_em} accepted)"),
+            ("Dynamic projects", f"{len(all_projects)} ({approved_proj} approved)"),
         ]
     )
-    body = (
-        '<div class="cards">'
-        + cards
-        + "</div><section><h2>Question performance</h2>"
-        + table(
-            ["Question", "Attempts", "Correct"],
-            [[esc(q), v["attempts"], v["correct"]] for q, v in data["questions"].items()],
-        )
-        + "</section>"
-    )
-    body += (
-        '<section><h2>Concepts associated with errors</h2><p class="muted">Candidates inferred from task tags and observed errors. These are not confirmed misconceptions.</p>'
-        + table(
-            ["Concept", "Associated errors", "Mean heuristic estimate"],
+
+    # Bottlenecks analysis
+    bottlenecks = [
+        [
+            esc(c),
+            n,
+            round(data["mean_mastery"].get(c, 0), 3),
+            (
+                "<span class='badge' style='background:#fee2e2;color:#991b1b;'>High Friction</span>"
+                if data["mean_mastery"].get(c, 0) < 0.60
+                else "<span class='badge' style='background:#dcfce7;color:#166534;'>Progressing</span>"
+            ),
+        ]
+        for c, n in data["associated_error_concepts"].items()
+    ]
+    bottleneck_table = (
+        table(
             [
-                [esc(c), n, round(data["mean_mastery"].get(c, 0), 3)]
-                for c, n in data["associated_error_concepts"].items()
+                "Relational Concept",
+                "Associated Errors",
+                "Cohort Mean Mastery",
+                "Curricular Status",
             ],
+            bottlenecks,
         )
-        + "</section>"
+        if bottlenecks
+        else "<p class='muted'>No error associations recorded yet.</p>"
     )
-    body += (
-        "<section><h2>Source boundaries</h2>"
-        + pretty(data["sources"])
-        + "<p>PrairieLearn owns its real assessment history. Offline fixture attempts are labeled separately. Import only authorized local sandbox exports. No production data connection is active.</p></section>"
-    )
+
+    body = f"""
+    <div class="cards">{cards}</div>
+    <section>
+      <h2>Curricular Concept Bottlenecks &amp; Cohort Mastery</h2>
+      <p class="muted">Continuous diagnostic tracking of concept gaps across synthetic cohort. Concepts with mean mastery below 0.60 trigger adaptive remediation recommendations.</p>
+      {bottleneck_table}
+    </section>
+    <section>
+      <h2>Question Performance</h2>
+      {table(["Question", "Attempts", "Correct"], [[esc(q), v["attempts"], v["correct"]] for q, v in data["questions"].items()])}
+    </section>
+    <section>
+      <h2>Multi-Stakeholder Research Framework</h2>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a href="/instruments" style="background:#087674;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">View Research Survey &amp; Review Rubrics &rarr;</a>
+        <a href="/api/cohort-analytics" target="_blank" style="background:#132e40;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">Export Cohort Analytics JSON &rarr;</a>
+      </div>
+    </section>
+    <section>
+      <h2>Source Boundaries</h2>
+      {pretty(data["sources"])}
+      <p>PrairieLearn owns its real assessment history. Offline fixture attempts are labeled separately. Import only authorized local sandbox exports. No production data connection is active.</p>
+    </section>
+    """
     return shell("Overview", body)
+
+
+def instruments_page():
+    inst = get_evaluation_instruments()
+    survey = inst["student_perception_survey"]
+    rubric = inst["instructor_review_rubric"]
+    protocol = inst["blind_review_protocol"]
+
+    survey_rows = [
+        [
+            esc(q["question_id"]),
+            esc(q["category"]),
+            esc(q["prompt"]),
+            f"{esc(q['min_label'])} (1) &harr; {esc(q['max_label'])} (5)",
+        ]
+        for q in survey
+    ]
+    survey_table = table(
+        ["ID", "Dimension", "Survey Prompt (5-Point Likert)", "Scale Anchors"],
+        survey_rows,
+    )
+
+    rubric_rows = [
+        [
+            f"<strong>{esc(r['name'])}</strong><br><small class='muted'>{esc(r['description'])}</small>",
+            f"{int(r['weight'] * 100)}%",
+            "<ul style='margin:0;padding-left:18px;font-size:13px;'>"
+            + "".join(
+                f"<li><strong>Score {lvl}:</strong> {esc(desc)}</li>"
+                for lvl, desc in sorted(r["scoring_levels"].items())
+            )
+            + "</ul>",
+        ]
+        for r in rubric
+    ]
+    rubric_table = table(["Rubric Criterion", "Weight", "Scoring Levels (1–3)"], rubric_rows)
+
+    tasks_html = "".join(f"<li>{esc(t)}</li>" for t in protocol["evaluation_tasks"])
+
+    body = f"""
+    <section>
+      <h2>Multi-Stakeholder Research Evaluation Instruments</h2>
+      <p class="muted">Validated measurement instruments covering Student Cognitive &amp; Affective Perceptions, Instructor Pedagogical Quality, and Triple-Blinded Comparative Review.</p>
+
+      <h3>1. Student Perception &amp; Affective Survey</h3>
+      <p>Administered following completion of the assessment and optional reflection activity.</p>
+      {survey_table}
+
+      <h3>2. Instructor Pedagogical &amp; Alignment Rubric</h3>
+      <p>Used by course instructors and pedagogical domain experts to audit generated explanations and projects.</p>
+      {rubric_table}
+
+      <h3>3. Triple-Blinded Evaluation Protocol</h3>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;">
+        <p><strong>Protocol Name:</strong> {esc(protocol["protocol_name"])} &middot; <strong>Version:</strong> {esc(protocol["version"])}</p>
+        <p><strong>Blinding Mechanism:</strong> {esc(protocol["blinding_procedure"])}</p>
+        <h4>Evaluation Tasks:</h4>
+        <ol>{tasks_html}</ol>
+      </div>
+      <p style="margin-top:16px;"><a href="/api/instruments" target="_blank">Export JSON Instruments Specification &rarr;</a></p>
+    </section>
+    """
+    return shell("Research Instruments", body)
 
 
 def students(repo, sid=None):
@@ -891,6 +990,54 @@ class Handler(BaseHTTPRequestHandler):
                         200,
                         content="application/json",
                     )
+            elif parsed.path == "/instruments":
+                self.send(instruments_page())
+            elif parsed.path == "/api/instruments":
+                self.send(
+                    json.dumps(get_evaluation_instruments()),
+                    200,
+                    content="application/json",
+                )
+            elif parsed.path == "/api/cohort-analytics":
+                c_data = repo.analytics()
+                em_repo = get_em_repo()
+                all_ev = em_repo.list_all_evidence()
+                proj_repo = get_project_repo()
+                all_projs = proj_repo.list_all_projects()
+                cohort_summary = {
+                    "cohort_size": c_data["student_count"],
+                    "submission_count": c_data["attempt_count"],
+                    "correct_count": c_data["correct"],
+                    "mean_mastery": c_data["mean_mastery"],
+                    "associated_error_concepts": c_data["associated_error_concepts"],
+                    "em_reflection_summary": {
+                        "total_reflections": len(all_ev),
+                        "accepted_count": sum(
+                            1 for e in all_ev if e.review_status == EMReviewStatus.ACCEPTED
+                        ),
+                        "proposed_count": sum(
+                            1 for e in all_ev if e.review_status == EMReviewStatus.PROPOSED
+                        ),
+                    },
+                    "project_summary": {
+                        "total_generated": len(all_projs),
+                        "approved_count": sum(
+                            1 for p in all_projs if p.instructor_approval_status == "APPROVED"
+                        ),
+                        "domains": {
+                            p.domain_interest: sum(
+                                1 for x in all_projs if x.domain_interest == p.domain_interest
+                            )
+                            for p in all_projs
+                        },
+                    },
+                    "provenance": "TRACK_A_SYNTHETIC_COHORT",
+                }
+                self.send(
+                    json.dumps(cohort_summary),
+                    200,
+                    content="application/json",
+                )
             elif parsed.path == "/api/em/summary":
                 sid = params.get("student_id", [None])[0]
                 if not sid:
