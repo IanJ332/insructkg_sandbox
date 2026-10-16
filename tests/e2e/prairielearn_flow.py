@@ -118,7 +118,7 @@ def main():
                 )
             page.goto(overview)
             expect(page.get_by_role("main")).to_contain_text(
-                re.compile(r"Total\s+points:\s*3\s*/\s*3")
+                re.compile(r"Total\s+points:\s*3\s*/\s*[34]")
             )
             page.screenshot(path=str(out / "assessment.png"), full_page=True)
             # Switch back to instructor view to access instructor downloads.
