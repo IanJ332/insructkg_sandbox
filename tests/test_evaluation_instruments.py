@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT))
 
 from dashboard import DashboardServer
 from siip.em_repository import EMRepository
+from siip.identity import create_signed_session_token
 from siip.jobs import FeedbackJobRepository
 from siip.project_generator import ProjectRepository, generate_personalized_project
 from siip.store import SubmissionRepository
@@ -101,6 +102,7 @@ class TestCohortAnalyticsDashboardIntegration(unittest.TestCase):
             attempt_id="att-init-1",
             response_text="Test reflection for cohort analytics.",
         )
+        self.instructor_token = create_signed_session_token("instructor_alawini", role="instructor")
 
         self.server = DashboardServer(self.sub_repo, 0, host="127.0.0.1")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -152,7 +154,11 @@ class TestCohortAnalyticsDashboardIntegration(unittest.TestCase):
         self.assertIn("blind_review_protocol", inst)
 
     def test_cohort_analytics_json_api(self):
-        status, data, _ = self._request("GET", "/api/cohort-analytics")
+        status, data, _ = self._request(
+            "GET",
+            "/api/cohort-analytics",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         analytics = json.loads(data.decode("utf-8"))
         self.assertEqual(analytics["cohort_size"], 5)

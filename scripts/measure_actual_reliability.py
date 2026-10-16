@@ -79,20 +79,28 @@ def measure_grading_latency(n: int = 50) -> dict:
 
     return {
         "runs": len(latencies),
+        "sample_size": n,
         "p50_ms": percentile(latencies, 0.50),
         "p95_ms": percentile(latencies, 0.95),
-        "p99_ms": percentile(latencies, 0.99),
+        "sample_estimate_p99_ms": percentile(latencies, 0.99),
         "min_ms": round(min(latencies), 3),
         "max_ms": round(max(latencies), 3),
         "mean_ms": round(sum(latencies) / len(latencies), 3),
         "subprocess_p50_ms": percentile(subproc_latencies, 0.50),
         "in_memory_sql_p50_ms": percentile(in_mem_latencies, 0.50),
-        "windows_process_creation_overhead_factor": "Host subprocess launch introduces ~40-80ms per dataset. In Linux container / production, process creation is <15ms.",
+        "p99_methodological_note": "P99 is a sample estimate derived from N=50 test iterations, not a production latency guarantee or SLA.",
+        "platform_observations": {
+            "windows_measured_overhead": "Host subprocess launch introduces ~40-80ms per dataset under Windows CreateProcess.",
+            "linux_grading_latency_status": "engineering_estimate_not_empirically_observed",
+            "linux_grading_estimate_note": "Sub-50ms Linux grading represents an architectural estimate based on fork() process creation overhead; empirical Linux measurements await container deployment verification.",
+        },
     }
 
 
 def measure_queue_concurrency_and_lock_waits() -> dict:
     """Measure SQLite WAL lock contention and worker throughput under 1, 5, 10 workers."""
+    from siip.feedback import generate_feedback
+
     results = {}
     with tempfile.TemporaryDirectory() as tmpdir:
         for num_workers in [1, 5, 10]:
@@ -119,21 +127,37 @@ def measure_queue_concurrency_and_lock_waits() -> dict:
             enqueue_elapsed = time.perf_counter() - t0
             enqueue_rate = round(num_jobs / enqueue_elapsed, 1)
 
-            # Measure concurrent worker drain
-            lock_waits = []
+            # Measure concurrent worker drain, isolating SQLite claim lock acquisition
+            sqlite_claim_latencies = []
+            job_processing_latencies = []
             drain_t0 = time.perf_counter()
 
             def drain_worker(wid: int):
-                w = FeedbackWorker(repo, worker_id=f"worker-{wid}")
                 count = 0
                 while True:
                     t_claim_0 = time.perf_counter()
-                    job = w.process_one()
+                    job = repo.claim(f"worker-{wid}")
                     t_claim_1 = time.perf_counter()
                     if not job:
                         break
+                    sqlite_claim_latencies.append((t_claim_1 - t_claim_0) * 1000.0)
+
+                    t_proc_0 = time.perf_counter()
+                    fb = generate_feedback(
+                        job.question_id, job.submitted_sql, job.grading, mode=job.feedback_mode
+                    )
+                    repo.complete(
+                        job.job_id,
+                        result=fb,
+                        latency_ms=1.0,
+                        model_identifier="deterministic",
+                        prompt_version="v1",
+                        graph_version="v1",
+                        lease_token=job.lease_token,
+                    )
+                    t_proc_1 = time.perf_counter()
+                    job_processing_latencies.append((t_proc_1 - t_proc_0) * 1000.0)
                     count += 1
-                    lock_waits.append((t_claim_1 - t_claim_0) * 1000.0)
                 return count
 
             with ThreadPoolExecutor(max_workers=num_workers) as pool:
@@ -145,11 +169,17 @@ def measure_queue_concurrency_and_lock_waits() -> dict:
             results[f"{num_workers}_workers"] = {
                 "enqueued_jobs": num_jobs,
                 "enqueue_ops_per_sec": enqueue_rate,
-                "drain_rate_jobs_per_sec": drain_rate,
+                "queue_drain_rate_deterministic_jobs_sec": drain_rate,
+                "workload_type": "deterministic_fallback_cpu_bound",
+                "throughput_note": "Rate reflects SQLite WAL queue throughput with deterministic mock/fallback feedback; does not measure neural GPU LLM inference.",
                 "total_drain_seconds": round(drain_elapsed, 3),
-                "lock_wait_p50_ms": percentile(lock_waits, 0.50),
-                "lock_wait_p95_ms": percentile(lock_waits, 0.95),
-                "lock_wait_max_ms": round(max(lock_waits), 3) if lock_waits else 0.0,
+                "sqlite_claim_latency_p50_ms": percentile(sqlite_claim_latencies, 0.50),
+                "sqlite_claim_latency_p95_ms": percentile(sqlite_claim_latencies, 0.95),
+                "sqlite_claim_latency_max_ms": (
+                    round(max(sqlite_claim_latencies), 3) if sqlite_claim_latencies else 0.0
+                ),
+                "job_processing_latency_p50_ms": percentile(job_processing_latencies, 0.50),
+                "job_processing_latency_p95_ms": percentile(job_processing_latencies, 0.95),
             }
 
     return results
@@ -203,20 +233,32 @@ def main():
     grading_stats = measure_grading_latency(50)
     print(f"   P50 Latency:   {grading_stats['p50_ms']:.2f} ms")
     print(f"   P95 Latency:   {grading_stats['p95_ms']:.2f} ms")
-    print(f"   P99 Latency:   {grading_stats['p99_ms']:.2f} ms")
+    print(
+        f"   Sample Est P99 Latency: {grading_stats['sample_estimate_p99_ms']:.2f} ms (N={grading_stats['sample_size']})"
+    )
     print(f"   Mean Latency:  {grading_stats['mean_ms']:.2f} ms")
     print(f"   Subprocess Overhead (P50): {grading_stats['subprocess_p50_ms']:.2f} ms")
     print(f"   In-Memory Query (P50):     {grading_stats['in_memory_sql_p50_ms']:.3f} ms")
-    print(f"   Platform Analysis: {grading_stats['windows_process_creation_overhead_factor']}")
+    print(
+        f"   Platform Analysis: {grading_stats['platform_observations']['windows_measured_overhead']}"
+    )
+    print(
+        f"   Linux Status: {grading_stats['platform_observations']['linux_grading_latency_status']}"
+    )
 
     print("\n2. Measuring Queue Concurrency and Lock Contention...")
     queue_stats = measure_queue_concurrency_and_lock_waits()
     for config, metrics in queue_stats.items():
         print(f"   [{config}]:")
-        print(f"     Enqueue Rate:       {metrics['enqueue_ops_per_sec']} ops/sec")
-        print(f"     Drain Throughput:   {metrics['drain_rate_jobs_per_sec']} jobs/sec")
+        print(f"     Enqueue Rate:               {metrics['enqueue_ops_per_sec']} ops/sec")
         print(
-            f"     Lock Wait P50:      {metrics['lock_wait_p50_ms']:.2f} ms | P95: {metrics['lock_wait_p95_ms']:.2f} ms (max: {metrics['lock_wait_max_ms']:.2f} ms)"
+            f"     Deterministic Drain Rate:   {metrics['queue_drain_rate_deterministic_jobs_sec']} jobs/sec"
+        )
+        print(
+            f"     SQLite Claim Lock P50:      {metrics['sqlite_claim_latency_p50_ms']:.2f} ms | P95: {metrics['sqlite_claim_latency_p95_ms']:.2f} ms (max: {metrics['sqlite_claim_latency_max_ms']:.2f} ms)"
+        )
+        print(
+            f"     Job Processing P50:         {metrics['job_processing_latency_p50_ms']:.2f} ms | P95: {metrics['job_processing_latency_p95_ms']:.2f} ms"
         )
 
     print("\n3. Testing Worker Fault Recovery and Idempotency...")

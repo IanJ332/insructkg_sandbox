@@ -18,6 +18,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,7 @@ from dashboard import DashboardServer, get_em_repo, get_project_repo
 from siip.em_models import EMDimension, EMReviewStatus
 from siip.identity import (
     create_signed_session_token,
+    generate_csrf_token,
     is_instructor_principal,
     is_student_principal,
     verify_signed_session_token_role,
@@ -52,6 +54,33 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.sub_repo = SubmissionRepository(self.db_path)
         self.em_repo = get_em_repo()
         self.proj_repo = get_project_repo()
+
+        # Seed attempt in sub_repo database so attempt existence validation passes
+        with closing(self.sub_repo.connect()) as db:
+            db.execute(
+                "INSERT INTO attempts VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "att-auth-01",
+                    "S001",
+                    "sql_join_04",
+                    "2026-10-15T10:00:00Z",
+                    "synthetic_fixture",
+                    "sql-sandbox",
+                    json.dumps(
+                        {
+                            "attempt_id": "att-auth-01",
+                            "student_id": "S001",
+                            "question_id": "sql_join_04",
+                            "submitted_sql": "SELECT 1;",
+                            "timestamp": "2026-10-15T10:00:00Z",
+                            "concepts": ["LEFT_OUTER_JOIN"],
+                            "grading": {"status": "correct", "score": 1, "observation": "Correct"},
+                            "diagnosis": {"observed_error": "none"},
+                        }
+                    ),
+                ),
+            )
+            db.commit()
 
         # Seed initial EM reflection & evidence record
         self.resp = self.em_repo.record_response(
@@ -80,9 +109,21 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         )
         self.proj_repo.save_project(self.project)
 
+        # Seed project for S002 to test cross-student isolation
+        self.project_s002 = generate_personalized_project(
+            student_id="S002",
+            interest="transit",
+            profile=self.sub_repo.profile("S002"),
+        )
+        self.proj_repo.save_project(self.project_s002)
+
         # Generate tokens
         self.student_token = create_signed_session_token("S001", role="student")
+        self.student_csrf = generate_csrf_token(self.student_token)
+        self.s002_token = create_signed_session_token("S002", role="student")
+        self.s002_csrf = generate_csrf_token(self.s002_token)
         self.instructor_token = create_signed_session_token("instructor_alawini", role="instructor")
+        self.instructor_csrf = generate_csrf_token(self.instructor_token)
 
         self.server = DashboardServer(self.sub_repo, 0, host="127.0.0.1")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -160,8 +201,93 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.assertIsNotNone(ev)
         self.assertEqual(ev.review_status, EMReviewStatus.PROPOSED)
 
+    def test_unauthenticated_endpoints_return_401(self):
+        """Mandatory negative tests: Endpoints fail closed with 401 when no credentials provided."""
+        # 1. POST /api/em/review without token
+        status, data, _ = self._request(
+            "POST",
+            "/api/em/review",
+            body=json.dumps(
+                {"evidence_id": self.evidence.evidence_id, "review_status": "ACCEPTED"}
+            ),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 401)
+
+        # 2. POST /api/projects/review without token
+        status, data, _ = self._request(
+            "POST",
+            "/api/projects/review",
+            body=json.dumps({"project_id": self.project.project_id, "status": "APPROVED"}),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 401)
+
+        # 3. GET /projects without token
+        status, _, _ = self._request("GET", f"/projects?id={self.project.project_id}")
+        self.assertEqual(status, 401)
+
+        # 4. GET /api/projects without token
+        status, _, _ = self._request("GET", f"/api/projects?id={self.project.project_id}")
+        self.assertEqual(status, 401)
+
+        # 5. GET /em-review without token
+        status, _, _ = self._request("GET", "/em-review")
+        self.assertEqual(status, 401)
+
+        # 6. GET /students?id=S001 without token
+        status, _, _ = self._request("GET", "/students?id=S001")
+        self.assertEqual(status, 401)
+
+        # 7. GET /api/cohort-analytics without token
+        status, _, _ = self._request("GET", "/api/cohort-analytics")
+        self.assertEqual(status, 401)
+
+        # 8. GET /api/recommendation without token
+        status, _, _ = self._request("GET", "/api/recommendation?student_id=S001")
+        self.assertEqual(status, 401)
+
+        # 9. POST /api/em/reflection without token or ticket
+        status, _, _ = self._request(
+            "POST",
+            "/api/em/reflection",
+            body=json.dumps(
+                {
+                    "student_id": "S001",
+                    "question_id": "sql_join_04",
+                    "prompt_id": "em-prompt-v1",
+                    "attempt_id": "att-auth-01",
+                    "reflection_text": "Sample text",
+                }
+            ),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 401)
+
+    def test_invalid_and_expired_credentials_return_401(self):
+        """Mandatory negative test: Invalid or expired credentials fail closed with 401."""
+        status, data, _ = self._request(
+            "POST",
+            "/api/em/review",
+            body=json.dumps(
+                {"evidence_id": self.evidence.evidence_id, "review_status": "ACCEPTED"}
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer invalid.synthetic.token",
+            },
+        )
+        self.assertEqual(status, 401)
+
+        status, data, _ = self._request(
+            "GET",
+            f"/projects?id={self.project.project_id}",
+            headers={"Authorization": "Bearer expired_token"},
+        )
+        self.assertEqual(status, 401)
+
     def test_student_reviewer_id_blocked_from_em_review_403(self):
-        """Mandatory negative test: Form post with reviewer_id='S001' is rejected with 403."""
+        """Mandatory negative test: Authenticated student sending reviewer_id is rejected with 403."""
         payload = json.dumps(
             {
                 "evidence_id": self.evidence.evidence_id,
@@ -173,7 +299,10 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
             "POST",
             "/api/em/review",
             body=payload,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
         )
         self.assertEqual(status, 403)
         res = json.loads(data.decode("utf-8"))
@@ -183,6 +312,26 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         ev = self.em_repo.get_evidence(self.evidence.evidence_id)
         self.assertIsNotNone(ev)
         self.assertEqual(ev.review_status, EMReviewStatus.PROPOSED)
+
+    def test_client_supplied_reviewer_id_never_establishes_authority(self):
+        """Client-supplied instructor reviewer_id cannot elevate student token to instructor privileges."""
+        payload = json.dumps(
+            {
+                "evidence_id": self.evidence.evidence_id,
+                "review_status": "ACCEPTED",
+                "reviewer_id": "instructor_alawini",  # Forged client claim
+            }
+        )
+        status, data, _ = self._request(
+            "POST",
+            "/api/em/review",
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 403)
 
     def test_instructor_token_successfully_reviews_em_evidence(self):
         """Authorized instructor token successfully updates EM evidence status."""
@@ -244,7 +393,7 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.assertEqual(p.instructor_approval_status, "PROVISIONAL")
 
     def test_student_reviewer_id_blocked_from_project_review_403(self):
-        """Mandatory negative test: reviewer_id='S002' rejected with 403."""
+        """Mandatory negative test: Student reviewer_id rejected with 403."""
         payload = json.dumps(
             {
                 "project_id": self.project.project_id,
@@ -256,7 +405,10 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
             "POST",
             "/api/projects/review",
             body=payload,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
         )
         self.assertEqual(status, 403)
 
@@ -289,12 +441,14 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.assertEqual(p.instructor_notes, "Approved for clinical placement cohort study.")
 
     # ---------------------------------------------------------------------------
-    # Answer Key Concealment & Pending Notice Tests
+    # Answer Key Concealment & Role Views
     # ---------------------------------------------------------------------------
     def test_learner_view_conceals_reference_sql_html(self):
-        """Learner view (?view=learner) must not leak reference SQL and must show pending notice."""
+        """Learner view must not leak reference SQL and must show pending notice."""
         status, data, _ = self._request(
-            "GET", f"/projects?id={self.project.project_id}&view=learner"
+            "GET",
+            f"/projects?id={self.project.project_id}",
+            headers={"Authorization": f"Bearer {self.student_token}"},
         )
         self.assertEqual(status, 200)
         html_text = data.decode("utf-8")
@@ -311,7 +465,11 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
 
     def test_instructor_view_displays_reference_sql_and_controls_html(self):
         """Instructor view displays reference SQL and review action buttons."""
-        status, data, _ = self._request("GET", f"/projects?id={self.project.project_id}")
+        status, data, _ = self._request(
+            "GET",
+            f"/projects?id={self.project.project_id}",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         html_text = data.decode("utf-8")
 
@@ -320,10 +478,10 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.assertIn('action="/api/projects/review"', html_text)
 
     def test_learner_api_endpoint_strips_reference_sql_json(self):
-        """GET /api/projects?id=...&view=learner strips reference_sql from all milestones."""
+        """GET /api/projects?id=... for student strips reference_sql from all milestones."""
         status, data, _ = self._request(
             "GET",
-            f"/api/projects?id={self.project.project_id}&view=learner",
+            f"/api/projects?id={self.project.project_id}",
             headers={"Authorization": f"Bearer {self.student_token}"},
         )
         self.assertEqual(status, 200)
@@ -333,6 +491,193 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
             self.assertNotIn("reference_sql", m)
         self.assertIn("learner_notice", payload)
         self.assertIn("Pending Instructor Approval", payload["learner_notice"])
+
+    # ---------------------------------------------------------------------------
+    # Cross-Student Isolation & Role Separation
+    # ---------------------------------------------------------------------------
+    def test_cross_student_access_rejected_403(self):
+        """Learners cannot access other learners' private records or projects."""
+        # 1. Student S001 cannot view S002's profile
+        status, _, _ = self._request(
+            "GET",
+            "/students?id=S002",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        self.assertEqual(status, 403)
+
+        # 2. Student S001 cannot view S002's project HTML
+        status, _, _ = self._request(
+            "GET",
+            f"/projects?id={self.project_s002.project_id}",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        self.assertEqual(status, 403)
+
+        # 3. Student S001 cannot view S002's project JSON
+        status, _, _ = self._request(
+            "GET",
+            f"/api/projects?id={self.project_s002.project_id}",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        self.assertEqual(status, 403)
+
+        # 4. Student S001 cannot view S002's recommendations
+        status, _, _ = self._request(
+            "GET",
+            "/api/recommendation?student_id=S002",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        self.assertEqual(status, 403)
+
+        # 5. Student cannot access cohort analytics
+        status, _, _ = self._request(
+            "GET",
+            "/api/cohort-analytics",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        self.assertEqual(status, 403)
+
+    # ---------------------------------------------------------------------------
+    # EM Reflection Security, Validation & Idempotency
+    # ---------------------------------------------------------------------------
+    def test_em_reflection_security_and_validation(self):
+        """Verify attempt ownership, existence, prompt match, and duplicate idempotency."""
+        # 1. Cross-student reflection rejected: S001 token submitting for S002
+        status, _, _ = self._request(
+            "POST",
+            "/api/em/reflection",
+            body=json.dumps(
+                {
+                    "student_id": "S002",
+                    "question_id": "sql_join_04",
+                    "prompt_id": "em-prompt-v1",
+                    "attempt_id": "att-auth-01",
+                    "reflection_text": "Impostor reflection",
+                }
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 403)
+
+        # 2. Non-existent attempt rejected: 404
+        status, _, _ = self._request(
+            "POST",
+            "/api/em/reflection",
+            body=json.dumps(
+                {
+                    "student_id": "S001",
+                    "question_id": "sql_join_04",
+                    "prompt_id": "em-prompt-v1",
+                    "attempt_id": "nonexistent-att-999",
+                    "reflection_text": "Valid text",
+                }
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 404)
+
+        # 3. Prompt mismatch rejected: 400
+        status, _, _ = self._request(
+            "POST",
+            "/api/em/reflection",
+            body=json.dumps(
+                {
+                    "student_id": "S001",
+                    "question_id": "sql_join_04",
+                    "prompt_id": "em-prompt-c1",  # Mismatched prompt for join_04
+                    "attempt_id": "att-auth-01",
+                    "reflection_text": "Valid text",
+                }
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 400)
+
+        # 4. Duplicate request follows idempotency policy: 200 with idempotent: True
+        status, data, _ = self._request(
+            "POST",
+            "/api/em/reflection",
+            body=json.dumps(
+                {
+                    "student_id": "S001",
+                    "question_id": "sql_join_04",
+                    "prompt_id": "em-prompt-v1",
+                    "attempt_id": "att-auth-01",
+                    "reflection_text": "Duplicate submission attempt",
+                }
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 200)
+        res = json.loads(data.decode("utf-8"))
+        self.assertTrue(res.get("idempotent"))
+        self.assertEqual(res["response_id"], self.resp.response_id)
+
+    # ---------------------------------------------------------------------------
+    # CSRF Protection on Synthetic Browser Forms
+    # ---------------------------------------------------------------------------
+    def test_csrf_protection_on_browser_forms(self):
+        """Forms must reject submissions without a valid CSRF token."""
+        from urllib.parse import urlencode
+
+        # 1. Missing CSRF on project review form POST -> 403
+        payload = urlencode({"project_id": self.project.project_id, "status": "APPROVED"})
+        status, _, _ = self._request(
+            "POST",
+            "/api/projects/review",
+            body=payload,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
+        )
+        self.assertEqual(status, 403)
+
+        # 2. Invalid CSRF on project review form POST -> 403
+        payload_invalid = urlencode(
+            {"project_id": self.project.project_id, "status": "APPROVED", "csrf_token": "bad-csrf"}
+        )
+        status, _, _ = self._request(
+            "POST",
+            "/api/projects/review",
+            body=payload_invalid,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
+        )
+        self.assertEqual(status, 403)
+
+        # 3. Valid CSRF on project review form POST -> 303 Redirect
+        payload_valid = urlencode(
+            {
+                "project_id": self.project.project_id,
+                "status": "APPROVED",
+                "csrf_token": self.instructor_csrf,
+            }
+        )
+        status, _, _ = self._request(
+            "POST",
+            "/api/projects/review",
+            body=payload_valid,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
+        )
+        self.assertEqual(status, 303)
 
     # ---------------------------------------------------------------------------
     # Independence of Technical Concept Mastery from EM Evidence

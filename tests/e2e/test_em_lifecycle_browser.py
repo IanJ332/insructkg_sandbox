@@ -120,7 +120,12 @@ class TestEMLifecycleBrowser(unittest.TestCase):
             expect(page.locator("text=Your submitted reflection")).to_be_visible()
             expect(page.locator(f"text={reflection_content}")).to_be_visible()
 
-            # 4. Instructor visits /em-review
+            # 4. Instructor logs in via demo session and visits /em-review
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "instructor_alawini")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             page.goto(f"{self.base_url}/em-review")
             expect(page.locator("h2")).to_contain_text(
                 "Instructor Entrepreneurial Mindset (EM) Evidence Review"

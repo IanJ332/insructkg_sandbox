@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT))
 
 from dashboard import DashboardServer
+from siip.identity import create_signed_session_token, generate_csrf_token
 from siip.jobs import FeedbackJobRepository
 from siip.project_generator import (
     ProjectRepository,
@@ -225,6 +226,11 @@ class TestDashboardAdaptiveAndProjectIntegration(unittest.TestCase):
         self.jobs_repo = FeedbackJobRepository(self.jobs_db)
         self.proj_repo = ProjectRepository(self.sub_db)
 
+        self.student_token = create_signed_session_token("S001", role="student")
+        self.student_csrf = generate_csrf_token(self.student_token)
+        self.instructor_token = create_signed_session_token("instructor_alawini", role="instructor")
+        self.instructor_csrf = generate_csrf_token(self.instructor_token)
+
         self.server = DashboardServer(self.sub_repo, 0, host="127.0.0.1")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -249,7 +255,11 @@ class TestDashboardAdaptiveAndProjectIntegration(unittest.TestCase):
         return status, data, resp_headers
 
     def test_student_profile_displays_recommendation_and_projects(self):
-        status, data, _ = self._request("GET", "/students?id=S001")
+        status, data, _ = self._request(
+            "GET",
+            "/students?id=S001",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("Adaptive Next-Activity Recommendation", html_str)
@@ -257,7 +267,11 @@ class TestDashboardAdaptiveAndProjectIntegration(unittest.TestCase):
         self.assertIn("Healthcare &amp; Clinical Operations", html_str)
 
     def test_adaptive_recommendation_api(self):
-        status, data, _ = self._request("GET", "/api/recommendation?student_id=S001")
+        status, data, _ = self._request(
+            "GET",
+            "/api/recommendation?student_id=S001",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
         self.assertEqual(status, 200)
         rec = json.loads(data.decode("utf-8"))
         self.assertEqual(rec["student_id"], "S001")
@@ -266,21 +280,34 @@ class TestDashboardAdaptiveAndProjectIntegration(unittest.TestCase):
         self.assertIn("mastery_snapshot", rec)
 
     def test_generate_and_review_project_lifecycle(self):
-        # 1. Generate project via form POST
-        gen_payload = urlencode({"student_id": "S001", "interest": "healthcare"})
+        # 1. Generate project via form POST (authenticated as student S001)
+        gen_payload = urlencode(
+            {
+                "student_id": "S001",
+                "interest": "healthcare",
+                "csrf_token": self.student_csrf,
+            }
+        )
         status, _, headers = self._request(
             "POST",
             "/api/projects/generate",
             body=gen_payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.student_token}",
+            },
         )
         self.assertEqual(status, 303)
         proj_url = headers.get("Location", "")
         self.assertIn("/projects?id=", proj_url)
         proj_id = proj_url.split("id=")[-1]
 
-        # 2. View generated project page
-        status, data, _ = self._request("GET", f"/projects?id={proj_id}")
+        # 2. View generated project page as instructor
+        status, data, _ = self._request(
+            "GET",
+            f"/projects?id={proj_id}",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("Clinical Operations and Patient Placement Intelligence", html_str)
@@ -294,24 +321,36 @@ class TestDashboardAdaptiveAndProjectIntegration(unittest.TestCase):
                 "project_id": proj_id,
                 "status": "APPROVED",
                 "notes": "Excellent clinical operational challenge.",
+                "csrf_token": self.instructor_csrf,
             }
         )
         status, _, headers = self._request(
             "POST",
             "/api/projects/review",
             body=rev_payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
         )
         self.assertEqual(status, 303)
 
-        # 4. Re-fetch project page and verify APPROVED badge
-        status, data, _ = self._request("GET", f"/projects?id={proj_id}")
+        # 4. Re-fetch project page as instructor and verify APPROVED badge
+        status, data, _ = self._request(
+            "GET",
+            f"/projects?id={proj_id}",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("Status: APPROVED", html_str)
 
-        # 5. Fetch project list via JSON API
-        status, data, _ = self._request("GET", f"/api/projects?id={proj_id}")
+        # 5. Fetch project list via JSON API as instructor
+        status, data, _ = self._request(
+            "GET",
+            f"/api/projects?id={proj_id}",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         proj_data = json.loads(data.decode("utf-8"))
         self.assertEqual(proj_data["project_id"], proj_id)

@@ -246,6 +246,42 @@ class EMRepository:
                 provenance=row["provenance"],
             )
 
+    def get_response_for_attempt(
+        self, student_id: str, attempt_id: str
+    ) -> Optional[EMReflectionResponse]:
+        with closing(self.connect()) as db:
+            row = db.execute(
+                """
+                SELECT * FROM em_responses
+                WHERE student_id = ? AND attempt_id = ?
+                ORDER BY submitted_at DESC LIMIT 1;
+                """,
+                (student_id, attempt_id),
+            ).fetchone()
+            if not row:
+                return None
+            return EMReflectionResponse(
+                response_id=row["response_id"],
+                student_id=row["student_id"],
+                question_id=row["question_id"],
+                prompt_id=row["prompt_id"],
+                attempt_id=row["attempt_id"],
+                response_text=row["response_text"],
+                status=EMResponseStatus(row["status"]),
+                submitted_at=row["submitted_at"],
+                provenance=row["provenance"],
+            )
+
+    def get_evidence_for_attempt(self, attempt_id: str) -> Optional[EMEvidenceRecord]:
+        with closing(self.connect()) as db:
+            row = db.execute(
+                "SELECT * FROM em_evidence WHERE attempt_id = ? ORDER BY created_at DESC LIMIT 1;",
+                (attempt_id,),
+            ).fetchone()
+            if not row:
+                return None
+            return self._row_to_evidence(row)
+
     def create_evidence_record(
         self,
         student_id: str,

@@ -134,7 +134,12 @@ class TestBrowserDemos(unittest.TestCase):
             self.assertIn("Personalized AI feedback", content)
             self.assertIn("Consider which join preserves rows", content)
 
-            # Step 5: S001 visits their student profile
+            # Step 5: S001 logs in and visits their student profile
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "S001")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             page.goto(f"{self.base_url}/students?id=S001")
             prof_content = page.content()
             self.assertIn("synthetic learning history", prof_content)
@@ -144,6 +149,13 @@ class TestBrowserDemos(unittest.TestCase):
             s001_profile = self.sub_repo.profile("S001")
             s001_rec = recommend_next_activity("S001", s001_profile)
             self.assertIn(s001_rec["recommended_question_id"], prof_content)
+
+            # Negative check: S001 cannot view S002's student profile (403 Forbidden)
+            page.goto(f"{self.base_url}/students?id=S002")
+            s001_cross_content = page.content()
+            self.assertIn(
+                "Forbidden: Student S001 cannot access records for S002", s001_cross_content
+            )
 
             # Step 7: Demonstrate S002 with a different history receives distinct recommendation
             # S002 masters INNER_JOIN and LEFT_OUTER_JOIN
@@ -175,7 +187,12 @@ class TestBrowserDemos(unittest.TestCase):
                 f"S001 ({s001_rec['recommended_question_id']}) and S002 ({s002_rec['recommended_question_id']}) should differ",
             )
 
-            # Verify S002 profile in browser
+            # Switch authentication to S002 and verify S002 profile in browser
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "S002")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             page.goto(f"{self.base_url}/students?id=S002")
             s002_content = page.content()
             self.assertIn(s002_rec["recommended_question_id"], s002_content)
@@ -241,7 +258,12 @@ class TestBrowserDemos(unittest.TestCase):
             ev_id = summary_before["records"][0]["evidence_id"]
             self.assertEqual(summary_before["records"][0]["review_status"], "PROPOSED")
 
-            # 5. Instructor reviews at /em-review
+            # 5. Instructor logs in and reviews at /em-review
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "instructor_alawini")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             page.goto(f"{self.base_url}/em-review")
             self.assertIn(ev_id, page.content())
             self.assertIn("Silent department omissions", page.content())
@@ -258,7 +280,7 @@ class TestBrowserDemos(unittest.TestCase):
             summary_after = self.em_repo.student_em_summary("S001")
             self.assertEqual(summary_after["accepted_by_dimension"]["V"], 1)
 
-            # View student profile
+            # View student profile (instructor is authorized to view any student)
             page.goto(f"{self.base_url}/students?id=S001")
             prof_html = page.content()
             self.assertIn("OBSERVED_EVIDENCE_RECORDED", prof_html)
@@ -306,8 +328,13 @@ class TestBrowserDemos(unittest.TestCase):
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            # 1. Learner View (?view=learner)
-            learner_url = f"{self.base_url}/projects?id={project.project_id}&view=learner"
+            # 1. Learner View: Log in as S001
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "S001")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
+            learner_url = f"{self.base_url}/projects?id={project.project_id}"
             page.goto(learner_url)
             learner_html = page.content()
 
@@ -321,7 +348,12 @@ class TestBrowserDemos(unittest.TestCase):
             # Instructor review form MUST NOT be present
             self.assertNotIn('action="/api/projects/review"', learner_html)
 
-            # 2. Instructor View (without view=learner)
+            # 2. Instructor View: Log in as instructor_alawini
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "instructor_alawini")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             instructor_url = f"{self.base_url}/projects?id={project.project_id}"
             page.goto(instructor_url)
             inst_html = page.content()
@@ -336,7 +368,12 @@ class TestBrowserDemos(unittest.TestCase):
             page.click("button:has-text('Approve Project')")
             page.wait_for_load_state("networkidle")
 
-            # 4. Re-check Learner View
+            # 4. Re-check Learner View: Log back in as S001
+            page.goto(f"{self.base_url}/login")
+            page.select_option("select[name='principal']", "S001")
+            page.click("button:has-text('Sign In')")
+            page.wait_for_load_state("networkidle")
+
             page.goto(learner_url)
             approved_learner_html = page.content()
 

@@ -68,6 +68,8 @@ class TestAsyncBrowserFlow(unittest.TestCase):
         self.server.server_close()
         self.thread.join()
         self.tmp.cleanup()
+        os.environ.pop("SIIP_QUEUE_URL", None)
+        os.environ.pop("SIIP_FEEDBACK_SERVICE_URL", None)
 
     def test_complete_async_browser_lifecycle(self):
         # Step 1: Student S001 submits SQL with semantic error via PrairieLearn hook

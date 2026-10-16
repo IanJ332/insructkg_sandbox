@@ -26,7 +26,11 @@ from siip.em_models import (
     EMReviewStatus,
 )
 from siip.em_repository import DEFAULT_PROMPTS, EMRepository
-from siip.identity import create_signed_ticket
+from siip.identity import (
+    create_signed_session_token,
+    create_signed_ticket,
+    generate_csrf_token,
+)
 from siip.jobs import FeedbackJobRepository
 from siip.store import SubmissionRepository
 
@@ -235,6 +239,11 @@ class TestEMDashboardIntegration(unittest.TestCase):
             lease_token=self.jobs_repo.claim("worker-test").lease_token,
         )
 
+        self.student_token = create_signed_session_token("S001", role="student")
+        self.s002_token = create_signed_session_token("S002", role="student")
+        self.instructor_token = create_signed_session_token("instructor_alawini", role="instructor")
+        self.instructor_csrf = generate_csrf_token(self.instructor_token)
+
         self.server = DashboardServer(self.sub_repo, 0, host="127.0.0.1")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -303,7 +312,11 @@ class TestEMDashboardIntegration(unittest.TestCase):
         self.assertIn("protects payroll and building access", html_str)
 
         # 4. Instructor views /em-review
-        status, data, _ = self._request("GET", "/em-review")
+        status, data, _ = self._request(
+            "GET",
+            "/em-review",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("Instructor Entrepreneurial Mindset (EM) Evidence Review", html_str)
@@ -322,29 +335,40 @@ class TestEMDashboardIntegration(unittest.TestCase):
                 "evidence_id": ev.evidence_id,
                 "review_status": "ACCEPTED",
                 "instructor_notes": "Identifies cross-functional risk to payroll systems accurately.",
-                "reviewer_id": "prof-alawini",
+                "csrf_token": self.instructor_csrf,
             }
         )
         status, _, headers = self._request(
             "POST",
             "/api/em/review",
             body=review_payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
         )
         self.assertEqual(status, 303)
         self.assertEqual(headers.get("Location"), "/em-review")
 
-        # 6. Check student profile at /students?id=S001
-        status, data, _ = self._request("GET", "/students?id=S001")
+        # 6. Check student profile at /students?id=S001 (authenticated as S001)
+        status, data, _ = self._request(
+            "GET",
+            "/students?id=S001",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("OBSERVED_EVIDENCE_RECORDED", html_str)
         self.assertIn("Connections (X) accepted", html_str)
-        self.assertIn("prof-alawini", html_str)
+        self.assertIn("instructor_alawini", html_str)
         self.assertIn("Methodological Boundary:", html_str)
 
         # 7. Check JSON API /api/em/summary
-        status, data, _ = self._request("GET", "/api/em/summary?student_id=S001")
+        status, data, _ = self._request(
+            "GET",
+            "/api/em/summary?student_id=S001",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
         self.assertEqual(status, 200)
         summary = json.loads(data.decode("utf-8"))
         self.assertEqual(summary["accepted_by_dimension"]["X"], 1)
@@ -352,6 +376,16 @@ class TestEMDashboardIntegration(unittest.TestCase):
         self.assertIn("disclaimer", summary)
 
     def test_json_reflection_and_review_api(self):
+        # Seed attempt for student S002
+        self.sub_repo.process(
+            {
+                "attempt_id": "att-json-01",
+                "student_id": "S002",
+                "question_id": "sql_join_03",
+                "submitted_sql": "SELECT 1;",
+                "timestamp": "2026-10-15T12:00:00Z",
+            }
+        )
         # Student submits via JSON API
         body = json.dumps(
             {
@@ -366,7 +400,10 @@ class TestEMDashboardIntegration(unittest.TestCase):
             "POST",
             "/api/em/reflection",
             body=body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.s002_token}",
+            },
         )
         self.assertEqual(status, 201)
         res = json.loads(data.decode("utf-8"))
@@ -376,7 +413,11 @@ class TestEMDashboardIntegration(unittest.TestCase):
         ev_id = res["evidence_id"]
 
         # Profile before review shows INSUFFICIENT_EVIDENCE
-        status, data, _ = self._request("GET", "/students?id=S002")
+        status, data, _ = self._request(
+            "GET",
+            "/students?id=S002",
+            headers={"Authorization": f"Bearer {self.s002_token}"},
+        )
         self.assertEqual(status, 200)
         self.assertIn("INSUFFICIENT_EVIDENCE", data.decode("utf-8"))
 
@@ -386,22 +427,28 @@ class TestEMDashboardIntegration(unittest.TestCase):
                 "evidence_id": ev_id,
                 "review_status": "ACCEPTED",
                 "instructor_notes": "Strong investigative inquiry.",
-                "reviewer_id": "instructor-01",
             }
         )
         status, data, _ = self._request(
             "POST",
             "/api/em/review",
             body=review_body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
         )
         self.assertEqual(status, 200)
         rev_res = json.loads(data.decode("utf-8"))
         self.assertEqual(rev_res["review_status"], "ACCEPTED")
-        self.assertEqual(rev_res["reviewer_id"], "instructor-01")
+        self.assertEqual(rev_res["reviewer_id"], "instructor_alawini")
 
-        # Test filter view
-        status, data, _ = self._request("GET", "/em-review?status=ACCEPTED")
+        # Test filter view as instructor
+        status, data, _ = self._request(
+            "GET",
+            "/em-review?status=ACCEPTED",
+            headers={"Authorization": f"Bearer {self.instructor_token}"},
+        )
         self.assertEqual(status, 200)
         self.assertIn("S002", data.decode("utf-8"))
 
@@ -416,7 +463,10 @@ class TestEMDashboardIntegration(unittest.TestCase):
             "POST",
             "/api/em/review",
             body=bad_review,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.instructor_token}",
+            },
         )
         self.assertEqual(status, 400)
 

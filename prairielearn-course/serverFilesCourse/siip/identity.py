@@ -205,14 +205,16 @@ def verify_signed_ticket(ticket: str, job_id: str, secret: Optional[bytes] = Non
 
 
 STUDENT_PRINCIPALS = {"S001", "S002", "S003", "S004", "S005"}
-INSTRUCTOR_PRINCIPALS = {
-    "instructor_alawini",
-    "prof-alawini",
-    "instructor-01",
-    "instructor_ta",
-    "instructor_audit",
-    "instructor-admin",
-}
+INSTRUCTOR_PRINCIPALS = frozenset(
+    {
+        "instructor_alawini",
+        "prof-alawini",
+        "instructor-01",
+        "instructor_ta",
+        "instructor_audit",
+        "instructor-admin",
+    }
+)
 
 
 def is_student_principal(principal: Optional[str]) -> bool:
@@ -221,13 +223,64 @@ def is_student_principal(principal: Optional[str]) -> bool:
 
 
 def is_instructor_principal(principal: Optional[str]) -> bool:
-    """Return True if principal is an authorized instructor."""
+    """Return True if principal is an authorized instructor.
+    A forged or arbitrary instructor-like principal name never establishes authority.
+    """
     if not principal or not isinstance(principal, str):
         return False
     if is_student_principal(principal):
         return False
     p = principal.lower().strip()
-    return p in INSTRUCTOR_PRINCIPALS or p.startswith("instructor") or p.startswith("prof")
+    return p in INSTRUCTOR_PRINCIPALS
+
+
+def generate_csrf_token(session_token: str, secret: Optional[bytes] = None) -> str:
+    """Generate a server-verifiable CSRF token bound to a session token."""
+    if not session_token or not isinstance(session_token, str):
+        return ""
+    sec = secret if secret is not None else get_auth_secret()
+    payload = f"csrf:{session_token}"
+    return hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+
+
+def verify_csrf_token(session_token: str, csrf_token: str, secret: Optional[bytes] = None) -> bool:
+    """Verify that a CSRF token matches the session token."""
+    if not session_token or not csrf_token:
+        return False
+    expected = generate_csrf_token(session_token, secret)
+    return hmac.compare_digest(expected, csrf_token.strip())
+
+
+def parse_cookie_header(cookie_header: Optional[str]) -> Dict[str, str]:
+    """Parse HTTP Cookie header into key-value dictionary."""
+    if not cookie_header:
+        return {}
+    cookies = {}
+    for part in cookie_header.split(";"):
+        if "=" in part:
+            k, v = part.strip().split("=", 1)
+            cookies[k.strip()] = v.strip()
+    return cookies
+
+
+def extract_session_token(headers: Any, cookies_header: Optional[str] = None) -> Optional[str]:
+    """Extract synthetic session token from Authorization, X-Synthetic-Session, or Cookie."""
+    auth_header = headers.get("Authorization", "") if hasattr(headers, "get") else ""
+    if auth_header.startswith("Bearer "):
+        tok = auth_header[7:].strip()
+        if tok:
+            return tok
+    synthetic_hdr = headers.get("X-Synthetic-Session", "") if hasattr(headers, "get") else ""
+    if synthetic_hdr and synthetic_hdr.strip():
+        return synthetic_hdr.strip()
+    cookie_str = cookies_header
+    if cookie_str is None and hasattr(headers, "get"):
+        cookie_str = headers.get("Cookie", "")
+    if cookie_str:
+        cookies = parse_cookie_header(cookie_str)
+        if "siip_session" in cookies:
+            return cookies["siip_session"]
+    return None
 
 
 def create_signed_session_token(
