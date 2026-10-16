@@ -28,6 +28,9 @@ from siip.identity import (
 )
 from siip.jobs import AttemptConflictError, FeedbackJobRepository, JobQueueFullError
 from siip.observability import event
+from siip.project_generator import ProjectRepository, generate_personalized_project
+from siip.project_models import STUDENT_INTEREST_PROFILES
+from siip.recommender import recommend_next_activity
 from siip.store import STUDENTS, SubmissionRepository
 
 REPO = None
@@ -60,7 +63,7 @@ def shell(title, body):
         + esc(title)
         + " · SIIP</title><style>"
         + STYLE
-        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
+        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/projects">Projects</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
         + body
         + "</main></html>"
     )
@@ -198,6 +201,60 @@ def students(repo, sid=None):
     </section>
     """
 
+    # Adaptive Next-Activity Recommendation
+    rec = recommend_next_activity(sid, profile)
+    body += f"""
+    <section style="border-left:4px solid #0284c7;background:#f0f9ff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="color:#0369a1;margin:0 0 6px 0;">Adaptive Next-Activity Recommendation</h2>
+        <span class="badge" style="background:#0284c7;color:white;font-weight:600;">{esc(rec["recommended_question_id"])}</span>
+      </div>
+      <p style="font-size:17px;font-weight:600;margin:6px 0;">{esc(rec["question_title"])}</p>
+      <p><strong>Pedagogical Rationale:</strong> {esc(rec["rationale"])}</p>
+      <p><strong>Target concepts:</strong> {esc(", ".join(rec["target_concepts"]))} &middot; <strong>Triggered policy:</strong> <code>{esc(rec["rule_id"])}</code></p>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:10px;">
+        <a href="http://localhost:3000/pl/course_instance/1/assessment/1" style="display:inline-block;background:#087674;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:600;">Launch in PrairieLearn &rarr;</a>
+      </div>
+    </section>
+    """
+
+    # Dynamic Personalized Project
+    proj_repo = get_project_repo()
+    student_projects = proj_repo.list_projects_for_student(sid)
+    interest_info = STUDENT_INTEREST_PROFILES.get(sid, {})
+    interest_label = interest_info.get("label", "General Relational Applications")
+    interest_context = interest_info.get("context", "")
+
+    proj_rows = [
+        [
+            f"<a href='/projects?id={esc(p.project_id)}'><code>{esc(p.project_id)}</code></a>",
+            esc(p.title),
+            f"<span class='badge' style='background:{'#dcfce7' if p.instructor_approval_status == 'APPROVED' else '#fef3c7'};color:{'#166534' if p.instructor_approval_status == 'APPROVED' else '#92400e'};'>{esc(p.instructor_approval_status)}</span>",
+            f"<a href='/projects?id={esc(p.project_id)}'>View Project Brief &rarr;</a>",
+        ]
+        for p in student_projects
+    ]
+    proj_table = (
+        table(["Project ID", "Title", "Status", "Action"], proj_rows)
+        if proj_rows
+        else "<p class='muted'>No personalized projects generated for this student yet.</p>"
+    )
+
+    body += f"""
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Personalized Dynamic Project</h2>
+        <span class="badge" style="background:#e0f2fe;color:#0369a1;">Domain: {esc(interest_label)}</span>
+      </div>
+      <p class="muted">{esc(interest_context)}</p>
+      <form method="POST" action="/api/projects/generate" style="margin-bottom:16px;">
+        <input type="hidden" name="student_id" value="{esc(sid)}">
+        <button type="submit" style="background:#087674;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Generate Personalized Project for {esc(sid)}</button>
+      </form>
+      {proj_table}
+    </section>
+    """
+
     body += (
         '<section><h2>Add a synthetic attempt</h2><p>This form exercises the shared engine and updates this synthetic profile. Use the PrairieLearn link for actual platform submissions.</p><form method="post" action="/attempt"><input type="hidden" name="student_id" value="'
         + esc(sid)
@@ -206,6 +263,124 @@ def students(repo, sid=None):
         + '</select></label><p><label>SQL query<textarea name="sql" required maxlength="12000"></textarea></label></p><button>Evaluate and update synthetic profile</button></form></section>'
     )
     return shell("Student " + sid, body)
+
+
+def projects_page(project_id=None):
+    project_repo = get_project_repo()
+    if project_id:
+        proj = project_repo.get_project(project_id)
+        if not proj:
+            return shell(
+                "Project Not Found",
+                "<section><h2>404 Not Found</h2><p>Project not found.</p></section>",
+            )
+
+        milestones_html = ""
+        for m in proj.milestones:
+            rank_label = {1: "Foundational", 2: "Intermediate", 3: "Advanced"}.get(
+                m.difficulty_rank, "Core"
+            )
+            rank_color = {1: "#0369a1", 2: "#d97706", 3: "#b91c1c"}.get(
+                m.difficulty_rank, "#087674"
+            )
+            rank_bg = {1: "#e0f2fe", 2: "#fef3c7", 3: "#fee2e2"}.get(m.difficulty_rank, "#f0fdf4")
+            milestones_html += f"""
+            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px;background:#f8fafc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h4 style="margin:0 0 6px 0;">Milestone {m.milestone_index}: {esc(m.title)}</h4>
+                <span class="badge" style="background:{rank_bg};color:{rank_color};font-weight:600;">Rank {m.difficulty_rank} ({rank_label}) &middot; Depth {m.concept_depth}</span>
+              </div>
+              <p><strong>Task:</strong> {esc(m.task_description)}</p>
+              <p><strong>Target concepts:</strong> {esc(", ".join(m.target_concepts))}</p>
+              <p class="muted"><strong>Rubric:</strong> {esc(m.evaluation_rubric)}</p>
+              <details style="margin-top:8px;">
+                <summary>Reference SQL Solution (Grading Ground Truth)</summary>
+                <pre style="background:#1e293b;color:#f8fafc;padding:12px;border-radius:6px;margin-top:6px;">{esc(m.reference_sql)}</pre>
+              </details>
+            </div>
+            """
+
+        status_color = "#166534" if proj.instructor_approval_status == "APPROVED" else "#92400e"
+        status_bg = "#dcfce7" if proj.instructor_approval_status == "APPROVED" else "#fef3c7"
+
+        body = f"""
+        <section>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>{esc(proj.title)}</h2>
+            <span class="badge" style="background:{status_bg};color:{status_color};font-size:14px;">Status: {esc(proj.instructor_approval_status)}</span>
+          </div>
+          <p><span class="badge" style="background:#e0f2fe;color:#0369a1;">Domain: {esc(proj.domain_interest)}</span> &middot; <span class="badge" style="background:#f1f5f9;color:#334155;">Learner: <a href="/students?id={esc(proj.student_id)}">{esc(proj.student_id)}</a></span> &middot; <span class="badge" style="background:#fef3c7;color:#92400e;">SYNTHETIC_COURSE_MATERIAL</span></p>
+          <h3>Scenario Narrative</h3>
+          <p style="font-size:17px;line-height:1.6;background:#f8fafc;padding:14px;border-left:4px solid #087674;border-radius:4px;">{esc(proj.scenario_narrative)}</p>
+
+          <h3>Relational Database Schema (SQLite DDL)</h3>
+          <pre style="background:#1e293b;color:#f8fafc;padding:14px;border-radius:8px;font-size:13px;">{esc(proj.schema_ddl)}</pre>
+
+          <h3>Milestones & Task Decomposition</h3>
+          {milestones_html}
+
+          <h3>Instructor Review & Approval</h3>
+          <form method="POST" action="/api/projects/review" style="display:flex;gap:10px;align-items:center;">
+            <input type="hidden" name="project_id" value="{esc(proj.project_id)}">
+            <input type="text" name="notes" placeholder="Instructor feedback notes..." value="{esc(proj.instructor_notes or "")}" style="padding:8px;width:300px;border:1px solid #cbd5e1;border-radius:6px;">
+            <button type="submit" name="status" value="APPROVED" style="background:#16a34a;">Approve Project</button>
+            <button type="submit" name="status" value="REVISED" style="background:#d97706;">Request Revision</button>
+          </form>
+          <p style="margin-top:16px;"><a href="/projects">&larr; Back to all projects</a></p>
+        </section>
+        """
+        return shell(f"Project · {proj.title}", body)
+
+    # All projects list view
+    all_projects = project_repo.list_all_projects()
+    rows = []
+    for p in all_projects:
+        st_color = "#166534" if p.instructor_approval_status == "APPROVED" else "#92400e"
+        st_bg = "#dcfce7" if p.instructor_approval_status == "APPROVED" else "#fef3c7"
+        rows.append(
+            [
+                f"<a href='/projects?id={esc(p.project_id)}'><code>{esc(p.project_id)}</code></a>",
+                f"<a href='/students?id={esc(p.student_id)}'>{esc(p.student_id)}</a>",
+                f"<span class='badge' style='background:#e0f2fe;color:#0369a1;'>{esc(p.domain_interest)}</span>",
+                esc(p.title),
+                f"<span class='badge' style='background:{st_bg};color:{st_color};'>{esc(p.instructor_approval_status)}</span>",
+                f"<a href='/projects?id={esc(p.project_id)}'>View Brief &amp; Tasks &rarr;</a>",
+            ]
+        )
+
+    table_html = (
+        table(["Project ID", "Learner", "Domain", "Title", "Status", "Action"], rows)
+        if rows
+        else "<p class='muted'>No dynamic projects generated yet.</p>"
+    )
+
+    gen_forms = "".join(
+        f"""
+        <div class="card">
+          <h4>{esc(sid)}</h4>
+          <p class="muted">{esc(STUDENT_INTEREST_PROFILES.get(sid, {}).get("label", "General"))}</p>
+          <form method="POST" action="/api/projects/generate">
+            <input type="hidden" name="student_id" value="{esc(sid)}">
+            <button type="submit" style="padding:6px 12px;font-size:13px;">Generate Project</button>
+          </form>
+        </div>
+        """
+        for sid in STUDENTS
+    )
+
+    body = f"""
+    <section>
+      <h2>Personalized Dynamic SQL Projects</h2>
+      <p class="muted">Grounded, open-ended multi-table projects tailored to student domain interests and diagnosed concept gaps. All specifications include verified SQLite schemas and deterministic grading rubrics.</p>
+      <h3>Quick Project Generator</h3>
+      <div class="cards" style="margin-bottom:24px;">
+        {gen_forms}
+      </div>
+      <h3>Generated Project Registry</h3>
+      {table_html}
+    </section>
+    """
+    return shell("Dynamic Projects", body)
 
 
 def graph_page():
@@ -387,6 +562,11 @@ def get_jobs_repo():
 def get_em_repo():
     em_db = os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3")
     return EMRepository(em_db)
+
+
+def get_project_repo():
+    db_path = os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3")
+    return ProjectRepository(db_path)
 
 
 def authenticate_feedback_request(headers, params, job_id):
@@ -672,6 +852,45 @@ class Handler(BaseHTTPRequestHandler):
             elif parsed.path == "/em-review":
                 status_filter = params.get("status", [None])[0]
                 self.send(em_review_page(status_filter))
+            elif parsed.path == "/projects":
+                project_id = params.get("id", [None])[0]
+                self.send(projects_page(project_id))
+            elif parsed.path == "/api/recommendation":
+                sid = params.get("student_id", [None])[0]
+                if not sid or sid not in STUDENTS:
+                    self.send(
+                        json.dumps({"error": "Invalid or missing student_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                st_profile = repo.profile(sid)
+                rec = recommend_next_activity(sid, st_profile)
+                self.send(json.dumps(rec), 200, content="application/json")
+            elif parsed.path == "/api/projects":
+                project_repo = get_project_repo()
+                project_id = params.get("id", [None])[0]
+                if project_id:
+                    proj = project_repo.get_project(project_id)
+                    if not proj:
+                        self.send(
+                            json.dumps({"error": "Project not found"}),
+                            404,
+                            content="application/json",
+                        )
+                        return
+                    self.send(json.dumps(proj.to_dict()), 200, content="application/json")
+                else:
+                    sid = params.get("student_id", [None])[0]
+                    if sid:
+                        projs = project_repo.list_projects_for_student(sid)
+                    else:
+                        projs = project_repo.list_all_projects()
+                    self.send(
+                        json.dumps([p.to_dict() for p in projs]),
+                        200,
+                        content="application/json",
+                    )
             elif parsed.path == "/api/em/summary":
                 sid = params.get("student_id", [None])[0]
                 if not sid:
@@ -789,6 +1008,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/queue/reconcile",
             "/api/em/reflection",
             "/api/em/review",
+            "/api/projects/generate",
+            "/api/projects/review",
         }:
             return self.send("Not found", 404)
         if "Content-Length" not in self.headers:
@@ -1147,6 +1368,85 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self.send_response(303)
                     self.send_header("Location", "/em-review")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3d: Generate Personalized Dynamic Project
+            if self.path == "/api/projects/generate":
+                project_repo = get_project_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    sid = payload.get("student_id")
+                    domain = payload.get("interest")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    sid = params.get("student_id", [None])[0]
+                    domain = params.get("interest", [None])[0]
+
+                if not sid or sid not in STUDENTS:
+                    return self.send("Invalid student_id", 400)
+
+                repo = self.server.repository
+                st_profile = repo.profile(sid)
+                project = generate_personalized_project(
+                    student_id=sid, interest=domain, profile=st_profile
+                )
+                project_repo.save_project(project)
+
+                if is_json:
+                    self.send(
+                        json.dumps(project.to_dict()),
+                        201,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", f"/projects?id={project.project_id}")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3e: Review Personalized Dynamic Project
+            if self.path == "/api/projects/review":
+                project_repo = get_project_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    proj_id = payload.get("project_id")
+                    status_val = payload.get("status")
+                    notes = payload.get("notes")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    proj_id = params.get("project_id", [None])[0]
+                    status_val = params.get("status", [None])[0]
+                    notes = params.get("notes", [None])[0]
+
+                if not proj_id or not status_val:
+                    return self.send("Missing project_id or status", 400)
+
+                proj = project_repo.get_project(proj_id)
+                if not proj:
+                    return self.send("Project not found", 404)
+
+                proj.instructor_approval_status = status_val
+                proj.instructor_notes = notes
+                project_repo.save_project(proj)
+
+                if is_json:
+                    self.send(
+                        json.dumps(proj.to_dict()),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", f"/projects?id={proj.project_id}")
                     self.send_header("Connection", "close")
                     self.close_connection = True
                     self.end_headers()
