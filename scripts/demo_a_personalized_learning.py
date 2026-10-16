@@ -31,15 +31,16 @@ from siip.recommender import recommend_next_activity
 from siip.store import SubmissionRepository
 
 
-def run_demo_a() -> int:
+def run_demo_a(dir_path: Path | None = None) -> int:
     print("=" * 72)
     print("SIIP DEMO A: INTEGRATED PERSONALIZED LEARNING")
     print("=" * 72)
 
-    with tempfile.TemporaryDirectory(prefix="siip-demo-a-") as temp_dir:
-        dir_path = Path(temp_dir)
-        sub_repo = SubmissionRepository(dir_path / "submissions.sqlite3")
-        jobs_repo = FeedbackJobRepository(dir_path / "jobs.sqlite3")
+    temp_mgr = tempfile.TemporaryDirectory(prefix="siip-demo-a-") if dir_path is None else None
+    try:
+        active_dir = Path(temp_mgr.name) if temp_mgr else dir_path
+        sub_repo = SubmissionRepository(active_dir / "submissions.sqlite3")
+        jobs_repo = FeedbackJobRepository(active_dir / "jobs.sqlite3")
         worker = FeedbackWorker(jobs_repo, submission_repo=sub_repo)
 
         # -------------------------------------------------------------------
@@ -184,6 +185,9 @@ def run_demo_a() -> int:
         print("DEMO A VERIFICATION: SUCCESS (All 7 stages verified)")
         print("=" * 72)
         return 0
+    finally:
+        if temp_mgr:
+            temp_mgr.cleanup()
 
 
 if __name__ == "__main__":

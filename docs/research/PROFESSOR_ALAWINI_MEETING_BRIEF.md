@@ -56,7 +56,7 @@ flowchart TD
         direction TB
         ANUData["Authentic Zenodo SQL Benchmark Sample<br/>(21 Students, 25 Submissions, 7 Questions)"]
         Registry["Instructional Evidence Registry<br/>(Provisional InstructKG Edges Pending Instructor Review)"]
-        Blinder["Triple-Blind Experiment Runner<br/>(Conditions A, B, C, D, E — Software Ready)"]
+        Blinder["Blinded Feedback Review Infrastructure<br/>(Conditions A, B, C, D, E — Software Ready)"]
         SciAudit["Statistical Evaluation Pipeline<br/>(Paired Wilcoxon, Cohen's d, Rubric Variance)"]
 
         ANUData --> Blinder
@@ -72,9 +72,9 @@ flowchart TD
    - **Instructor-Reviewed Evidence (Pending):** Loaded InstructKG judgments and provisional developer edges await formal instructor review and pedagogical validation.
    - **Future Classroom Findings (Pending):** Actual student learning gains ($g$), cognitive load reductions, and survey distributions are hypotheses for future live pilots, not observed empirical claims.
 2. **ANU Sample Size & Condition E Eligibility:** The 25 evaluated ANU submissions represent a sample from the broader Zenodo benchmark. Instructor authorization alone does **not** make all 25 cases eligible for Condition E (Historical Personalization); prior longitudinal submission history is only present for a subset of students in the dataset.
-3. **Triple-Blind Review Protocol Status:** Anonymized evaluation conditions (`Option Alpha`, `Beta`, `Gamma`) and 4-criterion rubrics are implemented in software and verified with automated tests. **Human expert review has not yet been conducted**; the protocol is *study-ready*, not a report of human findings.
+3. **Blinded Feedback Review Infrastructure Status:** Anonymized evaluation conditions (`Option Alpha`, `Beta`, `Gamma`) and 4-criterion rubrics are implemented in software and verified with automated tests. **Human expert review has not yet been conducted**; the software infrastructure is *study-ready*, not an empirical report of completed human findings.
 4. **Behavioral vs. Trait EM Measurement:** EM records reflect observable student reflection behaviors against structured prompts. They do not measure internal psychological traits or general aptitude, and remain strictly decoupled from technical mastery.
-5. **Fail-Closed Role Separation (Phase 5.6):** Instructor actions strictly require validated session credentials. Default reviewer fallbacks (`instructor-admin`) have been eliminated. Student tokens receive `403 Forbidden` on review endpoints. Reference SQL solutions and review forms are withheld from learner-facing views.
+5. **Fail-Closed Role Separation (Phase 5.6):** Instructor actions strictly require validated session credentials. Default reviewer fallbacks (`instructor-admin`) have been eliminated. Student tokens receive `403 Forbidden` on review endpoints. Reference SQL solutions and review forms are withheld from learner-facing views. Synthetic authentication is gated behind development mode and disabled in production.
 
 ---
 
@@ -134,6 +134,18 @@ python scripts/dashboard.py --port 8080
 
 ## D. Implementation & Readiness Matrix
 
+### 5-Tier Verification Classification (Categories A through E)
+
+| Category | Description | Scope | Status |
+| :--- | :--- | :--- | :---: |
+| **Category A: Native PrairieLearn Grading Browser Test** | Native containerized PrairieLearn UI execution | Exercises grading hooks (`pl_bridge.py`) and question server scripts (`server.py`); native Node.js/Docker web UI is **not** run in Playwright. | **HOOKS VERIFIED (UI Not Run)** |
+| **Category B: Synthetic Portal Full Browser Workflow** | Complete interactive workflow in synthetic portal | `tests/e2e/test_real_browser_e2e.py` executes full browser lifecycle (`/practice` $\to$ grading receipt $\to$ async feedback $\to$ EM reflection $\to$ 403 review rejection $\to$ instructor approval $\to$ safe project view). | **VERIFIED (PASS)** |
+| **Category C: Backend-to-Browser Integration Tests** | Targeted browser verification of individual subsystems | `test_browser_demos.py` (Demos A, B, C), `test_em_lifecycle_browser.py` (EM UI slice), `test_async_browser_flow.py` (queue polling & tickets). | **VERIFIED (PASS)** |
+| **Category D: Real Qwen3 Local Inference Canary** | Local neural model invocation via Ollama | Bounded probe verifying local Ollama availability; skips or gracefully falls back to deterministic rules when offline. | **CANARY READY** |
+| **Category E: Mocked or Deterministic Feedback Tests** | Full deterministic unit and integration test battery | 253 unit and integration tests executing deterministic feedback rules in CI and local discovery. | **VERIFIED (PASS)** |
+
+### Functional Subsystem Readiness
+
 | Functional Module | Implemented | Tested | Research-Validated | Institutionally Blocked | Notes & Evidence |
 | :--- | :---: | :---: | :---: | :---: | :--- |
 | **Deterministic SQL Grading** | YES | YES | YES | NO | Evaluates test cases in isolated subprocess; zero network dependence. |
@@ -142,8 +154,8 @@ python scripts/dashboard.py --port 8080
 | **KEEN 3C EM Prompts & Forms** | YES | YES | PARTIAL | NO | Operationalized for join exercises; measures behavioral reflections. |
 | **Fail-Closed Role Authorization** | YES | YES | YES | NO | `401 Unauthorized` / `403 Forbidden` enforced across all review and content routes. |
 | **Dynamic Project Generation** | YES | YES | PARTIAL | NO | In-memory SQLite sandbox verifies syntax; pedagogical sign-off pending. |
-| **Triple-Blind Evaluation Protocol** | YES | YES | READY | NO | Anonymized condition pipeline ready for human 125-inference ANU study. |
-| **Authentic Real Browser E2E** | YES | YES | YES | NO | Verified in `tests/e2e/test_real_browser_e2e.py` without Python shortcuts. |
+| **Blinded Review Infrastructure** | YES | YES | READY | NO | Anonymized condition pipeline ready for human 125-inference ANU study. |
+| **Synthetic Portal Browser E2E** | YES | YES | YES | NO | Verified in `tests/e2e/test_real_browser_e2e.py` without Python shortcuts. |
 | **Real Student Pilot Deployment** | READY | READY | PENDING | **YES** | **Blocked on UIUC IRB approval and CS 411 instructor sign-off.** |
 | **Real Course Lecture KG Extraction**| READY | READY | PENDING | **YES** | **Blocked on instructor authorization of official CS 411 slide decks.** |
 
@@ -155,18 +167,20 @@ Measurements collected on the Windows research workstation (NVIDIA RTX 5070 Ti, 
 
 | Dimension / Metric | Measured Empirical Value | Characterization & Methodological Boundaries |
 | :--- | :---: | :--- |
-| **Deterministic Grading P50** | **202.17 ms** | Measured on Windows host. Dominated by `python.exe -I` subprocess launch (~50 ms per dataset run). |
-| **Deterministic Grading P95** | **207.90 ms** | Bounded local execution variance across 50 consecutive runs. |
+| **Deterministic Grading Latency (P50)** | **202.17 ms** | Measured on Windows host. Dominated by `python.exe -I` subprocess launch (~50 ms per dataset run). |
+| **Deterministic Grading Latency (P95)** | **207.90 ms** | Bounded local execution variance across 50 consecutive runs. |
 | **Sample Estimate P99** | **209.22 ms** | **Sample estimate derived from $N=50$ runs; not a production latency guarantee or SLA.** |
 | **Linux Grading Latency** | *< 50 ms (Est.)* | **Engineering estimate based on POSIX `fork()` vs `CreateProcess`; NOT empirically observed.** |
 | **Subprocess Launch P50** | **49.69 ms** | Windows process spawn overhead per dataset test execution. |
 | **In-Memory SQLite Query P50** | **0.006 ms** | Pure SQLite query execution time excluding process creation. |
-| **Deterministic Queue Drain (1 Worker)** | **35.1 jobs/sec** | SQLite WAL queue throughput with deterministic CPU-fallback feedback. |
-| **Deterministic Queue Drain (5 Workers)** | **69.1 jobs/sec** | Concurrent worker throughput under SQLite WAL mode. |
-| **Deterministic Queue Drain (10 Workers)** | **60.0 jobs/sec** | Saturation bound under concurrent SQLite WAL write lock contention. |
-| **Queue Throughput Distinction** | *N/A* | **Drain rates reflect deterministic CPU fallback; they do NOT measure neural GPU inference throughput.** |
-| **SQLite Claim Lock Latency P50** | **7.99–11.79 ms** | Isolated SQLite transaction lock acquisition time during job claims. |
-| **Job Processing Latency P50** | **15.61–16.44 ms** | Subsystem time to generate fallback feedback and complete database records. |
+| **SQLite Claim-Operation Latency P50** | **7.99–11.79 ms** | Isolated SQLite transaction lock acquisition time during job claims across 1–10 workers. |
+| **Complete Deterministic Job-Processing Latency P50** | **15.61–16.44 ms** | Subsystem time to claim job, evaluate deterministic rules, and persist completed records. |
+| **Deterministic Queue Drain Rate (1 Worker)** | **35.1 jobs/sec** | SQLite WAL queue throughput with deterministic CPU-fallback feedback. |
+| **Deterministic Queue Drain Rate (5 Workers)** | **69.1 jobs/sec** | Concurrent worker throughput under SQLite WAL mode. |
+| **Deterministic Queue Drain Rate (10 Workers)** | **60.0 jobs/sec** | Saturation bound under concurrent SQLite WAL write lock contention. |
+| **Queue Throughput vs GPU Throughput** | *N/A* | **Drain rates measure deterministic CPU queue task handling; they do NOT measure neural GPU inference throughput.** |
+| **Real LLM Inference Latency** | *Deferred* | **Awaits authorization of `docs/research/GPU_CAPACITY_TEST_PLAN.md` (estimated 1,200–3,500 ms on RTX 5070 Ti).** |
+| **End-to-End Feedback Availability** | **~225 ms** | Immediate grading receipt in ~202 ms; async feedback ready in queue in ~16 ms (deterministic) or ~3s (neural). |
 | **Enqueue Ingestion Rate** | **~75.0 ops/sec** | Non-blocking durable queue insertion speed. |
 | **Worker Crash Recovery** | **VERIFIED** | Interrupted jobs automatically reset from `processing` to `pending` with incremented retry count. |
 
@@ -187,20 +201,19 @@ Measurements collected on the Windows research workstation (NVIDIA RTX 5070 Ti, 
 
 ## G. Instructor Materials, Decisions, and Approvals Needed
 
-To transition from this local prototype to a live classroom pilot, the following approvals and inputs are needed from Professor Alawini:
+### Three Concrete Questions Requiring Professor Alawini's Decision
 
-1. **Course Curriculum & Lecture Ingestion:**
-   - Authorization to parse and chunk official CS 411 lecture slide decks (Relational Algebra, Joins, Aggregation, Subqueries) into the verified evidence registry.
-   - Review and validation of InstructKG concept edges and prerequisite relationships.
-2. **IRB Protocol & Consent Architecture:**
-   - Formal determination of IRB review status (Exempt educational enhancement vs. Expedited research study).
-   - Approval of the student opt-in / opt-out consent language embedded in PrairieLearn.
-3. **Instructor Rubric Weight Approvals:**
-   - Review and sign-off on the 4-criterion evaluation weights (Relational Correctness: 30%, Solution Concealment: 25%, Curriculum Alignment: 25%, EM Relevance: 20%).
-4. **EM Assessment Policy:**
-   - Confirmation that EM reflections remain strictly optional/extra-credit activities and have zero negative impact on technical grading or course scores.
-5. **Execution Authorization for Bounded GPU Capacity Test:**
-   - Authorization to execute the bounded local GPU capacity benchmark ($N \le 25$ Qwen3-8B requests) as outlined in `docs/research/GPU_CAPACITY_TEST_PLAN.md`.
+1. **Curriculum Concept Graph & Prerequisite Alignment:**
+   - *Question:* Does the instructor approve the current SQL concept prerequisite graph (INNER JOIN $\to$ LEFT OUTER JOIN $\to$ FULL OUTER JOIN $\to$ NULL FILTER AGGREGATION), or should canonical CS 411 slide decks be ingested to replace synthetic contract fixture edges before student evaluation?
+   - *Action if Approved:* Ingest official CS 411 relational algebra and join lecture PDFs into the evidence chunk registry.
+
+2. **IRB Protocol & Student Consent Strategy:**
+   - *Question:* Will the upcoming classroom deployment proceed under an **Exempt Educational Enhancement** determination (45 CFR 46.104(d)(1)) using an in-platform PrairieLearn voluntary opt-in checkbox, or is an **Expedited Protocol** required by the UIUC IRB committee?
+   - *Action if Approved:* Finalize consent copy and participant information sheets embedded in PrairieLearn question headers.
+
+3. **GPU Inference Allocation & Fallback Thresholds:**
+   - *Question:* What is the approved local GPU deployment environment for Qwen3-8B (e.g., dedicated departmental server vs. student-facing cluster), and what is the maximum acceptable queue latency threshold (e.g., 5 seconds) before automatically serving deterministic fallback guidance during homework deadlines?
+   - *Action if Approved:* Execute the bounded GPU capacity benchmark ($N \le 25$) documented in `docs/research/GPU_CAPACITY_TEST_PLAN.md`.
 
 ---
 
@@ -211,5 +224,5 @@ To transition from this local prototype to a live classroom pilot, the following
 - [x] **Terminal 3:** Execution of `python scripts/demo_b_entrepreneurial_mindset.py` showing voluntary reflection submission, instructor approval, and student 403 authorization rejection.
 - [x] **Terminal 4:** Execution of `python scripts/demo_c_dynamic_project.py` showing profile-adapted milestone generation, in-memory sandbox verification, and answer key concealment.
 - [x] **Browser Inspection:** Verification of live cohort bottleneck charts at `http://localhost:8080/`.
-- [x] **Security Verification:** `tests/test_role_authorization_security.py` displaying 18/18 test passes.
+- [x] **Security Verification:** `tests/test_role_authorization_security.py` displaying 19/19 test passes.
 - [x] **Browser E2E Suite:** All 4 Playwright test suites (`test_browser_demos.py`, `test_em_lifecycle_browser.py`, `test_async_browser_flow.py`, `test_real_browser_e2e.py`) displaying 6/6 test passes.

@@ -34,15 +34,16 @@ from siip.grader import QUESTIONS, grade
 from siip.store import SubmissionRepository
 
 
-def run_demo_b() -> int:
+def run_demo_b(dir_path: Path | None = None) -> int:
     print("=" * 72)
     print("SIIP DEMO B: ENTREPRENEURIAL MINDSET (EM) INTEGRATION")
     print("=" * 72)
 
-    with tempfile.TemporaryDirectory(prefix="siip-demo-b-") as temp_dir:
-        dir_path = Path(temp_dir)
-        sub_repo = SubmissionRepository(dir_path / "submissions.sqlite3")
-        em_repo = EMRepository(dir_path / "em.sqlite3")
+    temp_mgr = tempfile.TemporaryDirectory(prefix="siip-demo-b-") if dir_path is None else None
+    try:
+        active_dir = Path(temp_mgr.name) if temp_mgr else dir_path
+        sub_repo = SubmissionRepository(active_dir / "submissions.sqlite3")
+        em_repo = EMRepository(active_dir / "em.sqlite3")
 
         # -------------------------------------------------------------------
         # Step 1: Select Exercise Configured with EM Reflection
@@ -204,6 +205,9 @@ def run_demo_b() -> int:
         print("DEMO B VERIFICATION: SUCCESS (All 8 stages verified)")
         print("=" * 72)
         return 0
+    finally:
+        if temp_mgr:
+            temp_mgr.cleanup()
 
 
 if __name__ == "__main__":

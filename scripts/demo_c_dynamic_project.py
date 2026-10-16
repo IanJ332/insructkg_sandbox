@@ -34,14 +34,15 @@ from siip.project_generator import (
 from siip.project_models import StudentInterest
 
 
-def run_demo_c() -> int:
+def run_demo_c(dir_path: Path | None = None) -> int:
     print("=" * 72)
     print("SIIP DEMO C: PERSONALIZED PROJECT GENERATION")
     print("=" * 72)
 
-    with tempfile.TemporaryDirectory(prefix="siip-demo-c-") as temp_dir:
-        dir_path = Path(temp_dir)
-        proj_repo = ProjectRepository(dir_path / "projects.sqlite3")
+    temp_mgr = tempfile.TemporaryDirectory(prefix="siip-demo-c-") if dir_path is None else None
+    try:
+        active_dir = Path(temp_mgr.name) if temp_mgr else dir_path
+        proj_repo = ProjectRepository(active_dir / "projects.sqlite3")
 
         # -------------------------------------------------------------------
         # Step 1: Learner Selection and Documented Interests
@@ -164,6 +165,9 @@ def run_demo_c() -> int:
         print("DEMO C VERIFICATION: SUCCESS (All 6 stages verified)")
         print("=" * 72)
         return 0
+    finally:
+        if temp_mgr:
+            temp_mgr.cleanup()
 
 
 if __name__ == "__main__":

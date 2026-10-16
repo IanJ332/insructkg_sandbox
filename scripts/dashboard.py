@@ -1202,6 +1202,17 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/":
                 self.send(overview(repo))
             elif parsed.path == "/login":
+                is_dev_mode = (
+                    os.environ.get("SIIP_ENV") == "development"
+                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+                )
+                if not is_dev_mode:
+                    self.send(
+                        "Synthetic login is disabled outside isolated development mode. "
+                        "Institutional SSO authentication required.",
+                        403,
+                    )
+                    return
                 redirect_url = params.get("redirect", ["/"])[0]
                 self.send(login_page(auth=auth, redirect_url=redirect_url))
             elif parsed.path == "/logout":
@@ -1653,6 +1664,16 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 0a: Synthetic demo login form submission
             if self.path == "/login":
+                is_dev_mode = (
+                    os.environ.get("SIIP_ENV") == "development"
+                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+                )
+                if not is_dev_mode:
+                    return self.send(
+                        "Synthetic login is disabled outside isolated development mode. "
+                        "Institutional SSO authentication required.",
+                        403,
+                    )
                 params = parse_qs(text, strict_parsing=True)
                 principal = params.get("principal", [None])[0]
                 redirect_url = params.get("redirect", ["/"])[0]

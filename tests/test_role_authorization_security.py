@@ -715,6 +715,52 @@ class TestRoleAuthorizationSecurity(unittest.TestCase):
         self.assertEqual(concept_mastery_before, concept_mastery_after)
         self.assertEqual(prof_before["attempt_count"], prof_after["attempt_count"])
 
+    # ---------------------------------------------------------------------------
+    # Synthetic Auth Isolation Outside Development Mode
+    # ---------------------------------------------------------------------------
+    def test_synthetic_login_blocked_outside_dev_mode(self):
+        """Synthetic login and session issuance fail closed with 403 outside dev mode."""
+        old_auth = os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH")
+        old_env = os.environ.get("SIIP_ENV")
+        try:
+            os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = "0"
+            os.environ["SIIP_ENV"] = "production"
+
+            # 1. GET /login returns 403
+            status, data, _ = self._request("GET", "/login")
+            self.assertEqual(status, 403)
+            self.assertIn(b"disabled outside isolated development mode", data)
+
+            # 2. POST /login returns 403
+            status, data, _ = self._request(
+                "POST",
+                "/login",
+                body="principal=instructor_alawini&redirect=/",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            self.assertEqual(status, 403)
+            self.assertIn(b"disabled outside isolated development mode", data)
+
+            # 3. POST /api/auth/synthetic-session returns 403
+            status, data, _ = self._request(
+                "POST",
+                "/api/auth/synthetic-session",
+                body=json.dumps({"student_id": "S001"}),
+                headers={"Content-Type": "application/json"},
+            )
+            self.assertEqual(status, 403)
+            res = json.loads(data.decode("utf-8"))
+            self.assertIn("disabled outside isolated development mode", res["error"])
+        finally:
+            if old_auth is not None:
+                os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = old_auth
+            else:
+                os.environ.pop("SIIP_ALLOW_SYNTHETIC_AUTH", None)
+            if old_env is not None:
+                os.environ["SIIP_ENV"] = old_env
+            else:
+                os.environ.pop("SIIP_ENV", None)
+
 
 if __name__ == "__main__":
     unittest.main()

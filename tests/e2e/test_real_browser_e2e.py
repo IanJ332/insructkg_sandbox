@@ -1,17 +1,21 @@
-"""Authentic End-to-End PrairieLearn Browser Lifecycle Verification (Phase 5.6 P1).
+"""Synthetic Portal Full Browser Workflow Verification (Phase 5.6 Category B).
 
-Explicitly separate end-to-end browser test starting from an actual PrairieLearn
-browser submission and following the complete supported integration path without
-backend Python function shortcuts:
+Exercises the complete browser workflow hosted on the Synthetic Dashboard Portal
+(/practice), executing the PrairieLearn Python grading hook (pl_bridge.grade_question)
+and testing the full browser integration path without direct Python backend calls in
+the test body:
 
 1. Student login and session authorization via browser form.
-2. Authentic PrairieLearn browser query submission and deterministic grading receipt.
+2. Synthetic portal practice query submission and deterministic PL grading receipt.
 3. Asynchronous grounded feedback delivery and display via signed ticket.
 4. Entrepreneurial Mindset (EM) reflection submission via browser form.
 5. Student review rejection (403 Forbidden when student accesses /em-review).
 6. Instructor login and EM review acceptance via browser form.
 7. Dynamic project generation and instructor approval with notes via browser form.
 8. Learner-safe project retrieval: answer key concealment, review controls omitted.
+
+Note: This verifies the Synthetic Dashboard Portal interactive interface. It does
+not execute the containerized native Node.js/Postgres PrairieLearn application UI.
 """
 
 from __future__ import annotations
