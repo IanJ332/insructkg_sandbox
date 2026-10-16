@@ -204,37 +204,94 @@ def verify_signed_ticket(ticket: str, job_id: str, secret: Optional[bytes] = Non
     return student_id
 
 
+STUDENT_PRINCIPALS = {"S001", "S002", "S003", "S004", "S005"}
+INSTRUCTOR_PRINCIPALS = {
+    "instructor_alawini",
+    "prof-alawini",
+    "instructor-01",
+    "instructor_ta",
+    "instructor_audit",
+    "instructor-admin",
+}
+
+
+def is_student_principal(principal: Optional[str]) -> bool:
+    """Return True if principal is a recognized synthetic student."""
+    return bool(principal and principal in STUDENT_PRINCIPALS)
+
+
+def is_instructor_principal(principal: Optional[str]) -> bool:
+    """Return True if principal is an authorized instructor."""
+    if not principal or not isinstance(principal, str):
+        return False
+    if is_student_principal(principal):
+        return False
+    p = principal.lower().strip()
+    return p in INSTRUCTOR_PRINCIPALS or p.startswith("instructor") or p.startswith("prof")
+
+
 def create_signed_session_token(
-    student_id: str, secret: Optional[bytes] = None, ttl_seconds: float = 86400.0
+    student_id: str,
+    secret: Optional[bytes] = None,
+    ttl_seconds: float = 86400.0,
+    role: str = "student",
 ) -> str:
-    """Generate a tamper-evident synthetic session token for a student principal."""
+    """Generate a tamper-evident synthetic session token for a principal with a specified role."""
     sec = secret if secret is not None else get_auth_secret()
     expires_at = int(time.time() + ttl_seconds)
-    payload = f"{student_id}:{expires_at}"
+    payload = f"{student_id}:{role}:{expires_at}"
     sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
-    return f"{student_id}.{expires_at}.{sig}"
+    return f"{student_id}.{role}.{expires_at}.{sig}"
+
+
+def verify_signed_session_token_role(
+    token: str, secret: Optional[bytes] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Verify session token signature and expiration, returning (principal, role).
+    Supports both 4-part tokens (principal.role.expires.sig) and legacy 3-part tokens (principal.expires.sig).
+    Returns (principal, role) if valid, or (None, None) if invalid/expired.
+    """
+    if not isinstance(token, str):
+        return None, None
+    parts = token.strip().split(".")
+    sec = secret if secret is not None else get_auth_secret()
+
+    if len(parts) == 4:
+        principal, role, expires_str, provided_sig = parts
+        try:
+            expires_at = int(expires_str)
+        except ValueError:
+            return None, None
+        if time.time() > expires_at:
+            return None, None
+        payload = f"{principal}:{role}:{expires_at}"
+        expected_sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+        if not hmac.compare_digest(expected_sig, provided_sig):
+            return None, None
+        return principal, role
+
+    if len(parts) == 3:
+        principal, expires_str, provided_sig = parts
+        try:
+            expires_at = int(expires_str)
+        except ValueError:
+            return None, None
+        if time.time() > expires_at:
+            return None, None
+        payload = f"{principal}:{expires_at}"
+        expected_sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+        if not hmac.compare_digest(expected_sig, provided_sig):
+            return None, None
+        return principal, "student"
+
+    return None, None
 
 
 def verify_signed_session_token(token: str, secret: Optional[bytes] = None) -> Optional[str]:
     """
     Verify session token signature and expiration.
-    Returns authorized student_id if valid, or None if invalid/expired.
+    Returns authorized principal if valid, or None if invalid/expired.
     """
-    if not isinstance(token, str):
-        return None
-    parts = token.strip().split(".")
-    if len(parts) != 3:
-        return None
-    student_id, expires_str, provided_sig = parts
-    try:
-        expires_at = int(expires_str)
-    except ValueError:
-        return None
-    if time.time() > expires_at:
-        return None
-    sec = secret if secret is not None else get_auth_secret()
-    payload = f"{student_id}:{expires_at}"
-    expected_sig = hmac.new(sec, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
-    if not hmac.compare_digest(expected_sig, provided_sig):
-        return None
-    return student_id
+    principal, _ = verify_signed_session_token_role(token, secret)
+    return principal

@@ -129,7 +129,7 @@ def run_demo_a() -> int:
         # Step 6: Adaptive Next-Activity Recommendation
         # -------------------------------------------------------------------
         rec = recommend_next_activity(student_id, profile)
-        print("\n[Step 6] Adaptive Next-Activity Recommendation:")
+        print("\n[Step 6] Adaptive Next-Activity Recommendation (S001):")
         print(
             f"         Recommended Question: {rec['recommended_question_id']} - {rec['question_title']}"
         )
@@ -137,8 +137,51 @@ def run_demo_a() -> int:
         print(f"         Pedagogical Rationale: {rec['rationale']}")
         print(f"         Triggered Rule:       {rec['rule_id']}")
 
+        # -------------------------------------------------------------------
+        # Step 7: Second Student Demonstration (S002 with distinct mastery)
+        # -------------------------------------------------------------------
+        print("\n[Step 7] Second Student Demonstration (S002):")
+        # S002 has successfully mastered inner joins and basic outer joins
+        sub_repo.process(
+            {
+                "attempt_id": "demo-a-s002-001",
+                "student_id": "S002",
+                "question_id": "sql_join_01",
+                "submitted_sql": QUESTIONS["sql_join_01"]["reference_sql"],
+                "timestamp": "2026-10-15T09:00:00Z",
+                "source": "synthetic_fixture",
+            }
+        )
+        sub_repo.process(
+            {
+                "attempt_id": "demo-a-s002-002",
+                "student_id": "S002",
+                "question_id": "sql_join_02",
+                "submitted_sql": QUESTIONS["sql_join_02"]["reference_sql"],
+                "timestamp": "2026-10-15T09:30:00Z",
+                "source": "synthetic_fixture",
+            }
+        )
+        s002_profile = sub_repo.profile("S002")
+        s002_rec = recommend_next_activity("S002", s002_profile)
+
+        print("         Learner:              S002 (Foundational Joins Mastered)")
+        print(
+            f"         Recommended Question: {s002_rec['recommended_question_id']} - {s002_rec['question_title']}"
+        )
+        print(f"         Target Concepts:      {s002_rec['target_concepts']}")
+        print(f"         Pedagogical Rationale: {s002_rec['rationale']}")
+        print(f"         Triggered Rule:       {s002_rec['rule_id']}")
+
+        assert rec["recommended_question_id"] != s002_rec["recommended_question_id"], (
+            "Recommendations for S001 and S002 must differ based on individual profile history"
+        )
+        print(
+            f"\n[Validation] Differential recommendation verified: S001 -> {rec['recommended_question_id']}, S002 -> {s002_rec['recommended_question_id']}"
+        )
+
         print("\n" + "=" * 72)
-        print("DEMO A VERIFICATION: SUCCESS (All 6 stages verified)")
+        print("DEMO A VERIFICATION: SUCCESS (All 7 stages verified)")
         print("=" * 72)
         return 0
 

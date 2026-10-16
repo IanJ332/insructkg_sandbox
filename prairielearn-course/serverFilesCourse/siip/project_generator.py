@@ -317,7 +317,61 @@ def generate_personalized_project(
     now_iso = datetime.now(timezone.utc).isoformat()
     project_id = f"proj-{student_id.lower()}-{uuid.uuid4().hex[:8]}"
 
-    # Stage 2 & 3: Construct milestones and ranking
+    # Stage 2: Profile adaptation (concept mastery inspection & difficulty sequencing)
+    adapted_difficulty_level = "standard_progression"
+    profile_adaptation_rationale = (
+        "Standard curriculum progression; baseline milestone sequencing applied."
+    )
+    adaptation_scaffolding: Dict[str, Any] = {}
+
+    if profile and isinstance(profile, dict) and profile.get("concepts"):
+        concepts_data = profile["concepts"]
+        mastery_vals = []
+        low_mastery_concepts = []
+        for c_name, c_info in concepts_data.items():
+            if isinstance(c_info, dict) and "mastery_estimate" in c_info:
+                val = float(c_info["mastery_estimate"])
+                mastery_vals.append(val)
+                if val < 0.50:
+                    low_mastery_concepts.append((c_name, val))
+
+        mean_mastery = sum(mastery_vals) / len(mastery_vals) if mastery_vals else 0.50
+
+        if low_mastery_concepts or mean_mastery < 0.50:
+            adapted_difficulty_level = "scaffolded_remediation"
+            weak_names = [c[0] for c in low_mastery_concepts] or ["relational_joins"]
+            profile_adaptation_rationale = (
+                f"Learner {student_id} exhibits diagnosed concept gaps in {', '.join(weak_names)} "
+                f"(mean target mastery: {mean_mastery:.2f}). Milestones 1 and 2 provide explicit "
+                f"scaffolding on join criteria and NULL handling before multi-table aggregation."
+            )
+            adaptation_scaffolding = {
+                "scaffolded_concepts": weak_names,
+                "remediation_focus": True,
+                "prior_mean_mastery": round(mean_mastery, 3),
+            }
+        elif mean_mastery >= 0.80:
+            adapted_difficulty_level = "advanced_synthesis"
+            profile_adaptation_rationale = (
+                f"Learner {student_id} demonstrates high concept mastery ({mean_mastery:.2f}) "
+                f"across relational queries. Milestones emphasize query efficiency, edge-case retention, "
+                f"and complex multi-table predicate optimization."
+            )
+            adaptation_scaffolding = {
+                "advanced_focus": True,
+                "prior_mean_mastery": round(mean_mastery, 3),
+            }
+        else:
+            adapted_difficulty_level = "standard_progression"
+            profile_adaptation_rationale = (
+                f"Learner {student_id} demonstrates developing mastery ({mean_mastery:.2f}). "
+                f"Balanced 3-tier milestone sequencing applied across relational operations."
+            )
+            adaptation_scaffolding = {
+                "prior_mean_mastery": round(mean_mastery, 3),
+            }
+
+    # Construct milestones and ranking
     milestones: List[ProjectMilestone] = []
     all_concepts: List[str] = []
     for m_data in template["milestones"]:
@@ -351,6 +405,9 @@ def generate_personalized_project(
             "created_at": now_iso,
             "verified_in_memory": False,
             "student_profile_available": profile is not None,
+            "adapted_difficulty_level": adapted_difficulty_level,
+            "profile_adaptation_rationale": profile_adaptation_rationale,
+            "adaptation_scaffolding": adaptation_scaffolding,
             "synthetic_classification": "SYNTHETIC_COURSE_MATERIAL",
         },
         created_at=now_iso,

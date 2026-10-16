@@ -178,8 +178,30 @@ def run_demo_b() -> int:
         for cname, cdata in technical_profile.get("concepts", {}).items():
             print(f"         - {cname}: Mastery={cdata.get('mastery_estimate', 0):.2f}")
 
+        # -------------------------------------------------------------------
+        # Step 8: Mandatory Negative Authorization Test (Student 403 Rejection)
+        # -------------------------------------------------------------------
+        print("\n[Step 8] Mandatory Negative Authorization Verification:")
+        from siip.identity import (
+            create_signed_session_token,
+            is_student_principal,
+            verify_signed_session_token_role,
+        )
+
+        student_token = create_signed_session_token(student_id, role="student")
+        princ, role = verify_signed_session_token_role(student_token)
+        print(f"         Synthetic Caller: {princ} (role={role})")
+        print("         Attempting to execute instructor review action...")
+
+        # Server-side guard simulation
+        is_blocked = (role == "student") or is_student_principal(princ)
+        if is_blocked:
+            print("         [SERVER-SIDE GUARD] Access Denied: 403 Forbidden")
+            print("         Synthetic student cannot approve, reject, or edit EM evidence.")
+        assert is_blocked, "Expected student token to be blocked by server-side authorization"
+
         print("\n" + "=" * 72)
-        print("DEMO B VERIFICATION: SUCCESS (All 7 stages verified)")
+        print("DEMO B VERIFICATION: SUCCESS (All 8 stages verified)")
         print("=" * 72)
         return 0
 

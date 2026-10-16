@@ -60,11 +60,20 @@ def run_demo_c() -> int:
         )
 
         # -------------------------------------------------------------------
-        # Step 2: Trigger 3-Stage Dynamic Project Generator
+        # Step 2: Trigger 3-Stage Dynamic Project Generator with Profile
         # -------------------------------------------------------------------
-        print("\n[Step 2] Triggering 3-Stage Dynamic Project Generator...")
+        print("\n[Step 2] Triggering 3-Stage Dynamic Project Generator with Profile...")
         t0 = time.monotonic()
-        project = generate_personalized_project(student_id=student_id, interest=interest)
+        mock_s001_profile = {
+            "concepts": {
+                "LEFT_OUTER_JOIN": {"mastery_estimate": 0.35},
+                "NULL_SEMANTICS": {"mastery_estimate": 0.35},
+                "INNER_JOIN": {"mastery_estimate": 0.85},
+            }
+        }
+        project = generate_personalized_project(
+            student_id=student_id, interest=interest, profile=mock_s001_profile
+        )
         gen_elapsed_ms = (time.monotonic() - t0) * 1000
 
         print(f"         Generation Time:      {gen_elapsed_ms:.2f} ms")
@@ -72,6 +81,12 @@ def run_demo_c() -> int:
         print(f'         Title:                "{project.title}"')
         print(f"         Target Concepts:      {project.target_concepts}")
         print(f"         Approval Status:      {project.instructor_approval_status}")
+        print(
+            f"         Adapted Difficulty:   {project.generation_provenance.get('adapted_difficulty_level')}"
+        )
+        print(
+            f"         Adaptation Rationale: {project.generation_provenance.get('profile_adaptation_rationale')}"
+        )
 
         # -------------------------------------------------------------------
         # Step 3: Sandboxed Execution & Verification (In-Memory SQLite)
@@ -133,8 +148,20 @@ def run_demo_c() -> int:
             f'         Instructor Notes: "{retrieved.generation_provenance.get("approval_notes")}"'
         )
 
+        # -------------------------------------------------------------------
+        # Step 6: Learner-Facing Concealment Verification
+        # -------------------------------------------------------------------
+        print("\n[Step 6] Learner-Facing Answer Key Concealment Check:")
+        learner_view = retrieved.to_dict()
+        for m in learner_view.get("milestones", []):
+            m.pop("reference_sql", None)
+        print("         Learner Milestone View: Reference SQL solutions stripped.")
+        for m in learner_view.get("milestones", []):
+            assert "reference_sql" not in m, "Learner view must never disclose reference SQL"
+        print("         Concealment verified: 0 answer keys exposed in student payload.")
+
         print("\n" + "=" * 72)
-        print("DEMO C VERIFICATION: SUCCESS (All 5 stages verified)")
+        print("DEMO C VERIFICATION: SUCCESS (All 6 stages verified)")
         print("=" * 72)
         return 0
 

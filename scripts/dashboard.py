@@ -22,8 +22,11 @@ from siip.grader import QUESTIONS, grade
 from siip.identity import (
     create_signed_session_token,
     create_signed_ticket,
+    is_instructor_principal,
+    is_student_principal,
     verify_service_request,
     verify_signed_session_token,
+    verify_signed_session_token_role,
     verify_signed_ticket,
 )
 from siip.jobs import AttemptConflictError, FeedbackJobRepository, JobQueueFullError
@@ -364,7 +367,7 @@ def students(repo, sid=None):
     return shell("Student " + sid, body)
 
 
-def projects_page(project_id=None):
+def projects_page(project_id=None, is_learner=False):
     project_repo = get_project_repo()
     if project_id:
         proj = project_repo.get_project(project_id)
@@ -383,6 +386,17 @@ def projects_page(project_id=None):
                 m.difficulty_rank, "#087674"
             )
             rank_bg = {1: "#e0f2fe", 2: "#fef3c7", 3: "#fee2e2"}.get(m.difficulty_rank, "#f0fdf4")
+
+            # Answer key concealment: never show reference SQL solution in learner view
+            solution_html = ""
+            if not is_learner:
+                solution_html = f"""
+                <details style="margin-top:8px;">
+                  <summary>Reference SQL Solution (Grading Ground Truth)</summary>
+                  <pre style="background:#1e293b;color:#f8fafc;padding:12px;border-radius:6px;margin-top:6px;">{esc(m.reference_sql)}</pre>
+                </details>
+                """
+
             milestones_html += f"""
             <div style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px;background:#f8fafc;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -392,18 +406,40 @@ def projects_page(project_id=None):
               <p><strong>Task:</strong> {esc(m.task_description)}</p>
               <p><strong>Target concepts:</strong> {esc(", ".join(m.target_concepts))}</p>
               <p class="muted"><strong>Rubric:</strong> {esc(m.evaluation_rubric)}</p>
-              <details style="margin-top:8px;">
-                <summary>Reference SQL Solution (Grading Ground Truth)</summary>
-                <pre style="background:#1e293b;color:#f8fafc;padding:12px;border-radius:6px;margin-top:6px;">{esc(m.reference_sql)}</pre>
-              </details>
+              {solution_html}
             </div>
             """
 
         status_color = "#166534" if proj.instructor_approval_status == "APPROVED" else "#92400e"
         status_bg = "#dcfce7" if proj.instructor_approval_status == "APPROVED" else "#fef3c7"
 
+        # Pending approval notice for unapproved projects in learner view
+        pending_notice = ""
+        if is_learner and proj.instructor_approval_status != "APPROVED":
+            pending_notice = """
+            <div style="background:#fef3c7;border-left:4px solid #d97706;padding:14px;border-radius:6px;margin-bottom:18px;color:#92400e;">
+              <strong>Pending Instructor Approval:</strong> This personalized project has not yet been approved by course instructors. Reference solutions and official milestone submissions remain locked until approved.
+            </div>
+            """
+
+        # Instructor review form is strictly withheld from learner view
+        review_controls_html = ""
+        if not is_learner:
+            review_controls_html = f"""
+            <h3>Instructor Review & Approval</h3>
+            <form method="POST" action="/api/projects/review" style="display:flex;gap:10px;align-items:center;">
+              <input type="hidden" name="project_id" value="{esc(proj.project_id)}">
+              <input type="text" name="notes" placeholder="Instructor feedback notes..." value="{esc(proj.instructor_notes or "")}" style="padding:8px;width:300px;border:1px solid #cbd5e1;border-radius:6px;">
+              <button type="submit" name="status" value="APPROVED" style="background:#16a34a;">Approve Project</button>
+              <button type="submit" name="status" value="REVISED" style="background:#d97706;">Request Revision</button>
+            </form>
+            """
+        else:
+            review_controls_html = "<p class='muted'>Learner view &middot; Reference solutions and review controls are withheld.</p>"
+
         body = f"""
         <section>
+          {pending_notice}
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <h2>{esc(proj.title)}</h2>
             <span class="badge" style="background:{status_bg};color:{status_color};font-size:14px;">Status: {esc(proj.instructor_approval_status)}</span>
@@ -418,13 +454,7 @@ def projects_page(project_id=None):
           <h3>Milestones & Task Decomposition</h3>
           {milestones_html}
 
-          <h3>Instructor Review & Approval</h3>
-          <form method="POST" action="/api/projects/review" style="display:flex;gap:10px;align-items:center;">
-            <input type="hidden" name="project_id" value="{esc(proj.project_id)}">
-            <input type="text" name="notes" placeholder="Instructor feedback notes..." value="{esc(proj.instructor_notes or "")}" style="padding:8px;width:300px;border:1px solid #cbd5e1;border-radius:6px;">
-            <button type="submit" name="status" value="APPROVED" style="background:#16a34a;">Approve Project</button>
-            <button type="submit" name="status" value="REVISED" style="background:#d97706;">Request Revision</button>
-          </form>
+          {review_controls_html}
           <p style="margin-top:16px;"><a href="/projects">&larr; Back to all projects</a></p>
         </section>
         """
@@ -953,7 +983,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(em_review_page(status_filter))
             elif parsed.path == "/projects":
                 project_id = params.get("id", [None])[0]
-                self.send(projects_page(project_id))
+                view_mode = params.get("view", [None])[0]
+                is_learner = view_mode == "learner"
+                auth_hdr = self.headers.get("Authorization", "")
+                if auth_hdr.startswith("Bearer "):
+                    tok = auth_hdr[7:].strip()
+                    p, r = verify_signed_session_token_role(tok)
+                    if r == "student" or is_student_principal(p):
+                        is_learner = True
+                self.send(projects_page(project_id, is_learner=is_learner))
             elif parsed.path == "/api/recommendation":
                 sid = params.get("student_id", [None])[0]
                 if not sid or sid not in STUDENTS:
@@ -969,6 +1007,15 @@ class Handler(BaseHTTPRequestHandler):
             elif parsed.path == "/api/projects":
                 project_repo = get_project_repo()
                 project_id = params.get("id", [None])[0]
+                view_mode = params.get("view", [None])[0]
+                is_learner = view_mode == "learner"
+                auth_hdr = self.headers.get("Authorization", "")
+                if auth_hdr.startswith("Bearer "):
+                    tok = auth_hdr[7:].strip()
+                    p, r = verify_signed_session_token_role(tok)
+                    if r == "student" or is_student_principal(p):
+                        is_learner = True
+
                 if project_id:
                     proj = project_repo.get_project(project_id)
                     if not proj:
@@ -978,15 +1025,28 @@ class Handler(BaseHTTPRequestHandler):
                             content="application/json",
                         )
                         return
-                    self.send(json.dumps(proj.to_dict()), 200, content="application/json")
+                    proj_dict = proj.to_dict()
+                    if is_learner:
+                        for m in proj_dict.get("milestones", []):
+                            m.pop("reference_sql", None)
+                        if proj.instructor_approval_status != "APPROVED":
+                            proj_dict["learner_notice"] = (
+                                "Pending Instructor Approval: Reference solutions and final milestone submissions remain locked until approved."
+                            )
+                    self.send(json.dumps(proj_dict), 200, content="application/json")
                 else:
                     sid = params.get("student_id", [None])[0]
                     if sid:
                         projs = project_repo.list_projects_for_student(sid)
                     else:
                         projs = project_repo.list_all_projects()
+                    proj_dicts = [p.to_dict() for p in projs]
+                    if is_learner:
+                        for pd in proj_dicts:
+                            for m in pd.get("milestones", []):
+                                m.pop("reference_sql", None)
                     self.send(
-                        json.dumps([p.to_dict() for p in projs]),
+                        json.dumps(proj_dicts),
                         200,
                         content="application/json",
                     )
@@ -1210,27 +1270,65 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send("JSON required", 415)
                 payload = json.loads(text)
                 sid = payload.get("student_id")
-                if not sid or sid not in STUDENTS:
+                iid = payload.get("instructor_id") or payload.get("principal")
+                role = payload.get("role")
+
+                if sid:
+                    if sid not in STUDENTS and not is_student_principal(sid):
+                        self.send(
+                            json.dumps({"error": "Invalid or unknown synthetic student principal"}),
+                            400,
+                            content="application/json",
+                        )
+                        return
+                    token = create_signed_session_token(sid, role="student")
                     self.send(
-                        json.dumps({"error": "Invalid or unknown synthetic student principal"}),
+                        json.dumps(
+                            {
+                                "token": token,
+                                "student_id": sid,
+                                "principal": sid,
+                                "role": "student",
+                                "token_type": "Bearer",  # nosec B105
+                                "expires_in": 86400,
+                            }
+                        ),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                elif iid or role == "instructor":
+                    principal = iid or "instructor-admin"
+                    if not is_instructor_principal(principal):
+                        self.send(
+                            json.dumps({"error": "Invalid or unknown instructor principal"}),
+                            400,
+                            content="application/json",
+                        )
+                        return
+                    token = create_signed_session_token(principal, role="instructor")
+                    self.send(
+                        json.dumps(
+                            {
+                                "token": token,
+                                "instructor_id": principal,
+                                "principal": principal,
+                                "role": "instructor",
+                                "token_type": "Bearer",  # nosec B105
+                                "expires_in": 86400,
+                            }
+                        ),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send(
+                        json.dumps({"error": "Missing student_id or instructor_id principal"}),
                         400,
                         content="application/json",
                     )
                     return
-                token = create_signed_session_token(sid)
-                self.send(
-                    json.dumps(
-                        {
-                            "token": token,
-                            "student_id": sid,
-                            "token_type": "Bearer",  # nosec B105
-                            "expires_in": 86400,
-                        }
-                    ),
-                    200,
-                    content="application/json",
-                )
-                return
 
             # Route 2: Durable host-owned queue enqueue endpoint
             if self.path == "/api/queue/enqueue":
@@ -1488,6 +1586,44 @@ class Handler(BaseHTTPRequestHandler):
                     notes = params.get("instructor_notes", [None])[0]
                     reviewer = params.get("reviewer_id", ["instructor-admin"])[0]
 
+                # --- Strict Server-Side Role Separation ---
+                auth_header = self.headers.get("Authorization", "")
+                session_tok = None
+                if auth_header.startswith("Bearer "):
+                    session_tok = auth_header[7:].strip()
+                elif self.headers.get("X-Synthetic-Session"):
+                    session_tok = self.headers.get("X-Synthetic-Session").strip()
+
+                if session_tok:
+                    tok_principal, tok_role = verify_signed_session_token_role(session_tok)
+                    if tok_role == "student" or is_student_principal(tok_principal):
+                        msg = "Forbidden: Synthetic students cannot approve, reject, or edit EM evidence."
+                        return (
+                            self.send(json.dumps({"error": msg}), 403, content="application/json")
+                            if is_json
+                            else self.send(msg, 403)
+                        )
+                    if tok_role == "instructor" and is_instructor_principal(tok_principal):
+                        reviewer = tok_principal
+
+                if is_student_principal(reviewer) or reviewer in STUDENTS:
+                    msg = "Forbidden: Synthetic students cannot act as instructor reviewers."
+                    return (
+                        self.send(json.dumps({"error": msg}), 403, content="application/json")
+                        if is_json
+                        else self.send(msg, 403)
+                    )
+
+                if not is_instructor_principal(reviewer) and not verify_service_request(
+                    self.headers
+                ):
+                    msg = "Forbidden: Instructor authorization required to review EM evidence."
+                    return (
+                        self.send(json.dumps({"error": msg}), 403, content="application/json")
+                        if is_json
+                        else self.send(msg, 403)
+                    )
+
                 if not ev_id or not review_status:
                     return self.send("Missing evidence_id or review_status", 400)
 
@@ -1567,11 +1703,51 @@ class Handler(BaseHTTPRequestHandler):
                     proj_id = payload.get("project_id")
                     status_val = payload.get("status")
                     notes = payload.get("notes")
+                    reviewer = payload.get("reviewer_id", "instructor-admin")
                 else:
                     params = parse_qs(text, strict_parsing=True)
                     proj_id = params.get("project_id", [None])[0]
                     status_val = params.get("status", [None])[0]
                     notes = params.get("notes", [None])[0]
+                    reviewer = params.get("reviewer_id", ["instructor-admin"])[0]
+
+                # --- Strict Server-Side Role Separation ---
+                auth_header = self.headers.get("Authorization", "")
+                session_tok = None
+                if auth_header.startswith("Bearer "):
+                    session_tok = auth_header[7:].strip()
+                elif self.headers.get("X-Synthetic-Session"):
+                    session_tok = self.headers.get("X-Synthetic-Session").strip()
+
+                if session_tok:
+                    tok_principal, tok_role = verify_signed_session_token_role(session_tok)
+                    if tok_role == "student" or is_student_principal(tok_principal):
+                        msg = "Forbidden: Synthetic students cannot approve or review dynamic projects."
+                        return (
+                            self.send(json.dumps({"error": msg}), 403, content="application/json")
+                            if is_json
+                            else self.send(msg, 403)
+                        )
+                    if tok_role == "instructor" and is_instructor_principal(tok_principal):
+                        reviewer = tok_principal
+
+                if is_student_principal(reviewer) or reviewer in STUDENTS:
+                    msg = "Forbidden: Synthetic students cannot approve or review dynamic projects."
+                    return (
+                        self.send(json.dumps({"error": msg}), 403, content="application/json")
+                        if is_json
+                        else self.send(msg, 403)
+                    )
+
+                if not is_instructor_principal(reviewer) and not verify_service_request(
+                    self.headers
+                ):
+                    msg = "Forbidden: Instructor authorization required to approve projects."
+                    return (
+                        self.send(json.dumps({"error": msg}), 403, content="application/json")
+                        if is_json
+                        else self.send(msg, 403)
+                    )
 
                 if not proj_id or not status_val:
                     return self.send("Missing project_id or status", 400)
