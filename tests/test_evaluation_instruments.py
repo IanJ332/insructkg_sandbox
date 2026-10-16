@@ -37,12 +37,12 @@ from siip.survey_instruments import (
 
 
 class TestSurveyAndRubricStructures(unittest.TestCase):
-    """Verifies psychometric and rubric consistency."""
-
     def test_student_perception_survey_coverage(self):
+        from dataclasses import asdict
+
         inst = get_evaluation_instruments()
         survey = inst["student_perception_survey"]
-        self.assertEqual(survey, STUDENT_PERCEPTION_SURVEY)
+        self.assertEqual(survey, [asdict(q) for q in STUDENT_PERCEPTION_SURVEY])
         self.assertEqual(len(survey), 5)
 
         categories = {q["category"] for q in survey}

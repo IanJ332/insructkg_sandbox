@@ -42,6 +42,7 @@ class SubmissionRepository:
     def connect(self):
         db = sqlite3.connect(self.path, timeout=10)
         db.execute("PRAGMA busy_timeout=10000")
+        db.execute("PRAGMA journal_mode=WAL")
         return db
 
     @staticmethod

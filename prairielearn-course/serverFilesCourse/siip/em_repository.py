@@ -69,6 +69,7 @@ class EMRepository:
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
         db.execute("PRAGMA busy_timeout=10000")
+        db.execute("PRAGMA journal_mode=WAL")
         db.row_factory = sqlite3.Row
         return db
 
