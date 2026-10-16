@@ -26,6 +26,10 @@
         {
           "id": "sql_join_03",
           "points": 1
+        },
+        {
+          "id": "sql_join_04",
+          "points": 1
         }
       ]
     }

@@ -15,6 +15,8 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
+from siip.em_models import EMDimension, EMReviewStatus
+from siip.em_repository import EMRepository
 from siip.feedback import generate_feedback, load_graphs
 from siip.grader import QUESTIONS, grade
 from siip.identity import (
@@ -58,7 +60,7 @@ def shell(title, body):
         + esc(title)
         + " · SIIP</title><style>"
         + STYLE
-        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
+        + '</style><header><span class="badge">SYNTHETIC DATA · LOCAL RESEARCH</span><h1>SQL learning observatory</h1><p>PrairieLearn × InstructKG · JOINs and NULL semantics</p><nav><a href="/">Overview</a><a href="/students">Students</a><a href="/em-review">EM review</a><a href="/graph">Graph review</a><a href="/compare">Feedback lab</a><a href="http://localhost:3000/pl">PrairieLearn</a></nav></header><main>'
         + body
         + "</main></html>"
     )
@@ -154,6 +156,48 @@ def students(repo, sid=None):
         )
         + "</section>"
     )
+
+    em_repo = get_em_repo()
+    em_summary = em_repo.student_em_summary(sid)
+    em_status_badge = (
+        '<span class="badge" style="background:#fee2e2;color:#991b1b;">INSUFFICIENT_EVIDENCE</span>'
+        if em_summary["has_insufficient_evidence"]
+        else '<span class="badge" style="background:#dcfce7;color:#166534;">OBSERVED_EVIDENCE_RECORDED</span>'
+    )
+    em_rows = [
+        [
+            esc(r["created_at"][:19].replace("T", " ")),
+            esc(r["question_id"]),
+            f"<strong>{esc(r['dimension'])}</strong>",
+            esc(r["evidence_excerpt"][:90] + ("..." if len(r["evidence_excerpt"]) > 90 else "")),
+            f"<span class='badge' style='background:{'#dcfce7' if r['review_status'] == 'ACCEPTED' else '#fef3c7'};color:{'#166534' if r['review_status'] == 'ACCEPTED' else '#92400e'};'>{esc(r['review_status'])}</span>",
+            esc(r.get("reviewer_id") or "Pending Review"),
+        ]
+        for r in em_summary["records"]
+    ]
+    em_table_html = (
+        table(["Date (UTC)", "Question", "Dim", "Excerpt", "Status", "Reviewer"], em_rows)
+        if em_rows
+        else "<p class='muted'>No EM reflection responses recorded for this student yet.</p>"
+    )
+
+    body += f"""
+    <section>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Entrepreneurial Mindset (EM) Behavioral Evidence</h2>
+        {em_status_badge}
+      </div>
+      <p class="muted"><strong>Methodological Boundary:</strong> {esc(em_summary["disclaimer"])}</p>
+      <div class="cards" style="margin-bottom:16px;">
+        <div class="card"><div class="metric">{em_summary["total_observations"]}</div>Total observations</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["C"]}</div>Curiosity (C) accepted</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["X"]}</div>Connections (X) accepted</div>
+        <div class="card"><div class="metric">{em_summary["accepted_by_dimension"]["V"]}</div>Creating Value (V) accepted</div>
+      </div>
+      {em_table_html}
+    </section>
+    """
+
     body += (
         '<section><h2>Add a synthetic attempt</h2><p>This form exercises the shared engine and updates this synthetic profile. Use the PrairieLearn link for actual platform submissions.</p><form method="post" action="/attempt"><input type="hidden" name="student_id" value="'
         + esc(sid)
@@ -218,6 +262,92 @@ def graph_page():
     return shell("Graph review", body + "</section>")
 
 
+def em_review_page(filter_status=None):
+    em_repo = get_em_repo()
+    all_evidence = em_repo.list_all_evidence()
+
+    proposed_count = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.PROPOSED)
+    accepted_count = sum(1 for e in all_evidence if e.review_status == EMReviewStatus.ACCEPTED)
+    other_count = sum(
+        1
+        for e in all_evidence
+        if e.review_status in (EMReviewStatus.REJECTED, EMReviewStatus.NEEDS_REVISION)
+    )
+
+    filtered = [
+        e for e in all_evidence if filter_status is None or e.review_status.value == filter_status
+    ]
+
+    rows = []
+    for ev in filtered:
+        st = ev.review_status.value
+        status_color = (
+            "#166534" if st == "ACCEPTED" else ("#b91c1c" if st == "REJECTED" else "#92400e")
+        )
+        status_bg = (
+            "#dcfce7" if st == "ACCEPTED" else ("#fee2e2" if st == "REJECTED" else "#fef3c7")
+        )
+        action_form = f"""
+        <form method="POST" action="/api/em/review" style="display:flex;gap:6px;align-items:center;">
+          <input type="hidden" name="evidence_id" value="{esc(ev.evidence_id)}">
+          <input type="text" name="instructor_notes" placeholder="Notes..." value="{esc(ev.instructor_notes or "")}" style="padding:4px;font-size:12px;width:120px;border:1px solid #cbd5e1;border-radius:4px;">
+          <button type="submit" name="review_status" value="ACCEPTED" style="background:#16a34a;padding:5px 9px;font-size:12px;">Accept</button>
+          <button type="submit" name="review_status" value="REJECTED" style="background:#dc2626;padding:5px 9px;font-size:12px;">Reject</button>
+          <button type="submit" name="review_status" value="NEEDS_REVISION" style="background:#d97706;padding:5px 9px;font-size:12px;">Revise</button>
+        </form>
+        """
+        rows.append(
+            [
+                f"<a href='/students?id={esc(ev.student_id)}'>{esc(ev.student_id)}</a>",
+                esc(ev.question_id),
+                f"<strong>{esc(ev.dimension.value)}</strong>",
+                f"<span title='{esc(ev.evidence_excerpt)}'>{esc(ev.evidence_excerpt[:90] + ('...' if len(ev.evidence_excerpt) > 90 else ''))}</span>",
+                f"<small>{esc(ev.classification_method)} ({ev.confidence:.2f})</small>",
+                f"<span class='badge' style='background:{status_bg};color:{status_color};'>{esc(st)}</span>",
+                action_form,
+            ]
+        )
+
+    table_html = (
+        table(
+            [
+                "Student",
+                "Question",
+                "Dim",
+                "Evidence Excerpt",
+                "Classification",
+                "Status",
+                "Actions",
+            ],
+            rows,
+        )
+        if rows
+        else "<p class='muted'>No evidence records matching current filter.</p>"
+    )
+
+    body = f"""
+    <section>
+      <h2>Instructor Entrepreneurial Mindset (EM) Evidence Review</h2>
+      <p class="muted">Review, validate, or revise behavioral EM reflection evidence submitted by synthetic learners. Model-proposed and rule-inferred observations remain provisional until accepted here.</p>
+      <div class="cards" style="margin-bottom:20px;">
+        <div class="card"><div class="metric">{len(all_evidence)}</div>Total records</div>
+        <div class="card"><div class="metric" style="color:#d97706;">{proposed_count}</div>Pending review</div>
+        <div class="card"><div class="metric" style="color:#16a34a;">{accepted_count}</div>Accepted</div>
+        <div class="card"><div class="metric" style="color:#64748b;">{other_count}</div>Rejected / Revision</div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <strong>Filter:</strong>
+        <a href="/em-review" style="margin:0 8px;font-weight:{"bold" if not filter_status else "normal"}">All</a> &middot;
+        <a href="/em-review?status=PROPOSED" style="margin:0 8px;font-weight:{"bold" if filter_status == "PROPOSED" else "normal"}">Pending (PROPOSED)</a> &middot;
+        <a href="/em-review?status=ACCEPTED" style="margin:0 8px;font-weight:{"bold" if filter_status == "ACCEPTED" else "normal"}">Accepted (ACCEPTED)</a> &middot;
+        <a href="/em-review?status=REJECTED" style="margin:0 8px;font-weight:{"bold" if filter_status == "REJECTED" else "normal"}">Rejected (REJECTED)</a>
+      </div>
+      {table_html}
+    </section>
+    """
+    return shell("EM Evidence Review", body)
+
+
 def compare(params):
     qid = params.get("question_id", ["sql_join_02"])[0]
     sql = params.get("sql", [QUESTIONS["sql_join_01"]["reference_sql"]])[0]
@@ -252,6 +382,11 @@ def get_jobs_repo():
         ROOT / "artifacts/jobs/feedback_jobs.sqlite3"
     )
     return FeedbackJobRepository(jobs_db)
+
+
+def get_em_repo():
+    em_db = os.environ.get("SIIP_DB_PATH") or str(ROOT / "artifacts/synthetic.sqlite3")
+    return EMRepository(em_db)
 
 
 def authenticate_feedback_request(headers, params, job_id):
@@ -393,6 +528,67 @@ def feedback_page(job_id, headers, params):
             }
             </section>
             """
+
+        em_repo = get_em_repo()
+        em_prompt = em_repo.get_prompt_for_question(learner_view["question_id"])
+        if em_prompt:
+            existing_resp = em_repo.get_response_for_student_question(
+                auth_student, learner_view["question_id"]
+            )
+            ticket_val = params.get("ticket", [""])[0] if params else ""
+            if existing_resp:
+                ev_records = [
+                    e
+                    for e in em_repo.get_evidence_for_student(auth_student)
+                    if e.question_id == learner_view["question_id"]
+                ]
+                latest_ev = ev_records[0] if ev_records else None
+                status_str = latest_ev.review_status.value if latest_ev else "PROPOSED"
+                status_color = "#166534" if status_str == "ACCEPTED" else "#92400e"
+                status_bg = "#dcfce7" if status_str == "ACCEPTED" else "#fef3c7"
+                body += f"""
+                <section style="border-left:4px solid #f59e0b;background:#fefce8;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Entrepreneurial Mindset (EM) Reflection</h3>
+                    <span class="badge" style="background:{status_bg};color:{status_color};">Status: {esc(status_str)}</span>
+                  </div>
+                  <p><strong>{esc(em_prompt.info_box_focus)}</strong></p>
+                  <blockquote style="margin:8px 0;padding:8px 16px;background:#ffffff;border-left:3px solid #d97706;border-radius:4px;">
+                    <em>"{esc(em_prompt.prompt_text)}"</em>
+                  </blockquote>
+                  <h4>Your submitted reflection</h4>
+                  <pre style="background:#ffffff;padding:12px;border-radius:6px;border:1px solid #e2e8f0;font-family:system-ui,sans-serif;font-size:14px;white-space:pre-wrap;">{esc(existing_resp.response_text)}</pre>
+                  <p class="muted" style="font-size:13px;">Submitted: {esc(existing_resp.submitted_at[:19].replace("T", " "))} UTC &middot; Reflection is recorded and queued for instructor review. It does not affect your grading score.</p>
+                </section>
+                """
+            else:
+                body += f"""
+                <section style="border-left:4px solid #f59e0b;background:#fefce8;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3>Entrepreneurial Mindset (EM) Reflection (Optional)</h3>
+                    <span class="badge" style="background:#fef3c7;color:#92400e;">Dimension: {esc(em_prompt.dimension.value)}</span>
+                  </div>
+                  <p><strong>{esc(em_prompt.info_box_focus)}</strong></p>
+                  <p class="muted">{esc(em_prompt.why_it_matters)}</p>
+                  <blockquote style="margin:8px 0;padding:8px 16px;background:#ffffff;border-left:3px solid #d97706;border-radius:4px;">
+                    <em>"{esc(em_prompt.prompt_text)}"</em>
+                  </blockquote>
+                  <form method="POST" action="/api/em/reflection">
+                    <input type="hidden" name="student_id" value="{esc(auth_student)}">
+                    <input type="hidden" name="question_id" value="{esc(learner_view["question_id"])}">
+                    <input type="hidden" name="prompt_id" value="{esc(em_prompt.prompt_id)}">
+                    <input type="hidden" name="attempt_id" value="{esc(job.attempt_id)}">
+                    <input type="hidden" name="job_id" value="{esc(job_id)}">
+                    <input type="hidden" name="ticket" value="{esc(ticket_val)}">
+                    <p><label for="reflection_text"><strong>Your Reflection:</strong></label></p>
+                    <textarea id="reflection_text" name="reflection_text" rows="4" style="width:100%;box-sizing:border-box;margin:6px 0 12px 0;padding:10px;font:14px system-ui;border:1px solid #cbd5e1;border-radius:6px;" placeholder="Share your perspective on how this query connects to broader organizational decisions or systems..." required></textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span class="muted" style="font-size:13px;">Voluntary reflection for research. Does not affect your PrairieLearn grade.</span>
+                      <button type="submit" style="background:#087674;color:white;padding:9px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Submit Reflection</button>
+                    </div>
+                  </form>
+                </section>
+                """
     elif status in ("pending", "processing"):
         body += f"""
         <section style="background:#fffbeb;border:1px solid #fde68a;">
@@ -473,6 +669,24 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(students(repo, params.get("id", [None])[0]))
             elif parsed.path == "/graph":
                 self.send(graph_page())
+            elif parsed.path == "/em-review":
+                status_filter = params.get("status", [None])[0]
+                self.send(em_review_page(status_filter))
+            elif parsed.path == "/api/em/summary":
+                sid = params.get("student_id", [None])[0]
+                if not sid:
+                    self.send(
+                        json.dumps({"error": "Missing student_id"}),
+                        400,
+                        content="application/json",
+                    )
+                    return
+                em_repo = get_em_repo()
+                self.send(
+                    json.dumps(em_repo.student_em_summary(sid)),
+                    200,
+                    content="application/json",
+                )
             elif parsed.path == "/compare":
                 self.send(compare(params))
             elif parsed.path == "/feedback":
@@ -573,6 +787,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/auth/synthetic-session",
             "/api/queue/enqueue",
             "/api/queue/reconcile",
+            "/api/em/reflection",
+            "/api/em/review",
         }:
             return self.send("Not found", 404)
         if "Content-Length" not in self.headers:
@@ -806,6 +1022,135 @@ class Handler(BaseHTTPRequestHandler):
                     content="application/json",
                 )
                 return
+
+            # Route 3b: Entrepreneurial Mindset reflection submission
+            if self.path == "/api/em/reflection":
+                em_repo = get_em_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    sid = payload.get("student_id")
+                    qid = payload.get("question_id")
+                    pid = payload.get("prompt_id")
+                    aid = payload.get("attempt_id")
+                    refl_text = payload.get("reflection_text") or payload.get("response_text", "")
+                    job_id = payload.get("job_id", "")
+                    ticket = payload.get("ticket", "")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    sid = params.get("student_id", [None])[0]
+                    qid = params.get("question_id", [None])[0]
+                    pid = params.get("prompt_id", [None])[0]
+                    aid = params.get("attempt_id", [None])[0]
+                    refl_text = params.get("reflection_text", [None])[0] or ""
+                    job_id = params.get("job_id", [""])[0]
+                    ticket = params.get("ticket", [""])[0]
+
+                if not sid or not qid or not pid or not aid or not refl_text.strip():
+                    return self.send("Missing required fields for EM reflection", 400)
+
+                resp = em_repo.record_response(
+                    student_id=sid,
+                    question_id=qid,
+                    prompt_id=pid,
+                    attempt_id=aid,
+                    response_text=refl_text.strip(),
+                )
+                prompt_obj = em_repo.get_prompt_for_question(qid)
+                dim = prompt_obj.dimension if prompt_obj else EMDimension.CURIOSITY
+                concepts = QUESTIONS.get(qid, {}).get("concepts", ["relational_queries"])
+
+                ev = em_repo.create_evidence_record(
+                    student_id=sid,
+                    question_id=qid,
+                    dimension=dim,
+                    relevant_concepts=concepts,
+                    evidence_excerpt=refl_text.strip(),
+                    classification_method="student_reflection_provisional",
+                    model_or_rubric_version=prompt_obj.rubric_version
+                    if prompt_obj
+                    else "rubric-keen-v1",
+                    confidence=0.85,
+                    response_id=resp.response_id,
+                    attempt_id=aid,
+                )
+
+                if is_json:
+                    self.send(
+                        json.dumps(
+                            {
+                                "status": "recorded",
+                                "response_id": resp.response_id,
+                                "evidence_id": ev.evidence_id,
+                                "dimension": ev.dimension.value,
+                                "review_status": ev.review_status.value,
+                            }
+                        ),
+                        201,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    redirect_target = (
+                        f"/feedback?job_id={job_id}&ticket={ticket}"
+                        if job_id and ticket
+                        else f"/students?id={sid}"
+                    )
+                    self.send_response(303)
+                    self.send_header("Location", redirect_target)
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
+
+            # Route 3c: Instructor review of EM evidence
+            if self.path == "/api/em/review":
+                em_repo = get_em_repo()
+                is_json = self.headers.get_content_type() == "application/json"
+                if is_json:
+                    payload = json.loads(text)
+                    ev_id = payload.get("evidence_id")
+                    review_status = payload.get("review_status")
+                    notes = payload.get("instructor_notes")
+                    reviewer = payload.get("reviewer_id", "instructor-admin")
+                else:
+                    params = parse_qs(text, strict_parsing=True)
+                    ev_id = params.get("evidence_id", [None])[0]
+                    review_status = params.get("review_status", [None])[0]
+                    notes = params.get("instructor_notes", [None])[0]
+                    reviewer = params.get("reviewer_id", ["instructor-admin"])[0]
+
+                if not ev_id or not review_status:
+                    return self.send("Missing evidence_id or review_status", 400)
+
+                try:
+                    status_enum = EMReviewStatus(review_status)
+                except ValueError:
+                    return self.send(f"Invalid review_status: {review_status}", 400)
+
+                updated = em_repo.review_evidence(
+                    evidence_id=ev_id,
+                    status=status_enum,
+                    notes=notes,
+                    reviewer_id=reviewer,
+                )
+                if not updated:
+                    return self.send("Evidence record not found", 404)
+
+                if is_json:
+                    self.send(
+                        json.dumps(updated.to_dict()),
+                        200,
+                        content="application/json",
+                    )
+                    return
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", "/em-review")
+                    self.send_header("Connection", "close")
+                    self.close_connection = True
+                    self.end_headers()
+                    return
 
             # Route 4: Analytics submission attempts
             if self.path == "/api/attempts":

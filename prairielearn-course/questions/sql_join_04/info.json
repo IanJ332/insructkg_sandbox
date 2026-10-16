@@ -1,0 +1,12 @@
+{
+  "uuid": "b1e6e654-16d8-53ce-bca6-d552dd47f833",
+  "title": "Department headcount with unstaffed units",
+  "topic": "SQL",
+  "tags": [
+    "synthetic",
+    "aggregation",
+    "keen_v"
+  ],
+  "type": "v3",
+  "singleVariant": true
+}

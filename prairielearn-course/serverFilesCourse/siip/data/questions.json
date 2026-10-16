@@ -28,5 +28,16 @@
       "FILTERING_AFTER_JOIN"
     ],
     "reference_sql": "SELECT e.name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id WHERE d.department_id IS NULL;"
+  },
+  "sql_join_04": {
+    "title": "Department headcount with unstaffed units",
+    "statement": "Retrieve each department name and the total number of employees assigned to it. Include departments that currently have no employees (reporting a count of 0). Return department_name and employee_count, in that column order.",
+    "concepts": [
+      "LEFT_OUTER_JOIN",
+      "COUNT_AGGREGATION",
+      "GROUP_BY",
+      "NULL_SEMANTICS"
+    ],
+    "reference_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count FROM Departments d LEFT JOIN Employees e ON d.department_id=e.department_id GROUP BY d.department_id, d.department_name ORDER BY d.department_name;"
   }
 }
