@@ -45,8 +45,14 @@ class FullSandboxBrowserTests(unittest.TestCase):
             SIIP_ASYNC_FEEDBACK="1", SIIP_DB_PATH=str(output / "synthetic.sqlite3"),
             SIIP_FEEDBACK_JOBS_DB=str(output / "jobs.sqlite3"), SIIP_DASHBOARD_PORT=str(port),
             SIIP_FEEDBACK_SERVICE_URL=base, SIIP_FEEDBACK_PROVIDER="local",
+            SIIP_DATA_DIR=str(output / "public-data"),
             SIIP_DEMO_STATE_DIR=str(output / "demo-state"),
             SIIP_DEMO_ARTIFACT_DIR=str(output / "backend-timeline"))
+        initialized = subprocess.run([sys.executable, str(ROOT / "scripts/init_public.py"),
+            str(output / "public-data")], cwd=ROOT, env=environment,
+            check=False, capture_output=True, text=True, timeout=30)
+        (output / "fixture-preparation.log").write_text(initialized.stdout + initialized.stderr, encoding="utf-8")
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
         processes = []
         handles = []
         try:

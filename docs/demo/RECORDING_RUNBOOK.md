@@ -170,7 +170,7 @@ is inspected for hidden reference SQL before and after project approval.
 ## Isolated complete browser test
 
 This test starts its own dashboard and feedback worker on a free port in 8890–8989, uses a fresh
-synthetic database, and preserves artifacts under `artifacts/full-browser-*`. It does not mutate a
+synthetic database and independently initialized labelled public contract fixtures, and preserves artifacts under `artifacts/full-browser-*`. It does not mutate a
 shared demo service. Run it in the original or integration checkout using the available Python:
 
 ```powershell
