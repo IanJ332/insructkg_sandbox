@@ -27,6 +27,8 @@ _PROCESSING_STATUSES = frozenset({"UPLOADED", "PROCESSING", "PROCESSED", "FAILED
 _MAX_FILENAME_LENGTH = 255
 _MAX_GRADING_CONFIG_BYTES = 32 * 1024
 DEFAULT_MAX_LESSON_BYTES = 8 * 1024 * 1024
+_REGISTRY_LOCKS: dict[str, Any] = {}
+_REGISTRY_LOCKS_GUARD = threading.Lock()
 
 
 def _now_utc() -> str:
@@ -45,7 +47,7 @@ def _validate_id(value: str, field_name: str) -> str:
 def _validate_filename(value: str) -> str:
     if not isinstance(value, str) or not value or len(value) > _MAX_FILENAME_LENGTH:
         raise ValueError("original_filename must contain 1 to 255 characters")
-    if Path(value).name != value or value in {".", ".."}:
+    if Path(value).name != value or value in {".", ".."} or any(c in value for c in "/\\:"):
         raise ValueError("original_filename must be a basename, not a path")
     if any(ord(char) < 32 for char in value):
         raise ValueError("original_filename must not contain control characters")
@@ -56,7 +58,7 @@ def _json_object(value: Mapping[str, Any], field_name: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise TypeError(f"{field_name} must be a mapping")
     try:
-        encoded = json.dumps(dict(value), sort_keys=True, separators=(",", ":"))
+        encoded = json.dumps(dict(value), sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field_name} must contain only JSON-compatible values") from exc
     if len(encoded.encode("utf-8")) > _MAX_GRADING_CONFIG_BYTES:
@@ -91,6 +93,7 @@ class LessonRecord:
     synthetic_provenance_label: str
     processing_status: str
     stored_content_path: str
+    module_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -115,6 +118,11 @@ class AssignmentRecord:
     publication_label: str
     publication_channel: str
     native_prairielearn_publication: bool
+    module_id: str | None = None
+    source_document_id: str | None = None
+    source_version: int | None = None
+    graph_id: str | None = None
+    graph_version: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)
@@ -154,7 +162,8 @@ class DemoAuthoringRegistry:
             raise ValueError("max_lesson_bytes must be positive")
         self.max_lesson_bytes = max_lesson_bytes
         self._clock = clock
-        self._lock = threading.RLock()
+        with _REGISTRY_LOCKS_GUARD:
+            self._lock = _REGISTRY_LOCKS.setdefault(str(self.storage_dir), threading.RLock())
         self._index_path = self.storage_dir / "demo_authoring_registry.json"
         self._content_dir = self.storage_dir / "lesson_content"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -167,7 +176,13 @@ class DemoAuthoringRegistry:
 
     @classmethod
     def _empty_index(cls) -> dict[str, Any]:
-        return {"schema_version": cls._SCHEMA_VERSION, "lessons": [], "assignments": []}
+        return {
+            "schema_version": cls._SCHEMA_VERSION,
+            "courses": [],
+            "modules": [],
+            "lessons": [],
+            "assignments": [],
+        }
 
     def _load(self) -> dict[str, Any]:
         try:
@@ -181,7 +196,74 @@ class DemoAuthoringRegistry:
             or not isinstance(data.get("assignments"), list)
         ):
             raise ValueError(f"Unsupported demo authoring registry schema: {self._index_path}")
+        # Additive fields keep existing version-1 registries readable.
+        for field in ("courses", "modules"):
+            data.setdefault(field, [])
+            if not isinstance(data[field], list):
+                raise ValueError(f"Invalid registry {field}")
         return data
+
+    def create_course(self, *, course_id: str, title: str) -> dict[str, Any]:
+        """Create an explicit local synthetic course; authorization belongs to the router."""
+        course_id = _validate_id(course_id, "course_id")
+        if not isinstance(title, str) or not title.strip() or len(title) > 200:
+            raise ValueError("course title must contain 1 to 200 characters")
+        with self._lock:
+            data = self._load()
+            if any(row["course_id"] == course_id for row in data["courses"]):
+                raise ValueError("course already exists")
+            record = {
+                "course_id": course_id,
+                "title": title.strip(),
+                "created_at_utc": self._clock(),
+                "synthetic": True,
+            }
+            data["courses"].append(record)
+            self._save(data)
+            return dict(record)
+
+    def list_courses(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return self._load()["courses"]
+
+    def create_module(self, *, course_id: str, module_id: str, title: str) -> dict[str, Any]:
+        course_id = _validate_id(course_id, "course_id")
+        module_id = _validate_id(module_id, "module_id")
+        if not isinstance(title, str) or not title.strip() or len(title) > 200:
+            raise ValueError("module title must contain 1 to 200 characters")
+        with self._lock:
+            data = self._load()
+            if not any(row["course_id"] == course_id for row in data["courses"]):
+                raise ValueError("course not found")
+            if any(row["module_id"] == module_id for row in data["modules"]):
+                raise ValueError("module already exists")
+            record = {
+                "course_id": course_id,
+                "module_id": module_id,
+                "title": title.strip(),
+                "created_at_utc": self._clock(),
+            }
+            data["modules"].append(record)
+            self._save(data)
+            return dict(record)
+
+    def list_modules(self, *, course_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            return [
+                row
+                for row in self._load()["modules"]
+                if course_id is None or row["course_id"] == course_id
+            ]
+
+    @staticmethod
+    def _check_module(data: Mapping[str, Any], course_id: str, module_id: str | None) -> None:
+        if module_id is not None:
+            _validate_id(module_id, "module_id")
+            if not any(
+                row["module_id"] == module_id and row["course_id"] == course_id
+                for row in data["modules"]
+            ):
+                raise ValueError("module does not belong to the selected course")
 
     def _save(self, data: Mapping[str, Any]) -> None:
         temporary = self.storage_dir / f".demo_authoring_registry.{uuid.uuid4().hex}.tmp"
@@ -199,6 +281,7 @@ class DemoAuthoringRegistry:
         source_document_id: str,
         course_id: str,
         original_filename: str | None = None,
+        module_id: str | None = None,
     ) -> LessonRecord:
         """Register bytes or a file path as the next version of a synthetic lesson.
 
@@ -224,6 +307,14 @@ class DemoAuthoringRegistry:
             original_filename = original_filename or path.name
 
         original_filename = _validate_filename(original_filename)
+        if Path(original_filename).suffix.lower() not in {".md", ".txt", ".markdown"}:
+            raise ValueError("lesson must be a Markdown or text file")
+        try:
+            decoded = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("lesson must contain UTF-8 text") from exc
+        if any(ord(char) < 32 and char not in "\n\r\t" for char in decoded):
+            raise ValueError("lesson must not contain binary control characters")
         if not content:
             raise ValueError("lesson content must not be empty")
         if len(content) > self.max_lesson_bytes:
@@ -237,6 +328,7 @@ class DemoAuthoringRegistry:
 
         with self._lock:
             data = self._load()
+            self._check_module(data, course_id, module_id)
             matching = [
                 LessonRecord.from_dict(item)
                 for item in data["lessons"]
@@ -244,6 +336,8 @@ class DemoAuthoringRegistry:
             ]
             if matching and any(item.course_id != course_id for item in matching):
                 raise ValueError("a source_document_id cannot be reused across courses")
+            if matching and any(item.module_id != module_id for item in matching):
+                raise ValueError("a source_document_id cannot be reused across modules")
             version = max((item.version for item in matching), default=0) + 1
             if content_path.exists():
                 if hashlib.sha256(content_path.read_bytes()).hexdigest() != digest:
@@ -261,12 +355,15 @@ class DemoAuthoringRegistry:
                 synthetic_provenance_label=SYNTHETIC_PROVENANCE_LABEL,
                 processing_status="UPLOADED",
                 stored_content_path=relative_content_path,
+                module_id=module_id,
             )
             data["lessons"].append(record.to_dict())
             self._save(data)
             return record
 
-    def get_lesson(self, source_document_id: str, version: int | None = None) -> LessonRecord | None:
+    def get_lesson(
+        self, source_document_id: str, version: int | None = None
+    ) -> LessonRecord | None:
         source_document_id = _validate_id(source_document_id, "source_document_id")
         if version is not None and version < 1:
             raise ValueError("version must be positive")
@@ -285,7 +382,9 @@ class DemoAuthoringRegistry:
             records = [LessonRecord.from_dict(item) for item in self._load()["lessons"]]
         if course_id is not None:
             records = [item for item in records if item.course_id == course_id]
-        return sorted(records, key=lambda item: (item.upload_timestamp_utc, item.version), reverse=True)
+        return sorted(
+            records, key=lambda item: (item.upload_timestamp_utc, item.version), reverse=True
+        )
 
     def read_lesson_bytes(self, source_document_id: str, version: int | None = None) -> bytes:
         record = self.get_lesson(source_document_id, version)
@@ -312,6 +411,14 @@ class DemoAuthoringRegistry:
             for index, item in enumerate(data["lessons"]):
                 current = LessonRecord.from_dict(item)
                 if current.source_document_id == source_document_id and current.version == version:
+                    allowed = {
+                        "UPLOADED": {"UPLOADED", "PROCESSING", "FAILED"},
+                        "PROCESSING": {"PROCESSING", "PROCESSED", "FAILED"},
+                        "PROCESSED": {"PROCESSED", "PROCESSING"},
+                        "FAILED": {"FAILED", "PROCESSING"},
+                    }
+                    if status not in allowed[current.processing_status]:
+                        raise ValueError("invalid lesson processing status transition")
                     updated = replace(current, processing_status=status)
                     data["lessons"][index] = updated.to_dict()
                     self._save(data)
@@ -326,6 +433,11 @@ class DemoAuthoringRegistry:
         question_ids: Iterable[str],
         kg_node_ids: Iterable[str],
         grading_config: Mapping[str, Any],
+        module_id: str | None = None,
+        source_document_id: str | None = None,
+        source_version: int | None = None,
+        graph_id: str | None = None,
+        graph_version: int | None = None,
     ) -> AssignmentRecord:
         """Create a draft in the local demo registry; no PrairieLearn write occurs."""
 
@@ -334,6 +446,16 @@ class DemoAuthoringRegistry:
         questions = _id_tuple(question_ids, "question_ids")
         nodes = _id_tuple(kg_node_ids, "kg_node_ids")
         config = _json_object(grading_config, "grading_config")
+        for value, name in ((source_document_id, "source_document_id"), (graph_id, "graph_id")):
+            if value is not None:
+                _validate_id(value, name)
+        for value, name in ((source_version, "source_version"), (graph_version, "graph_version")):
+            if value is not None and (type(value) is not int or value < 1):
+                raise ValueError(f"{name} must be a positive integer")
+        if (source_document_id is None) != (source_version is None):
+            raise ValueError("source document and version must be supplied together")
+        if (graph_id is None) != (graph_version is None):
+            raise ValueError("graph ID and version must be supplied together")
         record = AssignmentRecord(
             assignment_id=assignment_id,
             course_id=course_id,
@@ -346,9 +468,35 @@ class DemoAuthoringRegistry:
             publication_label=LOCAL_PUBLICATION_LABEL,
             publication_channel="LOCAL_SIIP_DEMO_REGISTRY",
             native_prairielearn_publication=False,
+            module_id=module_id,
+            source_document_id=source_document_id,
+            source_version=source_version,
+            graph_id=graph_id,
+            graph_version=graph_version,
         )
         with self._lock:
             data = self._load()
+            self._check_module(data, course_id, module_id)
+            if source_document_id is not None:
+                source = next(
+                    (
+                        row
+                        for row in data["lessons"]
+                        if row["source_document_id"] == source_document_id
+                        and row["version"] == source_version
+                    ),
+                    None,
+                )
+                if (
+                    source is None
+                    or source["course_id"] != course_id
+                    or source.get("module_id") != module_id
+                ):
+                    raise ValueError(
+                        "assignment source does not belong to the selected course/module"
+                    )
+                if source["processing_status"] != "PROCESSED":
+                    raise ValueError("assignment source must be processed")
             if any(item.get("assignment_id") == assignment_id for item in data["assignments"]):
                 raise ValueError(f"assignment already exists: {assignment_id}")
             data["assignments"].append(record.to_dict())
@@ -394,5 +542,7 @@ class DemoAuthoringRegistry:
         if course_id is not None:
             records = [item for item in records if item.course_id == course_id]
         if published_only:
-            records = [item for item in records if item.publication_status == "PUBLISHED_LOCAL_DEMO"]
+            records = [
+                item for item in records if item.publication_status == "PUBLISHED_LOCAL_DEMO"
+            ]
         return sorted(records, key=lambda item: item.created_at_utc, reverse=True)

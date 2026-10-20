@@ -151,6 +151,96 @@ class DemoAuthoringRegistryTests(unittest.TestCase):
                 **{**kwargs, "assignment_id": "assignment-2", "grading_config": {"bad": {1}}}
             )
 
+    def test_course_module_and_assignment_lineage_survive_restart(self) -> None:
+        self.registry.create_course(course_id="course-a", title="Database systems")
+        self.registry.create_module(course_id="course-a", module_id="joins", title="JOINs")
+        lesson = self.registry.upload_lesson(
+            self.lesson,
+            source_document_id="joins-lesson",
+            original_filename="joins.md",
+            course_id="course-a",
+            module_id="joins",
+        )
+        self.registry.set_lesson_processing_status("joins-lesson", 1, "PROCESSING")
+        self.registry.set_lesson_processing_status("joins-lesson", 1, "PROCESSED")
+        assignment = self.registry.create_assignment(
+            assignment_id="joins-assignment",
+            course_id="course-a",
+            module_id="joins",
+            source_document_id=lesson.source_document_id,
+            source_version=lesson.version,
+            graph_id="kg-joins",
+            graph_version=1,
+            question_ids=["sql_join_04"],
+            kg_node_ids=["LEFT_OUTER_JOIN"],
+            grading_config={"engine": "deterministic_sql"},
+        )
+        reopened = DemoAuthoringRegistry(self.storage)
+        self.assertEqual(reopened.get_assignment(assignment.assignment_id), assignment)
+        self.assertEqual(reopened.list_courses()[0]["course_id"], "course-a")
+        self.assertEqual(reopened.list_modules(course_id="course-a")[0]["module_id"], "joins")
+        self.assertEqual(reopened.get_lesson("joins-lesson").module_id, "joins")
+
+    def test_module_and_source_cannot_cross_course_boundaries(self) -> None:
+        self.registry.create_course(course_id="course-a", title="A")
+        self.registry.create_course(course_id="course-b", title="B")
+        self.registry.create_module(course_id="course-a", module_id="joins", title="JOINs")
+        with self.assertRaisesRegex(ValueError, "selected course"):
+            self.registry.upload_lesson(
+                self.lesson,
+                source_document_id="lesson",
+                original_filename="joins.md",
+                course_id="course-b",
+                module_id="joins",
+            )
+        self.assertEqual(self.registry.list_lessons(), [])
+
+    def test_invalid_upload_formats_and_processing_transitions_fail_closed(self) -> None:
+        for filename, content in (
+            ("lesson.pdf", self.lesson),
+            ("lesson.md", self.lesson + b"\x00"),
+            ("lesson.txt", self.lesson + b"\xff"),
+            ("C:\\lesson.md", self.lesson),
+        ):
+            with self.subTest(filename=filename, content_suffix=content[-1:]):
+                with self.assertRaises(ValueError):
+                    self.registry.upload_lesson(
+                        content,
+                        source_document_id="invalid",
+                        course_id="course",
+                        original_filename=filename,
+                    )
+        self.registry.upload_lesson(
+            self.lesson,
+            source_document_id="valid",
+            course_id="course",
+            original_filename="lesson.md",
+        )
+        with self.assertRaisesRegex(ValueError, "transition"):
+            self.registry.set_lesson_processing_status("valid", 1, "PROCESSED")
+        self.registry.set_lesson_processing_status("valid", 1, "PROCESSING")
+        self.registry.set_lesson_processing_status("valid", 1, "FAILED")
+        self.registry.set_lesson_processing_status("valid", 1, "PROCESSING")
+        self.registry.set_lesson_processing_status("valid", 1, "PROCESSED")
+
+    def test_multiple_registry_instances_do_not_lose_concurrent_uploads(self) -> None:
+        from concurrent.futures import ThreadPoolExecutor
+
+        registries = [DemoAuthoringRegistry(self.storage) for _ in range(2)]
+
+        def upload(index):
+            return registries[index % 2].upload_lesson(
+                self.lesson,
+                source_document_id="concurrent",
+                course_id="course",
+                original_filename="lesson.md",
+            )
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            records = list(executor.map(upload, range(10)))
+        self.assertEqual(sorted(row.version for row in records), list(range(1, 11)))
+        self.assertEqual(len(self.registry.list_lessons()), 10)
+
 
 class SyntheticLessonContentTests(unittest.TestCase):
     def test_full_lesson_covers_required_concepts_and_boundary(self) -> None:

@@ -14,9 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .demo_authoring import _validate_id
 from .em_models import EMResponseStatus
 from .em_repository import EMRepository
 from .grader import QUESTIONS, public_grade
+from .identity import is_student_principal
 from .jobs import FeedbackJobRepository
 from .recommender import recommend_next_activity
 from .store import SubmissionRepository
@@ -68,6 +70,23 @@ def _load_assignment(value: Mapping[str, Any] | str | Path) -> dict[str, Any]:
         raise ValueError("Published assignment refers to an unknown SIIP question")
     if not isinstance(assignment["assignment_id"], str) or not assignment["assignment_id"]:
         raise ValueError("Published assignment requires a non-empty assignment_id")
+    _validate_id(assignment["assignment_id"], "assignment_id")
+    _validate_id(assignment["course_id"], "course_id")
+    nodes = assignment["relevant_kg_node_ids"]
+    if not isinstance(nodes, (list, tuple)) or not nodes:
+        raise ValueError("Published assignment requires relevant KG nodes")
+    for node in nodes:
+        _validate_id(node, "relevant_kg_node_ids")
+    if not isinstance(assignment["grading_configuration"], Mapping):
+        raise ValueError("Published assignment requires a grading configuration")
+    try:
+        published_at = datetime.fromisoformat(
+            assignment["publication_timestamp"].replace("Z", "+00:00")
+        )
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ValueError("Published assignment requires an ISO8601 publication timestamp") from exc
+    if published_at.tzinfo is None:
+        raise ValueError("Publication timestamp requires a timezone")
     return assignment
 
 
@@ -140,9 +159,17 @@ class DemoStudentJourney:
         retry even when its SQL text is identical.
         """
         assignment = _load_assignment(published_assignment)
-        if not isinstance(submitted_sql, str) or not submitted_sql.strip():
+        if not is_student_principal(student_id):
+            raise PermissionError("A recognized synthetic student principal is required")
+        if feedback_mode not in {"baseline", "rag", "kg"}:
+            raise ValueError("Unknown feedback mode")
+        if (
+            not isinstance(submitted_sql, str)
+            or not submitted_sql.strip()
+            or len(submitted_sql) > 12000
+        ):
             raise ValueError("submitted_sql must be a non-empty string")
-        if not isinstance(submission_key, str) or not submission_key:
+        if not isinstance(submission_key, str) or not submission_key or len(submission_key) > 160:
             raise ValueError("submission_key must be a non-empty string")
 
         question_id = assignment["question_id"]
@@ -158,6 +185,11 @@ class DemoStudentJourney:
             saved = self.submissions.attempt_for_student(attempt_id, student_id)
             if saved["submitted_sql"] != submitted_sql:
                 raise ValueError("submission_key was replayed with a conflicting SQL payload")
+            if (
+                saved["assessment_id"] != assignment["assignment_id"]
+                or saved["question_id"] != question_id
+            ):
+                raise ValueError("submission_key was replayed for a conflicting assignment")
         except PermissionError:
             saved = self.submissions.process(
                 {
@@ -184,6 +216,11 @@ class DemoStudentJourney:
             grading=saved["grading"],
             mode=feedback_mode,
             attempt_kind="authoritative",
+            **(
+                {"grounding": assignment["feedback_grounding"]}
+                if assignment.get("feedback_grounding") is not None
+                else {}
+            ),
         )
         return {
             "assignment_id": assignment["assignment_id"],
@@ -265,6 +302,8 @@ class DemoStudentJourney:
         """Expose profiles and actual recommender outputs from persisted histories."""
         students: dict[str, Any] = {}
         for student_id in student_ids:
+            if not is_student_principal(student_id):
+                raise PermissionError("A recognized synthetic student principal is required")
             profile = self.submissions.profile(student_id)
             students[student_id] = {
                 "profile": profile,

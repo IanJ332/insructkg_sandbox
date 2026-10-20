@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 
 from siip.demo_student import (  # noqa: E402
-    DemoStudentJourney,
     FIXTURE_HISTORY_LABEL,
     INNER_JOIN_HEADCOUNT_SQL,
+    DemoStudentJourney,
 )
 from siip.jobs import FeedbackJobRepository  # noqa: E402
 from siip.recommender import recommend_next_activity  # noqa: E402
@@ -113,12 +113,8 @@ class TestDemoStudentJourney(unittest.TestCase):
 
         # Verify the cards are exactly the real recommender's result for profiles
         # reconstructed from persisted attempts, not student-ID-specific constants.
-        self.assertEqual(
-            s001["recommendation"], recommend_next_activity("S001", s001["profile"])
-        )
-        self.assertEqual(
-            s002["recommendation"], recommend_next_activity("S002", s002["profile"])
-        )
+        self.assertEqual(s001["recommendation"], recommend_next_activity("S001", s001["profile"]))
+        self.assertEqual(s002["recommendation"], recommend_next_activity("S002", s002["profile"]))
         self.assertEqual(s001["recommendation"]["recommended_question_id"], "sql_join_01")
         self.assertEqual(s002["recommendation"]["recommended_question_id"], "sql_join_04")
         self.assertNotEqual(
@@ -166,6 +162,27 @@ class TestDemoStudentJourney(unittest.TestCase):
         )
         self.assertEqual(submissions.records("S001")[0]["attempt_id"], result["attempt_id"])
         self.assertIsNotNone(jobs.get_by_attempt(result["attempt_id"]))
+
+    def test_invalid_identity_mode_and_publication_do_not_persist_attempts(self) -> None:
+        with self.assertRaises(PermissionError):
+            self.journey.submit(
+                published_assignment(), "instructor_alawini", INNER_JOIN_HEADCOUNT_SQL
+            )
+        with self.assertRaises(ValueError):
+            self.journey.submit(
+                published_assignment(), "S001", INNER_JOIN_HEADCOUNT_SQL, feedback_mode="invented"
+            )
+        assignment = published_assignment()
+        assignment["publication_timestamp"] = "2026-10-19T19:00:00"
+        with self.assertRaisesRegex(ValueError, "timezone"):
+            self.journey.submit(assignment, "S001", INNER_JOIN_HEADCOUNT_SQL)
+        self.assertEqual(self.journey.submissions.records(), [])
+
+    def test_reflection_cannot_attach_to_another_students_attempt(self) -> None:
+        submission = self.journey.submit(published_assignment(), "S001", INNER_JOIN_HEADCOUNT_SQL)
+        with self.assertRaises(PermissionError):
+            self.journey.submit_em_reflection("S002", submission["attempt_id"], "Forged reflection")
+        self.assertEqual(self.journey.em.list_all_evidence(), [])
 
     def test_optional_em_reflection_creates_proposed_evidence_without_mastery_change(self) -> None:
         submission = self.journey.submit(
