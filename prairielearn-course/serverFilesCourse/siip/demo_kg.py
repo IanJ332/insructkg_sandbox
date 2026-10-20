@@ -1,9 +1,9 @@
 """Small, honest knowledge-graph workflow for the local SIIP demonstration.
 
-This module does *not* run InstructKG.  It creates a deterministic synthetic
-candidate graph from a source record so the upload, evidence inspection,
-instructor review, and version-save workflow can be demonstrated when the real
-extractor is unavailable.  Every returned graph and edge repeats that boundary.
+This module does *not* run original InstructKG. By default it creates a clearly
+labeled deterministic synthetic fixture. SIIP_DEMO_KG_MODE=local explicitly opts
+into bounded Ollama extraction with source validation and an honest fixture
+fallback. Every returned graph and edge repeats its actual extraction boundary.
 
 The caller owns the persistence directory.  No module-global database or demo
 output path is used, which keeps tests isolated and lets the dashboard select its
@@ -25,9 +25,7 @@ from typing import Any, Mapping
 PIPELINE_VERSION = "siip-demo-kg-synthetic-fixture-v1"
 EXTRACTION_METHOD = "synthetic_fixture_keyword_mapping"
 SOURCE_TYPE = "synthetic_fixture"
-SCIENTIFIC_BOUNDARY = (
-    "SYNTHETIC EXAMPLE KNOWLEDGE GRAPH — NOT ACTUAL INSTRUCTKG EXTRACTION"
-)
+SCIENTIFIC_BOUNDARY = "SYNTHETIC EXAMPLE KNOWLEDGE GRAPH — NOT ACTUAL INSTRUCTKG EXTRACTION"
 
 _CONCEPTS = (
     ("INNER_JOIN", "Inner Join"),
@@ -158,7 +156,7 @@ class DemoKGRepository:
         return self.root / graph_id
 
     def generate_candidates(self, source_record: Mapping[str, Any]) -> dict[str, Any]:
-        """Generate and persist a deterministic synthetic-fixture draft graph.
+        """Generate and persist a graph using the explicitly configured mode.
 
         Repeating the call with the same source ID and content returns the existing
         draft, preserving any instructor decisions already made.
@@ -169,12 +167,42 @@ class DemoKGRepository:
         document_id = _source_document_id(source_record)
         text = _source_text(source_record)
         content_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        local_requested = os.environ.get("SIIP_DEMO_KG_MODE", "synthetic").lower() == "local"
+        model = os.environ.get("SIIP_LOCAL_KG_MODEL", "qwen3:8b")
+        local_result = None
+        fallback_reason = None
+        extraction_method, pipeline_version = EXTRACTION_METHOD, PIPELINE_VERSION
+        source_type, boundary = SOURCE_TYPE, SCIENTIFIC_BOUNDARY
+        mode = "SYNTHETIC_FIXTURE"
         identity = f"{document_id}|{content_sha256}|{PIPELINE_VERSION}"
+        identity += json.dumps(
+            [
+                source_record.get("version"),
+                source_record.get("course_id"),
+                source_record.get("module_id"),
+            ],
+            separators=(",", ":"),
+        )
+        if local_requested:
+            from . import local_kg_extractor
+
+            identity += f"|{local_kg_extractor.PIPELINE_VERSION}|{model}"
         graph_id = "kg-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
         graph_directory = self._graph_directory(graph_id)
         draft_path = graph_directory / "draft.json"
         if draft_path.exists():
             return _read_json(draft_path)
+
+        if local_requested:
+            try:
+                local_result = local_kg_extractor.extract_candidates(text, document_id, model=model)
+                extraction_method = local_kg_extractor.EXTRACTION_METHOD
+                pipeline_version = local_kg_extractor.PIPELINE_VERSION
+                source_type = "local_llm_assisted_extraction"
+                boundary = local_kg_extractor.SCIENTIFIC_BOUNDARY
+                mode = local_kg_extractor.MODE
+            except local_kg_extractor.LocalExtractionError as exc:
+                fallback_reason = str(exc)
 
         nodes = [
             {
@@ -210,11 +238,42 @@ class DemoKGRepository:
                 }
             )
 
+        if local_result is not None:
+            nodes = local_result["nodes"]
+            edges = local_result["edges"]
+        for node in nodes:
+            node.update(
+                {
+                    "extraction_method": extraction_method,
+                    "pipeline_version": pipeline_version,
+                    "source_type": source_type,
+                    "scientific_boundary": boundary,
+                }
+            )
+        for edge in edges:
+            edge.update(
+                {
+                    "edge_id": _edge_id(edge["source"], edge["relation"], edge["target"]),
+                    "extraction_method": extraction_method,
+                    "pipeline_version": pipeline_version,
+                    "source_type": source_type,
+                    "scientific_boundary": boundary,
+                    "review_state": "UNREVIEWED",
+                    "instructor_review_decision": None,
+                    "reviewed_by": None,
+                    "reviewed_at_utc": None,
+                    "review_notes": "",
+                }
+            )
+
         graph = {
             "graph_id": graph_id,
             "version": 0,
             "status": "DRAFT",
             "source_document_id": document_id,
+            "source_version": source_record.get("version"),
+            "course_id": source_record.get("course_id"),
+            "module_id": source_record.get("module_id"),
             "source_original_filename": str(
                 source_record.get("original_filename") or source_record.get("filename") or ""
             ),
@@ -223,11 +282,16 @@ class DemoKGRepository:
             "generated_at_utc": _utc_now(),
             "updated_at_utc": None,
             "saved_at_utc": None,
-            "extraction_method": EXTRACTION_METHOD,
-            "pipeline_version": PIPELINE_VERSION,
-            "source_type": SOURCE_TYPE,
+            "extraction_method": extraction_method,
+            "pipeline_version": pipeline_version,
+            "source_type": source_type,
+            "extraction_mode": mode,
+            "requested_extraction_mode": "local" if local_requested else "synthetic",
+            "fallback_reason": fallback_reason,
+            "extraction_metadata": local_result["extraction_metadata"] if local_result else {},
+            "rejected_candidates": local_result["rejected_candidates"] if local_result else [],
             "actual_instructkg_extraction": False,
-            "scientific_boundary": SCIENTIFIC_BOUNDARY,
+            "scientific_boundary": boundary,
             "relation_direction_contract": (
                 "For A depends_on B, B is a prerequisite of A; "
                 "for A part_of B, A is a component of B."
@@ -264,6 +328,7 @@ class DemoKGRepository:
                     "status": graph["status"],
                     "source_type": graph["source_type"],
                     "scientific_boundary": graph["scientific_boundary"],
+                    "extraction_mode": graph.get("extraction_mode", "SYNTHETIC_FIXTURE"),
                 }
             )
         return result
@@ -275,9 +340,12 @@ class DemoKGRepository:
         result = []
         for path in sorted(versions_directory.glob("v*.json")):
             graph = _read_json(path)
-            counts = {state: 0 for state in ("UNREVIEWED", "APPROVED", "REJECTED")}
+            counts = {
+                state: 0 for state in ("UNREVIEWED", "APPROVED", "REJECTED", "NEEDS_REVISION")
+            }
             for edge in graph["edges"]:
-                counts[edge["review_state"]] += 1
+                state = edge.get("review_state", "UNREVIEWED")
+                counts[state] = counts.get(state, 0) + 1
             result.append(
                 {
                     "graph_id": graph_id,
@@ -300,8 +368,8 @@ class DemoKGRepository:
         """Persist an instructor approval or rejection on the mutable draft."""
 
         normalized = decision.strip().upper() if isinstance(decision, str) else ""
-        if normalized not in {"APPROVE", "REJECT"}:
-            raise DemoKGError("decision must be APPROVE or REJECT")
+        if normalized not in {"APPROVE", "REJECT", "NEEDS_REVISION"}:
+            raise DemoKGError("decision must be APPROVE or REJECT or NEEDS_REVISION")
         if not isinstance(reviewer_id, str) or not reviewer_id.strip():
             raise DemoKGError("reviewer_id must identify the synthetic instructor")
         if not isinstance(notes, str):
@@ -314,7 +382,11 @@ class DemoKGRepository:
             if edge.get("edge_id") == edge_id:
                 edge.update(
                     {
-                        "review_state": "APPROVED" if normalized == "APPROVE" else "REJECTED",
+                        "review_state": {
+                            "APPROVE": "APPROVED",
+                            "REJECT": "REJECTED",
+                            "NEEDS_REVISION": "NEEDS_REVISION",
+                        }[normalized],
                         "instructor_review_decision": normalized,
                         "reviewed_by": reviewer_id.strip(),
                         "reviewed_at_utc": reviewed_at,
@@ -346,9 +418,7 @@ class DemoKGRepository:
                 "updated_at_utc": saved_at,
             }
         )
-        version_path = (
-            self._graph_directory(graph_id) / "versions" / f"v{next_version:04d}.json"
-        )
+        version_path = self._graph_directory(graph_id) / "versions" / f"v{next_version:04d}.json"
         _atomic_json_write(version_path, snapshot)
 
         # Continue from the saved snapshot while clearly retaining draft mutability.
@@ -380,9 +450,7 @@ def list_candidate_graphs(persistence_directory: str | Path) -> list[dict[str, A
     return DemoKGRepository(persistence_directory).list_graphs()
 
 
-def list_graph_versions(
-    graph_id: str, persistence_directory: str | Path
-) -> list[dict[str, Any]]:
+def list_graph_versions(graph_id: str, persistence_directory: str | Path) -> list[dict[str, Any]]:
     """Functional integration API for listing immutable graph versions."""
 
     return DemoKGRepository(persistence_directory).list_versions(graph_id)

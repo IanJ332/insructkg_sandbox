@@ -1,8 +1,10 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
@@ -34,6 +36,7 @@ SOURCE = {
 }
 
 
+@patch.dict(os.environ, {"SIIP_DEMO_KG_MODE": "synthetic"})
 class TestSyntheticCandidateGeneration(unittest.TestCase):
     def test_graph_is_deterministic_and_explicitly_synthetic(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -80,6 +83,7 @@ class TestSyntheticCandidateGeneration(unittest.TestCase):
                 generate_candidate_graph({"source_document_id": "doc-1"}, directory)
 
 
+@patch.dict(os.environ, {"SIIP_DEMO_KG_MODE": "synthetic"})
 class TestReviewAndVersionPersistence(unittest.TestCase):
     def test_review_decision_persists_and_saved_version_is_retrievable(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -114,12 +118,7 @@ class TestReviewAndVersionPersistence(unittest.TestCase):
             self.assertEqual(saved_edge["instructor_review_decision"], "APPROVE")
 
             on_disk = json.loads(
-                (
-                    Path(directory)
-                    / graph_id
-                    / "versions"
-                    / "v0001.json"
-                ).read_text(encoding="utf-8")
+                (Path(directory) / graph_id / "versions" / "v0001.json").read_text(encoding="utf-8")
             )
             self.assertEqual(on_disk, saved)
             self.assertEqual(list_candidate_graphs(directory)[0]["graph_id"], graph_id)
@@ -130,9 +129,7 @@ class TestReviewAndVersionPersistence(unittest.TestCase):
             repository = DemoKGRepository(directory)
             graph = repository.generate_candidates(SOURCE)
             edge_id = graph["edges"][1]["edge_id"]
-            repository.review_edge(
-                graph["graph_id"], edge_id, "REJECT", "synthetic-instructor-001"
-            )
+            repository.review_edge(graph["graph_id"], edge_id, "REJECT", "synthetic-instructor-001")
             repository.save_version(graph["graph_id"])
 
             graphs = repository.list_graphs()

@@ -1,6 +1,11 @@
-"""Preflight and guarded launch of the real, unmodified InstructKG pipeline."""
+"""Original InstructKG preflight, or explicitly requested bounded local extraction.
+
+Example: python scripts/extract.py --local-text lecture.md --output-dir artifacts/local-kg
+The local path uses Ollama only and is not original InstructKG.
+"""
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -10,6 +15,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--local-text", type=Path, help="Extract candidates from UTF-8 TXT/Markdown using local Ollama"
+)
+parser.add_argument("--source-id", help="Source-document identifier for local text extraction")
+parser.add_argument("--output-dir", type=Path, help="Local graph persistence directory")
+parser.add_argument(
+    "--model", default="qwen3:8b", help="Already installed Ollama model; no downloads"
+)
 parser.add_argument(
     "--run",
     action="store_true",
@@ -21,6 +34,30 @@ parser.add_argument(
     help="Use only after explicit approval of the configured model and usage",
 )
 args = parser.parse_args()
+if args.local_text is not None:
+    if args.local_text.suffix.lower() not in {".txt", ".md", ".markdown"}:
+        parser.error(
+            "--local-text accepts UTF-8 TXT or Markdown; parse PDF through the upload portal"
+        )
+    if not args.local_text.is_file() or args.local_text.stat().st_size > 100000:
+        parser.error("--local-text must be an existing text file of at most 100000 bytes")
+    sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
+    from siip.demo_kg import DemoKGRepository
+
+    text = args.local_text.read_text(encoding="utf-8-sig")
+    source_id = args.source_id or "source-cli-" + hashlib.sha256(text.encode()).hexdigest()[:16]
+    os.environ["SIIP_DEMO_KG_MODE"] = "local"
+    os.environ["SIIP_LOCAL_KG_MODEL"] = args.model
+    repository = DemoKGRepository(args.output_dir or ROOT / "artifacts/local-kg")
+    graph = repository.generate_candidates(
+        {
+            "source_document_id": source_id,
+            "original_filename": args.local_text.name,
+            "content": text,
+        }
+    )
+    print(json.dumps(graph, indent=2, ensure_ascii=False))
+    raise SystemExit(0)
 packages = [
     "docling",
     "dotenv",
@@ -40,7 +77,12 @@ if missing:
     issues.append("Missing isolated pipeline packages: " + ", ".join(missing))
 if provider in {"vllm", "hf", "local", "huggingface"}:
     issues.append(
-        "This Intel Mac has no CUDA GPU. Configure an approved compatible inference machine or API provider."
+        "Original upstream vLLM requires its separate compatible GPU environment; "
+        "use --local-text for the bounded Ollama adapter."
+    )
+if not (ROOT / "research/instructkg-jeffry/main.py").exists():
+    issues.append(
+        "Original InstructKG research checkout is absent; bootstrap separately before an upstream run."
     )
 if provider == "openai" and not os.environ.get("OPENAI_API_KEY"):
     issues.append("OPENAI_API_KEY unavailable in this process.")
@@ -97,5 +139,6 @@ if args.run and not issues:
             "actual_counts": counts,
         }
     )
+(ROOT / "artifacts").mkdir(exist_ok=True)
 (ROOT / "artifacts/fresh_extraction_status.json").write_text(json.dumps(status, indent=2) + "\n")
 print(json.dumps(status, indent=2))
