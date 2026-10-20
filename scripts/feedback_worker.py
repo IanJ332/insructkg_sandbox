@@ -15,10 +15,54 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 
+from siip.demo_observability import DemoObservabilityRepository
 from siip.feedback import configured_provider
 from siip.jobs import FeedbackJobRepository, FeedbackWorker
 from siip.observability import event
 from siip.store import SubmissionRepository
+
+
+def record_demo_feedback_events(job):
+    """Mirror verified worker timestamps into the optional professor-demo timeline."""
+
+    artifact_dir = os.environ.get("SIIP_DEMO_ARTIFACT_DIR")
+    if not artifact_dir or not job.started_at:
+        return
+    repository = DemoObservabilityRepository(Path(artifact_dir))
+    existing = repository.list_events()
+    correlation_id = os.environ.get("SIIP_DEMO_CORRELATION_ID", "siip-professor-demo")
+    if not any(
+        item.event_type == "feedback_generation_started" and item.entity_id == job.job_id
+        for item in existing
+    ):
+        repository.record_event(
+            actor_type="system",
+            actor_id="siip-feedback-worker",
+            phase="feedback",
+            event_type="feedback_generation_started",
+            entity_id=job.job_id,
+            correlation_id=correlation_id,
+            status="started",
+            artifact_path="outputs/feedback/05_feedback_job.json",
+            source_type="actual_execution",
+            timestamp_utc=job.started_at,
+        )
+    if job.completed_at and not any(
+        item.event_type == "feedback_generation_completed" and item.entity_id == job.job_id
+        for item in existing
+    ):
+        repository.record_event(
+            actor_type="system",
+            actor_id="siip-feedback-worker",
+            phase="feedback",
+            event_type="feedback_generation_completed",
+            entity_id=job.job_id,
+            correlation_id=correlation_id,
+            status="completed" if job.status == "completed" else "failed",
+            artifact_path="outputs/feedback/05_feedback_result.json",
+            source_type="actual_execution",
+            timestamp_utc=job.completed_at,
+        )
 
 
 def main():
@@ -106,6 +150,7 @@ def main():
     if args.once:
         job = worker.process_one(provider=provider)
         if job:
+            record_demo_feedback_events(job)
             print(f"Processed job {job.job_id} ({job.status}) in {job.latency_ms}ms", flush=True)
             sys.exit(0)
         else:
@@ -114,6 +159,8 @@ def main():
 
     if args.drain:
         jobs = worker.drain(provider=provider, max_jobs=args.max_jobs)
+        for job in jobs:
+            record_demo_feedback_events(job)
         print(f"Drained {len(jobs)} jobs from queue", flush=True)
         sys.exit(0)
 
@@ -126,6 +173,7 @@ def main():
         try:
             job = worker.process_one(provider=provider)
             if job:
+                record_demo_feedback_events(job)
                 processed_count += 1
                 print(
                     f"[{time.strftime('%X')}] Completed job {job.job_id} for student {job.student_id} "

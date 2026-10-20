@@ -1,0 +1,173 @@
+"""Focused tests for the isolated synthetic instructor-authoring registry."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import sys
+import tempfile
+import unittest
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
+
+from siip.demo_authoring import (  # noqa: E402
+    LOCAL_PUBLICATION_LABEL,
+    SYNTHETIC_PROVENANCE_LABEL,
+    DemoAuthoringRegistry,
+)
+
+
+class DemoAuthoringRegistryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.storage = Path(self.temp_dir.name) / "isolated-authoring"
+        self.registry = DemoAuthoringRegistry(self.storage)
+        self.lesson = (
+            f"# Joins\n\n{SYNTHETIC_PROVENANCE_LABEL}\n\n"
+            "INNER JOIN matches rows. LEFT OUTER JOIN preserves missing rows as NULL.\n"
+        ).encode("utf-8")
+
+    def test_upload_bytes_versions_retrieves_and_persists_metadata(self) -> None:
+        first = self.registry.upload_lesson(
+            self.lesson,
+            source_document_id="lesson-joins",
+            original_filename="joins.md",
+            course_id="sql-demo",
+        )
+        second = self.registry.upload_lesson(
+            self.lesson + b"Version two.\n",
+            source_document_id="lesson-joins",
+            original_filename="joins-v2.md",
+            course_id="sql-demo",
+        )
+
+        self.assertEqual((first.version, second.version), (1, 2))
+        self.assertEqual(first.sha256, hashlib.sha256(self.lesson).hexdigest())
+        self.assertEqual(first.processing_status, "UPLOADED")
+        self.assertEqual(first.synthetic_provenance_label, SYNTHETIC_PROVENANCE_LABEL)
+        self.assertIsNotNone(datetime.fromisoformat(first.upload_timestamp_utc).tzinfo)
+        self.assertEqual(self.registry.get_lesson("lesson-joins"), second)
+        self.assertEqual(self.registry.get_lesson("lesson-joins", 1), first)
+        self.assertEqual(self.registry.read_lesson_bytes("lesson-joins", 1), self.lesson)
+
+        reopened = DemoAuthoringRegistry(self.storage)
+        self.assertEqual(reopened.get_lesson("lesson-joins", 2), second)
+        self.assertEqual(len(reopened.list_lessons(course_id="sql-demo")), 2)
+
+    def test_path_upload_status_and_integrity_check(self) -> None:
+        source_path = Path(self.temp_dir.name) / "source.md"
+        source_path.write_bytes(self.lesson)
+        record = self.registry.upload_lesson(
+            source_path, source_document_id="doc:path", course_id="course:1"
+        )
+        processing = self.registry.set_lesson_processing_status("doc:path", 1, "PROCESSING")
+        processed = self.registry.set_lesson_processing_status("doc:path", 1, "PROCESSED")
+
+        self.assertEqual(record.original_filename, "source.md")
+        self.assertEqual(processing.processing_status, "PROCESSING")
+        self.assertEqual(processed.processing_status, "PROCESSED")
+        stored = self.storage / processed.stored_content_path
+        stored.write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "integrity"):
+            self.registry.read_lesson_bytes("doc:path", 1)
+
+    def test_upload_rejects_unsafe_or_unlabelled_material(self) -> None:
+        with self.assertRaisesRegex(ValueError, "provenance label"):
+            self.registry.upload_lesson(
+                b"ordinary material",
+                source_document_id="doc-1",
+                original_filename="lesson.md",
+                course_id="course-1",
+            )
+        with self.assertRaisesRegex(ValueError, "basename"):
+            self.registry.upload_lesson(
+                self.lesson,
+                source_document_id="doc-1",
+                original_filename="../lesson.md",
+                course_id="course-1",
+            )
+        with self.assertRaises(ValueError):
+            self.registry.upload_lesson(
+                self.lesson,
+                source_document_id="../../escape",
+                original_filename="lesson.md",
+                course_id="course-1",
+            )
+
+    def test_assignment_draft_publish_and_filter_are_local_only(self) -> None:
+        draft = self.registry.create_assignment(
+            assignment_id="assignment-left-join",
+            course_id="sql-demo",
+            question_ids=["sql_join_02"],
+            kg_node_ids=["LEFT_OUTER_JOIN", "MISSING_MATCHING_ROWS"],
+            grading_config={
+                "grader": "deterministic_sql",
+                "required_result": "all_departments",
+                "max_points": 1,
+            },
+        )
+        self.assertEqual(draft.publication_status, "DRAFT")
+        self.assertIsNone(draft.publication_timestamp_utc)
+        self.assertEqual(draft.publication_label, LOCAL_PUBLICATION_LABEL)
+        self.assertFalse(draft.native_prairielearn_publication)
+        self.assertEqual(self.registry.list_assignments(published_only=True), [])
+
+        published = self.registry.publish_assignment(draft.assignment_id)
+        self.assertEqual(published.publication_status, "PUBLISHED_LOCAL_DEMO")
+        self.assertIsNotNone(published.publication_timestamp_utc)
+        self.assertIsNotNone(datetime.fromisoformat(published.publication_timestamp_utc).tzinfo)
+        self.assertEqual(published.publication_channel, "LOCAL_SIIP_DEMO_REGISTRY")
+        self.assertFalse(published.native_prairielearn_publication)
+        self.assertEqual(
+            self.registry.list_assignments(course_id="sql-demo", published_only=True),
+            [published],
+        )
+
+        # Publishing is idempotent and preserves the first publication timestamp.
+        self.assertEqual(self.registry.publish_assignment(draft.assignment_id), published)
+        reopened = DemoAuthoringRegistry(self.storage)
+        self.assertEqual(reopened.get_assignment(draft.assignment_id), published)
+
+        raw = json.loads((self.storage / "demo_authoring_registry.json").read_text("utf-8"))
+        self.assertFalse(raw["assignments"][0]["native_prairielearn_publication"])
+
+    def test_duplicate_assignment_and_invalid_config_fail_closed(self) -> None:
+        kwargs = {
+            "assignment_id": "assignment-1",
+            "course_id": "course-1",
+            "question_ids": ["question-1"],
+            "kg_node_ids": ["INNER_JOIN"],
+            "grading_config": {"grader": "deterministic_sql"},
+        }
+        self.registry.create_assignment(**kwargs)
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            self.registry.create_assignment(**kwargs)
+        with self.assertRaisesRegex(ValueError, "JSON-compatible"):
+            self.registry.create_assignment(
+                **{**kwargs, "assignment_id": "assignment-2", "grading_config": {"bad": {1}}}
+            )
+
+
+class SyntheticLessonContentTests(unittest.TestCase):
+    def test_full_lesson_covers_required_concepts_and_boundary(self) -> None:
+        lesson_path = ROOT / "demo_materials/SYNTHETIC_SQL_JOINS_LESSON.md"
+        lesson = lesson_path.read_text(encoding="utf-8")
+        for required_text in (
+            SYNTHETIC_PROVENANCE_LABEL,
+            "INNER JOIN",
+            "LEFT OUTER JOIN",
+            "NULL",
+            "missing matching records",
+            "Business scenario",
+        ):
+            self.assertIn(required_text.casefold(), lesson.casefold())
+        self.assertIn("not authored or", lesson)
+        self.assertIn("not presented as institutional course material", lesson)
+
+
+if __name__ == "__main__":
+    unittest.main()

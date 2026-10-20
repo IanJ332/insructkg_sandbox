@@ -14,6 +14,15 @@ from .observability import event
 
 PROMPT_VERSION = "siip-feedback-v3"
 MODES = {"baseline", "rag", "kg"}
+SAFE_CONCEPT_LABELS = {
+    # Keep internal graph identifiers out of learner-facing prose. The leakage
+    # validator deliberately remains strict about SQL keywords.
+    "SQL_SELECT": "query projection structure",
+}
+
+
+def safe_concept_label(concept):
+    return SAFE_CONCEPT_LABELS.get(concept, concept.replace("_", " ").lower())
 
 
 def minimize_mastery(qid, mastery):
@@ -333,19 +342,22 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None):
         related = context["prerequisites"][:3]
         text += (
             " Revisit "
-            + ", ".join(diagnosis(qid, result)["candidate_concepts"][:2]).replace("_", " ").lower()
+            + ", ".join(
+                safe_concept_label(item)
+                for item in diagnosis(qid, result)["candidate_concepts"][:2]
+            )
             + "."
         )
         if related:
             text += (
                 " Development graph prerequisites to review: "
-                + ", ".join(related).replace("_", " ").lower()
+                + ", ".join(safe_concept_label(item) for item in related)
                 + "."
             )
         obj["feedback_text"] = text
     if history:
         concept, evidence = next(iter(history.items()))
-        label = concept.replace("_", " ").lower()
+        label = safe_concept_label(concept)
         if evidence["mastery_estimate"] < 0.5:
             obj["feedback_text"] += (
                 " Earlier attempts suggest revisiting "
