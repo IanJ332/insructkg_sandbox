@@ -2,6 +2,8 @@
 
 Main owns the router, shared schema/config/authentication, queue/feedback grounding, deployment, final regression, and release. Agents commit isolated owned modules. Integration follows dependencies; source existence is not an acceptance test.
 
+Integrated update: the critical path through uploaded source, reviewed fixture KG, explicit assignment grounding, student grade/queued deterministic feedback, history/recommendation, EM review, interest/project approval and entity lineage was executed by fresh Chromium and passed in 44.005 seconds (`artifacts/release/full-browser-release.log`). A separate actual uploaded-source local Ollama extraction succeeded during the long professor recording. The remaining release nodes are final long-video completion/validation, final post-change regression, remote commit/CI and package handoff. Original InstructKG and native Docker/PrairieLearn remain blocked/unverified; neither is implied by the successful local SIIP path.
+
 ```mermaid
 flowchart TD
   C[Local course and module registry] --> U[Authenticated browser lesson upload]

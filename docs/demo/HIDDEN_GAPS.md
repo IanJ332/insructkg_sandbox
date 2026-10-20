@@ -2,6 +2,18 @@
 
 Audit baseline: inherited `7b13fa0`; October 19, 2026. Findings describe inspected source and scoped tests. They are not a claim that the integrated browser release has failed or passed. The main owner must annotate resolution with exact commit/test evidence.
 
+## Integrated resolution update
+
+`artifacts/release/full-browser-release.log` records the strict new Chromium lifecycle passing in 44.005 seconds. Its `artifacts/full-browser-20261020T042116Z-01ddea/evidence/run_manifest.json` proves new persisted course/module/source/review/assignment/attempt/job/EM/project identities, exact source/digest/graph consumption, approval transitions and lineage. Extraction in that acceptance run is synthetic fixture and feedback deterministic.
+
+**Resolved in the connected browser path:** G01/G02/G04/G06 (explicit immutable assignment/source/graph grounding and actual UI transitions), G08/G09 (interest selection, project approval and learner-safe responses). G11 and G16 have main's learner-safe projections and explicit draft wording; negative gating/leakage tests accompany these changes. G05/G15 have actual entity lineage and new submission-event handling in main, with final post-change regression still pending. G12/G13/G21 were already fixed and component-verified.
+
+**Improved but bounded:** G07 now grounds saved approved edges; unreviewed/rejected/revision-needed candidates remain visible for review rather than silently treated as pedagogically accepted. G17 has instructor-facing candidate evidence, not proof of defective instruction. The local recording produced a genuine 5-concept/3-relation Ollama graph in `D:/AI/SIIP/demo/2026-10-20/outputs/knowledge_graph/02_extracted_kg.json`; local candidate confidence remains uncalibrated and relations require instructor validation.
+
+**Still requires final release evidence:** G20 long professor/uncut recordings, final chapters and playback; exact remote SHA/CI; final integrated test count after additional lineage/gating tests. G18 reference ZIP remains unavailable. G19 original InstructKG dependency execution remains blocked; upstream `jeffry` was verified in `EXTRACTION_REPORT.md`, and native PrairieLearn remains unverified because Docker engine is unavailable. A standalone successful `qwen3:8b` feedback probe establishes inference availability only; final recording feedback was still pending at this annotation.
+
+The table below preserves the original findings and remediation rationale; it must be read with these resolution statuses, not as a claim that every initial defect remains open.
+
 | ID | Priority | Actual boundary and consequence | Required resolution / owner |
 | --- | --- | --- | --- |
 | G01 | P0 | `feedback.build_context()` loads bundled graphs and lecture corpus; the uploaded lesson's saved KG is stored in assignment metadata but not consumed by the feedback worker. | Main: persist immutable grounding IDs in job, resolve graph/source versions, include provenance in feedback. Never describe static KG as newly uploaded grounding. |

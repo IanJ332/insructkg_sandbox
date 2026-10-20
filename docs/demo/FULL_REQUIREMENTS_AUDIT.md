@@ -1,6 +1,22 @@
 # Full requirements audit — October 19, 2026
 
-This is the initial evidence-based audit of inherited prototype snapshot `7b13fa0`, followed by scoped authoring hardening. The integration owner must append the final exact commit, browser run, recording evidence, and CI results. No feature in this document is certified `VERIFIED_END_TO_END`: this audit did not execute the complete browser lifecycle. A passing component test demonstrates only its tested boundary.
+This audit began against inherited prototype snapshot `7b13fa0`, followed by scoped authoring hardening. The integrated verification update below supersedes initial missing-connection findings where actual evidence resolves them. The integration owner must append the final exact commit, final recording results, final regression count and remote CI results.
+
+## Integrated evidence update — October 19, 2026, late evening Chicago
+
+The strict fresh Chromium lifecycle **passed in 44.005 seconds**, recorded in `artifacts/release/full-browser-release.log`. Its evidence directory is `artifacts/full-browser-20261020T042116Z-01ddea/evidence/`, with `run_manifest.json` reporting `status=completed`. The executed test is `tests/e2e/test_full_sandbox_browser.py`; its recorder verifies persisted transitions rather than DOM text alone. It created a new course/module, uploaded the synthetic lesson, generated and reviewed a fixture KG, published the assignment, submitted and graded SQL, completed asynchronous feedback, inspected history/recommendations, submitted/reviewed EM evidence, collected interest, generated/approved/opened a project, and inspected explicit entity lineage.
+
+The manifest's expected and observed assignment/course/source/graph IDs, graph version, and SHA-256 match exactly. Its `course_graph_consumption` is `REAL_PIPELINE_VERIFIED` for the **real association/consumption pipeline**; extraction in this test remains explicitly `SYNTHETIC_FIXTURE` and feedback is `deterministic-rules-v1`. That classification does not certify original InstructKG or live inference. The traceability CSV now marks only these proven browser transitions `VERIFIED_END_TO_END`.
+
+Separately, the professor recording's actual uploaded lesson produced `LOCAL_LLM_ASSISTED_EXTRACTION`, graph `kg-81073e9f38be2c2c`, at `2026-10-20T04:23:39.484613Z`, with **5 concepts and 3 relations**, no fallback, and `actual_instructkg_extraction=false`. The persisted artifact is `D:/AI/SIIP/demo/2026-10-20/outputs/knowledge_graph/02_extracted_kg.json`. This is genuine local Ollama extraction from the new lesson, with source passages/offsets and review-required candidate relations; it is not original InstructKG. The recording was still running when this audit update was prepared, so its final feedback/video completion is not certified here.
+
+An independent live feedback probe in `artifacts/release/ollama_feedback_probe.json` reports `qwen3:8b`, `inference_status=live_success`, 2.708917 seconds total probe time and 2495.854 ms provider latency. Its `grounding_provenance` is null and cites bundled public lesson evidence: it verifies **live inference component availability**, not the final recording's newly uploaded assignment grounding. Its pedagogical wording still needs instructor review.
+
+`artifacts/release/regression-integrated.log` confirms **305 integrated tests passed in 87.699 seconds**. Additional final lineage/gating changes were under another regression run; this document does not invent its final count. The original 277-test baseline was separately reported passing by the integration owner.
+
+Main connected course/module UI routes, explicit source/version/digest-bound queued feedback, interest selection, learner-safe assignment/project responses and approval gates, `/api/demo/lineage` and `/lineage`, and draft-instrument wording. The full browser test verifies the connected synthetic workflow; dedicated negative tests cover reference-SQL filtering and approval gating. Native PrairieLearn execution was **not verified tonight** because the Docker engine remained unavailable. Original InstructKG remains blocked by missing dependencies; `EXTRACTION_REPORT.md` records upstream `jeffry` verified at `c34a7786528e78766f15d918ab17aca2a9f7dc0b`.
+
+The short browser-verification run produced probe-readable streams (31.48-second professor assembly and 71.52-second uncut actor concatenation), but these are automated test evidence and **do not satisfy the requested 8–12-minute professor recording**. The final long recording, its chapters/playback, exact integrated/remote SHA, CI completion and complete professor package remain release gates for main to append. No cloud CI or final-video status is certified by this update.
 
 The machine-readable coverage matrix is [REQUIREMENTS_TRACEABILITY.csv](REQUIREMENTS_TRACEABILITY.csv). Its rows include every journey transition, the four research objectives, security, extraction, observability, recording, and release requirements. [HIDDEN_GAPS.md](HIDDEN_GAPS.md) contains actionable findings, and [DEPENDENCY_GRAPH.md](DEPENDENCY_GRAPH.md) controls integration order.
 
@@ -12,7 +28,7 @@ The supplied overnight request is available and was read in full. It describes t
 
 External upstream, current GitHub/CI, deployed UI, and installed PrairieLearn compatibility must be verified by the integration and extraction owners. This audit does not infer them from historical completion reports. Existing repository audit/handoff documents were treated as historical context.
 
-## Findings that control development
+## Initial findings that controlled development
 
 1. **P0: establish one complete local lifecycle.** `scripts/dashboard.py` contains upload, candidate generation, review, local assignment publication, learner submission, and queue routes. The existence of these routes does not establish their operation through browser interaction. Fresh integrated browser evidence and playable recordings remain release gates.
 2. **P0: uploaded graph must reach feedback.** The inherited assignment route stores graph references only inside `grading_config`. `DemoStudentJourney` queues feedback without those references; `feedback.build_context` loads bundled static graphs and lecture evidence. This is a real disconnected producer/consumer boundary. The integration owner is implementing immutable assignment grounding through the feedback queue.
@@ -58,4 +74,4 @@ An additional broader `test_demo_*.py` run initially exposed a setup dependency 
 
 ## Release gate
 
-Final acceptance requires fresh integrated state transitions, at least two synthetic learner histories, reviewed EM evidence and project, an assignment-grounded feedback result, truthful extraction/inference labels, complete linked artifacts, a played/inspected professor recording and uncut recording, executed browser tests, and exact local/remote/CI commit evidence. Until that evidence exists, report `COMPONENT_ONLY`, `NOT_CONNECTED`, or `BLOCKED` as appropriate. Only the integration owner can certify the complete release.
+Fresh integrated synthetic state transitions, two fixture histories, reviewed EM evidence/project, assignment-grounded deterministic feedback, explicit lineage and the strict browser test now have evidence above. Final acceptance still requires the final long professor/uncut recordings and actual chapters/playback, final post-change regression result, exact local/remote commit/CI evidence, and complete package manifest. Report live inference, fixture extraction and original InstructKG separately. Only the integration owner can certify the complete release.
