@@ -706,6 +706,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     correlation_id = f"siip-demo-{suffix}"
     source_document_id = f"lesson-sql-joins-{suffix}"
     assignment_id = f"assignment-left-join-{suffix}"
+    course_id = f"course-sql-{suffix}"
+    module_id = f"module-joins-{suffix}"
+    authoring_url = f"{args.base_url}/authoring?course_id={course_id}"
     output_dir = args.output_dir
     if (output_dir / "run_manifest.json").exists() or (
         output_dir / "timeline/system_event_log.jsonl"
@@ -837,6 +840,26 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             with clock.action("01 Instructor upload and provenance", "instructor"):
                 show_slate(instructor, "Phase 1", "Synthetic instructor", "Upload teaching material")
                 instructor.goto(f"{args.base_url}/authoring", wait_until="networkidle")
+                course_form = instructor.locator("form[action='/api/demo/courses/create']")
+                course_form.locator("input[name='course_id']").fill(course_id)
+                course_form.locator("input[name='title']").fill("Synthetic SQL course: instructor-to-learner lifecycle")
+                click_and_wait(instructor, course_form.get_by_role("button"))
+                instructor.goto(authoring_url, wait_until="networkidle")
+                module_form = instructor.locator("form[action='/api/demo/modules/create']")
+                module_form.locator("input[name='module_id']").fill(module_id)
+                module_form.locator("input[name='title']").fill("JOIN semantics and preserving unmatched rows")
+                click_and_wait(instructor, module_form.get_by_role("button"))
+                instructor.goto(authoring_url, wait_until="networkidle")
+                courses = get_json(contexts["instructor"], f"{args.base_url}/api/demo/courses")
+                modules = get_json(contexts["instructor"], f"{args.base_url}/api/demo/modules?course_id={course_id}")
+                course = next((c for c in courses if c.get("course_id") == course_id), None)
+                module = next((m for m in modules if m.get("module_id") == module_id), None)
+                if not course or not module or module.get("course_id") != course_id:
+                    raise AssertionError("fresh browser-created course/module association did not persist")
+                write_json(output_dir / "outputs/lesson/00_course_and_module.json", {"course": course, "module": module})
+                manifest["records"].update({"course_id": course_id, "module_id": module_id})
+                instructor.locator("select[name='course_id']").select_option(course_id)
+                instructor.locator("select[name='module_id']").select_option(module_id)
                 instructor.locator("input[name='source_document_id']").fill(source_document_id)
                 instructor.get_by_test_id("lesson-file").set_input_files(str(args.lesson_path))
                 click_and_wait(instructor, instructor.get_by_test_id("upload-lesson"))
@@ -853,6 +876,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if not lesson:
                     raise AssertionError("uploaded lesson was not returned by the lesson registry")
+                if lesson.get("course_id") != course_id or lesson.get("module_id") != module_id:
+                    raise AssertionError("uploaded lesson lost the browser-selected course/module association")
                 expected_hash = hashlib.sha256(args.lesson_path.read_bytes()).hexdigest()
                 if (lesson.get("source_sha256") or lesson.get("sha256")) != expected_hash:
                     raise AssertionError("uploaded lesson bytes do not match stored source hash")
@@ -880,7 +905,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "Synthetic instructor",
                     "Generate and review course knowledge graph",
                 )
-                instructor.goto(f"{args.base_url}/authoring", wait_until="networkidle")
+                instructor.goto(authoring_url, wait_until="networkidle")
                 row = instructor.locator("tr", has_text=source_document_id)
                 event(
                     actor_type="instructor",
@@ -889,7 +914,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     event_type="kg_extraction_requested",
                     entity_id=source_document_id,
                     artifact=output_dir / "outputs/lesson/01_uploaded_lesson.json",
-                    source_type="synthetic_fixture",
+                    source_type="actual_execution",
                     status="started",
                 )
                 click_and_wait(instructor, row.get_by_role("button", name="Generate Knowledge Graph"))
@@ -918,7 +943,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     event_type="kg_extraction_completed",
                     entity_id=source_document_id,
                     artifact=graph_path,
-                    source_type=graph.get("source_type", "synthetic_fixture"),
+                    source_type=("synthetic_fixture" if graph.get("source_type") == "synthetic_fixture"
+                                 else "actual_execution"),
                 )
 
                 first_edge_id = graph["edges"][0]["edge_id"]
@@ -950,6 +976,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     approval_path,
                     {
                         "graph_id": graph_id,
+                        "persisted_graph": saved_graph,
                         "edge": reviewed_edge,
                         "saved_notice": instructor.get_by_test_id("graph-notice").inner_text(),
                         "captured_at_utc": utc_now(),
@@ -962,7 +989,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     event_type="kg_reviewed",
                     entity_id=graph_id,
                     artifact=approval_path,
-                    source_type="synthetic_fixture",
+                    source_type="actual_execution",
                 )
                 manifest["records"].update({"graph_id": graph_id, "edge_id": first_edge_id})
 
@@ -1152,7 +1179,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 expected_context = {"assignment_id": assignment_id, "graph_id": graph_id,
                                     "graph_version": saved_graph["version"],
                                     "source_document_id": source_document_id,
-                                    "source_sha256": expected_hash}
+                                    "source_sha256": expected_hash, "course_id": course_id}
                 consumed = all(grading_context.get(k) == v for k, v in expected_context.items())
                 manifest["course_graph_consumption"] = {
                     "classification": "REAL_PIPELINE_VERIFIED" if consumed else "NOT_CONNECTED",
@@ -1391,6 +1418,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if project_student.get("student_id") != "S001":
                     raise AssertionError("generated project was not bound to S001")
+                if project_student.get("domain_interest") != "healthcare":
+                    raise AssertionError("project did not retain the explicitly selected healthcare interest")
                 assert_learner_payload(project_student)
                 if project_student.get("instructor_approval_status") == "APPROVED":
                     raise AssertionError("new project bypassed instructor approval")

@@ -100,7 +100,7 @@ The instructor and student operate in separate 1920×1080 browser contexts. Brow
 all mutations. After every mutation, the runner checks persisted state through an authenticated
 read-only API or a rendered-state assertion before appending a completed event:
 
-1. Instructor login, lesson upload, stored source provenance.
+1. Instructor login, fresh course/module creation, lesson upload associated to both, stored source hash.
 2. Labelled KG generation/fallback, at least two nodes and one directed edge, edge approval, saved version.
 3. Local assignment draft and publication.
 4. S001 assignment visibility and incorrect INNER JOIN submission to `sql_join_04`.

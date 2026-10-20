@@ -73,6 +73,8 @@ class FullSandboxBrowserTests(unittest.TestCase):
             self.assertEqual(manifest["status"], "completed")
             self.assertTrue(manifest["recording_acceptance"]["accepted"])
             self.assertEqual(manifest["course_graph_consumption"]["classification"], "REAL_PIPELINE_VERIFIED")
+            self.assertTrue(manifest["records"]["course_id"])
+            self.assertTrue(manifest["records"]["module_id"])
             self.assertTrue(manifest["records"]["attempt_id"])
             self.assertTrue(manifest["records"]["evidence_id"])
             self.assertTrue(manifest["records"]["project_id"])
