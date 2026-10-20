@@ -235,7 +235,6 @@ def discover_ffmpeg(explicit: Path | None) -> Path | None:
     local_app_data = os.environ.get("LOCALAPPDATA")
     if local_app_data:
         roots.append(Path(local_app_data) / "ms-playwright")
-    roots.append(Path(r"D:\AI\Cache\Playwright"))
     for root in roots:
         if not root.is_dir():
             continue

@@ -52,6 +52,8 @@ $env:SIIP_RUN_FULL_BROWSER = '1'
 
 The full browser test starts isolated services, drives instructor/student flows, verifies persisted graph consumption, and restarts the dashboard. Browser tests are reported separately from unit/integration totals. Native PrairieLearn UI/Postgres restart tests require Docker; GitHub's Local platform integration workflow runs them. [Release evidence](docs/release/RELEASE_TEST_EVIDENCE.md) records actual counts and failures.
 
+Browser verification needs Chromium and its bundled WebM encoder. MP4 professor-package creation additionally needs a full FFmpeg build on PATH, the optional `imageio_ffmpeg` package, or the recorder's `--ffmpeg` parameter. The browser test preserves valid raw WebM evidence when that optional MP4 capability is absent; it does not mark MP4 recording acceptance as passed. With a full encoder, the original strict recording checks still apply. Existing professor videos remain external artifacts.
+
 ## Maintained layout and entry points
 
 | Area | Location / entry point |

@@ -13,3 +13,5 @@ Linux/macOS: use `.venv/bin/python` and explicitly configure development auth fl
 Docker Desktop/Compose is required only for native PrairieLearn: `scripts/manage.py start`, `smoke.py`, `tests/e2e/prairielearn_flow.py --ack-local-synthetic`, persistence probe, then stop. Do not point synthetic commands at an institutional course/database.
 
 The professor video stays an external historical artifact. Fresh verification must not depend on its databases, paths, model or recordings. Its unreviewed feedback is not validated teaching material.
+
+MP4 packaging is optional for the browser smoke test. Playwright's minimal encoder can preserve and decode the original instructor/student WebMs but cannot necessarily mux/concatenate MP4. The test verifies all UI/persistence/restart assertions in this case and records MP4 acceptance as false. To create a new professor MP4 package, separately provide a full FFmpeg build (PATH or recorder `--ffmpeg`), as documented in `docs/demo/RECORDING_RUNBOOK.md`. No encoder/model download is required for the deterministic application or browser acceptance.
