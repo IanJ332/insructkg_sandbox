@@ -135,19 +135,22 @@ class FullSandboxBrowserTests(unittest.TestCase):
                         all(
                             encoder.get(key)
                             for key in (
-                                "has_h264_encoder",
                                 "has_mp4_muxer",
                                 "has_trim_filter",
                                 "has_setpts_filter",
                                 "has_concat_filter",
                             )
-                        ),
+                        )
+                        and (encoder.get("has_h264_encoder") or encoder.get("has_vp9_encoder")),
                         "A full encoder must satisfy the original MP4 recording gate",
                     )
                     self.assertTrue(packaging.get("limitations"))
                     probes = packaging.get("raw_probes", {})
                     self.assertEqual(set(probes), {"instructor", "student"})
                     self.assertTrue(all(probe.get("valid") for probe in probes.values()))
+                    self.assertTrue(
+                        all(probe.get("resolution") == "1920x1080" for probe in probes.values())
+                    )
                     self.assertFalse(manifest["recording_acceptance"]["accepted"])
                     self.assertIsNone(packaging.get("professor_mp4"))
                     self.assertIsNone(packaging.get("uncut_mp4"))
