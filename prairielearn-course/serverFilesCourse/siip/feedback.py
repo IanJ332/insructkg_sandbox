@@ -251,14 +251,17 @@ def valid_output(obj, context, qid, *, check_quality=False):
         check_quality
         and qid == "sql_join_04"
         and re.search(r"\bcount\s*\(\s*\w+\.employee_id\s*\)", sql, re.I)
-        and re.search(r"\b(count|counting|aggregate|aggregation)\b", text, re.I)
+        and (
+            re.search(r"\b(count|counting|aggregate|aggregation)\b", text, re.I)
+            or "COUNT_AGGREGATION" in concepts
+        )
     ):
         raise FeedbackQualityError("unsupported_count_diagnosis")
     if (
         check_quality
         and qid == "sql_join_04"
         and re.search(r"\bgroup\s+by\s+\w+\.department_id\s*,\s*\w+\.department_name", sql, re.I)
-        and re.search(r"\b(group\s*by|grouping)\b", text, re.I)
+        and (re.search(r"\b(group\s*by|grouping)\b", text, re.I) or "GROUP_BY" in concepts)
     ):
         raise FeedbackQualityError("unsupported_grouping_diagnosis")
     return obj
@@ -426,16 +429,22 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
         "candidate_concepts": diagnosis(qid, result)["candidate_concepts"] if mode == "kg" else [],
         "evidence_references": [],
     }
+    if (
+        qid == "sql_join_04"
+        and result.get("status") == "semantic_error"
+        and re.search(r"\bcount\s*\(\s*\w+\.employee_id\s*\)", sql, re.I)
+        and re.search(r"\bgroup\s+by\s+\w+\.department_id\s*,\s*\w+\.department_name", sql, re.I)
+    ):
+        # Preserve these valid components of the reproduced query. A row
+        # mismatch warrants a row-preservation hint, not an aggregation diagnosis.
+        obj["candidate_concepts"] = ["LEFT_OUTER_JOIN"] if mode == "kg" else []
     if mode in {"rag", "kg"}:
         obj["evidence_references"] = [p["id"] for p in context["lecture_evidence"][:1]]
-    if mode == "kg" and diagnosis(qid, result)["candidate_concepts"]:
+    if mode == "kg" and obj["candidate_concepts"]:
         related = context["prerequisites"][:3]
         text += (
             " Revisit "
-            + ", ".join(
-                safe_concept_label(item)
-                for item in diagnosis(qid, result)["candidate_concepts"][:2]
-            )
+            + ", ".join(safe_concept_label(item) for item in obj["candidate_concepts"][:2])
             + "."
         )
         if related:

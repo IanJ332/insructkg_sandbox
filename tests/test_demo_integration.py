@@ -26,6 +26,9 @@ class DemoFeedbackIntegrationTests(unittest.TestCase):
         self.assertIn("query projection structure", feedback["feedback_text"])
         self.assertNotRegex(feedback["feedback_text"].lower(), r"\bselect\b")
         self.assertIn("LEFT_OUTER_JOIN", feedback["candidate_concepts"])
+        self.assertNotIn("COUNT_AGGREGATION", feedback["candidate_concepts"])
+        self.assertNotIn("GROUP_BY", feedback["candidate_concepts"])
+        self.assertNotIn("count aggregation", feedback["feedback_text"].lower())
 
 
 if __name__ == "__main__":
