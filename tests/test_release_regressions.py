@@ -230,6 +230,8 @@ class ReleaseFeedbackTests(unittest.TestCase):
             provider=Provider(),
         )
         self.assertEqual(feedback["feedback_quality"], "model_unreviewed")
+        self.assertEqual(feedback["provider_identifier"], "Provider")
+        self.assertEqual(feedback["requested_model_identifier"], "fixture")
 
     def test_pretty_escapes_once_and_keeps_markup_inert(self):
         rendered = pretty({"source": '<script>alert("x")</script>'})
@@ -295,6 +297,16 @@ class ReleaseConsistencyTests(unittest.TestCase):
                     "source_document_id": "lesson",
                     "content": "INNER JOIN predicate. LEFT OUTER JOIN preserves unmatched rows with NULL values.",
                 }
+            )
+            kg.review_edge(
+                graph["graph_id"], graph["edges"][0]["edge_id"], "APPROVE", "instructor_alawini"
+            )
+            reviewed = kg.review_edge(
+                graph["graph_id"], graph["edges"][0]["edge_id"], "REJECT", "instructor_ta"
+            )
+            self.assertEqual(
+                [item["decision"] for item in reviewed["edges"][0]["review_history"]],
+                ["APPROVE", "REJECT"],
             )
 
             def save(_):

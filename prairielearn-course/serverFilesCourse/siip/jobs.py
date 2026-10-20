@@ -110,6 +110,8 @@ class FeedbackJob:
             "provenance": (
                 {
                     "model_identifier": self.model_identifier,
+                    "provider_identifier": res.get("provider_identifier", "legacy_unknown"),
+                    "attempted_provider_identifier": res.get("attempted_provider_identifier"),
                     "prompt_version": self.prompt_version,
                     "graph_version": self.graph_version,
                     "latency_ms": self.latency_ms,

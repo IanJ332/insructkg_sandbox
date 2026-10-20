@@ -402,6 +402,14 @@ class DemoKGRepository:
         reviewed_at = _utc_now()
         for edge in graph.get("edges", []):
             if edge.get("edge_id") == edge_id:
+                edge.setdefault("review_history", []).append(
+                    {
+                        "decision": normalized,
+                        "reviewer_id": reviewer_id.strip(),
+                        "reviewed_at_utc": reviewed_at,
+                        "notes": notes.strip(),
+                    }
+                )
                 edge.update(
                     {
                         "review_state": {

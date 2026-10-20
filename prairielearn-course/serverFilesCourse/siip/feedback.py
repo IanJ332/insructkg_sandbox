@@ -487,6 +487,13 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
         **obj,
         "feedback_mode": mode,
         "model_identifier": model,
+        "provider_identifier": type(provider).__name__
+        if status == "live_success"
+        else "deterministic",
+        "attempted_provider_identifier": type(provider).__name__
+        if provider is not None and context_error is None
+        else None,
+        "requested_model_identifier": getattr(provider, "model", None),
         "prompt_version": PROMPT_VERSION,
         "non_revealing_validation": "passed_rule_filter",
         "inference_status": status,
