@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import re
@@ -168,7 +169,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional FFmpeg executable. Auto-discovery includes Playwright's bundled binary.",
     )
+    parser.add_argument("--require-course-graph", action="store_true",
+                        help="Require uploaded lesson/graph identifiers in persisted grading context.")
     parser.add_argument("--feedback-timeout", type=float, default=90.0)
+    parser.add_argument("--minimum-professor-seconds", type=float, default=0.0,
+                        help="Reject acceptance if measured professor video is shorter than this.")
     parser.add_argument(
         "--dwell-seconds",
         type=float,
@@ -194,6 +199,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise FileNotFoundError(f"lesson file not found: {args.lesson_path}")
     if args.feedback_timeout <= 0:
         raise ValueError("--feedback-timeout must be positive")
+    if args.minimum_professor_seconds < 0:
+        raise ValueError("--minimum-professor-seconds must be nonnegative")
     if args.dwell_seconds < 0:
         raise ValueError("--dwell-seconds must be nonnegative")
 
@@ -205,6 +212,14 @@ def discover_ffmpeg(explicit: Path | None) -> Path | None:
     on_path = shutil.which("ffmpeg")
     if on_path:
         return Path(on_path).resolve()
+    # imageio's optional full build supports MP4; Playwright's minimal build often does not.
+    try:
+        import imageio_ffmpeg
+        bundled = Path(imageio_ffmpeg.get_ffmpeg_exe())
+        if bundled.is_file():
+            return bundled.resolve()
+    except (ImportError, RuntimeError):
+        pass
     roots = []
     configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
     if configured and configured != "0":
@@ -264,7 +279,7 @@ def probe_video(executable: Path, video_path: Path) -> dict[str, Any]:
         check=False,
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=600,
     )
     details = result.stdout + result.stderr
     duration_match = re.search(r"Duration:\s*(\d{2}:\d{2}:\d{2}(?:\.\d+)?)", details)
@@ -356,6 +371,35 @@ def get_json(context: Any, url: str, expected_status: int = 200) -> Any:
     if response.status != expected_status:
         raise AssertionError(f"GET {url} returned {response.status}, expected {expected_status}")
     return response.json()
+
+
+def assert_learner_payload(payload: Any, path: str = "root") -> None:
+    """Inspect nested payloads: masking only the rendered solution is insufficient."""
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if key in {"reference_sql", "expected_sql", "reference_answer", "expected_result"}:
+                raise AssertionError(f"learner payload exposed {path}.{key}")
+            assert_learner_payload(value, f"{path}.{key}")
+    elif isinstance(payload, list):
+        for index, value in enumerate(payload):
+            assert_learner_payload(value, f"{path}[{index}]")
+
+
+def assert_persisted_attempt(store: Any, attempt_id: str, before_count: int) -> dict[str, Any]:
+    record = store.attempt_for_student(attempt_id, "S001")
+    if record.get("submitted_sql") != INCORRECT_SQL or record.get("question_id") != "sql_join_04":
+        raise AssertionError("persisted attempt differs from this browser submission")
+    if record.get("grading", {}).get("score") != 0:
+        raise AssertionError("persisted deterministic grade differs from browser receipt")
+    profile = store.profile("S001")
+    records = store.records("S001")
+    if len(records) != before_count + 1:
+        raise AssertionError("browser submission did not persist exactly one new attempt")
+    concepts = profile.get("concepts", {})
+    if not concepts or not any(c.get("attempt_count", 0) > 0 for c in concepts.values()):
+        raise AssertionError("persisted profile has no concept evidence")
+    return {"attempt": record, "profile": profile, "attempt_count_before": before_count,
+            "attempt_count_after": len(records), "capture_method": "persisted_submission_repository"}
 
 
 def table_records(page: Any, index: int) -> list[dict[str, str]]:
@@ -512,69 +556,72 @@ def package_videos(
 
     all_segments = [a for a in actions if a.duration_seconds > 0.05]
     professor_segments = [a for a in all_segments if a.status == "completed"]
-    if not professor_segments:
-        result["limitations"].append("No completed video action segments were available.")
-        return result
-    encoder = "libx264" if "libx264" in subprocess.run(
-        [str(ffmpeg), "-hide_banner", "-encoders"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    ).stdout else "libvpx-vp9"
-    def compile_segments(target: Path, segments: list[ActionMarker]) -> tuple[int, str]:
-        inputs: list[str] = []
-        filters: list[str] = []
-        for index, action in enumerate(segments):
-            inputs.extend(["-i", str(raw_videos[action.source_video])])
-            filters.append(
-                f"[{index}:v]trim=start={action.start_seconds:.3f}:end={action.end_seconds:.3f},"
-                f"setpts=PTS-STARTPTS[v{index}]"
-            )
-        filters.append(
-            "".join(f"[v{index}]" for index in range(len(segments)))
-            + f"concat=n={len(segments)}:v=1:a=0[outv]"
-        )
-        command = [
-            str(ffmpeg),
-            "-y",
-            *inputs,
-            "-filter_complex",
-            ";".join(filters),
-            "-map",
-            "[outv]",
-            "-c:v",
-            encoder,
-            "-pix_fmt",
-            "yuv420p",
-            str(target),
-        ]
+    encoder_output = subprocess.run(
+        [str(ffmpeg), "-hide_banner", "-encoders"], check=False,
+        capture_output=True, text=True, timeout=30,
+    ).stdout
+    encoder = "libx264" if "libx264" in encoder_output else "libvpx-vp9"
+    intermediate = videos_dir / "encoded_segments"
+    intermediate.mkdir(exist_ok=True)
+
+    def compile_segments(target: Path, segments: list[tuple[str, float, float | None]]):
+        encoded = []
+        for index, (actor, start, duration) in enumerate(segments):
+            segment_path = intermediate / f"{target.stem}-{index:03d}.mp4"
+            command = [str(ffmpeg), "-hide_banner", "-y", "-ss", str(start),
+                       "-i", str(raw_videos[actor])]
+            if duration is not None:
+                command += ["-t", str(duration)]
+            command += ["-an", "-vf", "fps=25,format=yuv420p", "-c:v", encoder]
+            if encoder == "libx264":
+                command += ["-preset", "ultrafast", "-crf", "23"]
+            command += [str(segment_path)]
+            conversion = subprocess.run(command, check=False, capture_output=True,
+                                        text=True, timeout=1800)
+            if conversion.returncode:
+                return conversion.returncode, conversion.stderr[-1000:]
+            encoded.append(segment_path)
+        concat_path = intermediate / f"{target.stem}.txt"
+        concat_path.write_text("".join(
+            "file '" + path.resolve().as_posix().replace("'", "'\\''") + "'\n"
+            for path in encoded), encoding="utf-8")
         conversion = subprocess.run(
-            command, check=False, capture_output=True, text=True, timeout=1800
-        )
+            [str(ffmpeg), "-hide_banner", "-y", "-f", "concat", "-safe", "0",
+             "-i", str(concat_path), "-c", "copy", "-movflags", "+faststart", str(target)],
+            check=False, capture_output=True, text=True, timeout=1800)
         return conversion.returncode, conversion.stderr[-1000:]
 
-    outputs = (
-        ("professor", videos_dir / "SIIP_Complete_Prototype_Demo.mp4", professor_segments),
-        ("uncut", videos_dir / "SIIP_Uncut_End_to_End_Verification.mp4", all_segments),
-    )
+    # Preserve each complete context, including login, idle time, failed actions and tails.
+    # Contexts ran concurrently: concatenation is actor order, never a chronological claim.
+    uncut_segments = [(actor, 0.0, None) for actor in raw_videos]
+    result["uncut_order"] = list(raw_videos)
+    result["uncut_semantics"] = "Complete concurrent actor contexts concatenated in actor order"
+    write_json(videos_dir / "uncut_segments.json", {
+        "semantics": result["uncut_semantics"],
+        "segments": [{"actor": actor, "source": str(raw_videos[actor]), "start_seconds": 0,
+                      "duration_seconds": result["raw_probes"][actor]["duration_seconds"]}
+                     for actor in raw_videos],
+    })
+    outputs = [("uncut", videos_dir / "SIIP_Uncut_Engineering_Verification.mp4", uncut_segments)]
+    if professor_segments:
+        outputs.append(("professor", videos_dir / "SIIP_Professor_Full_Sandbox_Demo.mp4",
+                        [(a.source_video, a.start_seconds, a.duration_seconds)
+                         for a in professor_segments]))
+    else:
+        result["limitations"].append("No completed professor action segments were available.")
     for label, target, segments in outputs:
         exit_code, stderr = compile_segments(target, segments)
         result[f"{label}_conversion_exit_code"] = exit_code
         if exit_code != 0 or not target.is_file():
-            target.unlink(missing_ok=True)
-            result["limitations"].append(
-                f"{label.title()} MP4 conversion failed; original WebMs remain authoritative. "
-                + stderr
-            )
+            result["limitations"].append(f"{label.title()} MP4 conversion failed: {stderr}")
             continue
         probe = probe_video(ffmpeg, target)
         result[f"{label}_probe"] = probe
         if not probe["valid"]:
-            target.unlink(missing_ok=True)
             result["limitations"].append(f"The generated {label} MP4 failed validation.")
             continue
         result[f"{label}_mp4"] = str(target.resolve())
+
     return result
 
 
@@ -624,8 +671,9 @@ instructor and student contexts close; they are not storyboard estimates.
 
 ## Scientific boundaries
 
-- The candidate graph is the dashboard's explicitly labelled synthetic fixture,
-  not an actual InstructKG extraction.
+- Recorded extraction classification/provenance: `{manifest.get("extraction", {})}`.
+  The upstream InstructKG extractor is unavailable unless independently verified;
+  local document extraction or synthetic fallback is labelled by the actual record.
 - Assignment publication is local SIIP demo publication, not native PrairieLearn
   instructor publication.
 - Deterministic SQL grading is independent of feedback generation.
@@ -727,6 +775,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "artifact": artifact_rel(output_dir, fixture_path),
         "attempt_ids": sorted(fixture_attempt_ids),
     }
+    before_attempt_count = len(submission_store.records("S001"))
     write_json(output_dir / "run_manifest.json", manifest)
     event_repo = DemoObservabilityRepository(output_dir / "timeline")
     clock = RecorderClock()
@@ -804,6 +853,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if not lesson:
                     raise AssertionError("uploaded lesson was not returned by the lesson registry")
+                expected_hash = hashlib.sha256(args.lesson_path.read_bytes()).hexdigest()
+                if (lesson.get("source_sha256") or lesson.get("sha256")) != expected_hash:
+                    raise AssertionError("uploaded lesson bytes do not match stored source hash")
                 write_json(lessons_path, lesson)
                 row = instructor.locator("tr", has_text=source_document_id)
                 click_and_wait(instructor, row.get_by_role("link", name="Open stored material"))
@@ -821,12 +873,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 manifest["records"]["source_document_id"] = source_document_id
 
-            with clock.action("02 Fixture knowledge graph review", "instructor"):
+            with clock.action("02 Knowledge graph extraction and review", "instructor"):
                 show_slate(
                     instructor,
                     "Phase 2",
                     "Synthetic instructor",
-                    "Generate and review fixture knowledge graph",
+                    "Generate and review course knowledge graph",
                 )
                 instructor.goto(f"{args.base_url}/authoring", wait_until="networkidle")
                 row = instructor.locator("tr", has_text=source_document_id)
@@ -841,9 +893,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     status="started",
                 )
                 click_and_wait(instructor, row.get_by_role("button", name="Generate Knowledge Graph"))
-                expect(instructor.get_by_test_id("demo-kg-boundary")).to_contain_text(
-                    "upstream InstructKG extractor is unavailable"
-                )
+                expect(instructor.get_by_test_id("demo-kg-boundary")).to_be_visible()
                 if instructor.get_by_test_id("kg-node").count() < 2:
                     raise AssertionError("candidate graph did not render at least two nodes")
                 expect(instructor.get_by_test_id("kg-edges")).to_be_visible()
@@ -858,15 +908,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if graph.get("source_document_id") != source_document_id or not graph.get("edges"):
                     raise AssertionError("graph provenance or edges did not match the uploaded lesson")
+                manifest["extraction"] = {k: graph.get(k) for k in
+                    ("extraction_mode", "source_type", "classification", "fallback_reason")}
                 capture(instructor, output_dir / "screenshots/02_graph_before_review.png")
                 event(
                     actor_type="system",
-                    actor_id="siip-fixture-kg",
+                    actor_id="siip-course-extraction-adapter",
                     phase="knowledge_graph",
                     event_type="kg_extraction_completed",
                     entity_id=source_document_id,
                     artifact=graph_path,
-                    source_type="synthetic_fixture",
+                    source_type=graph.get("source_type", "synthetic_fixture"),
                 )
 
                 first_edge_id = graph["edges"][0]["edge_id"]
@@ -889,6 +941,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 expect(instructor.get_by_test_id("graph-notice")).to_contain_text(
                     "Saved reviewed graph version"
                 )
+                saved_graph = get_json(contexts["instructor"],
+                    f"{args.base_url}/api/demo/graphs?graph_id={graph_id}")
+                if saved_graph.get("version", 0) < 1 or not saved_graph.get("saved_at_utc"):
+                    raise AssertionError("saved graph version did not persist")
                 approval_path = output_dir / "outputs/knowledge_graph/02_instructor_approval.json"
                 write_json(
                     approval_path,
@@ -922,6 +978,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "LOCAL SIIP"
                 )
                 instructor.locator("input[name='assignment_id']").fill(assignment_id)
+                if instructor.locator("select[name='graph_id']").count():
+                    instructor.locator("select[name='graph_id']").select_option(graph_id)
                 click_and_wait(instructor, instructor.get_by_test_id("create-assignment"))
                 assignment_row = instructor.locator("tr", has_text=assignment_id)
                 expect(assignment_row).to_contain_text("DRAFT")
@@ -940,6 +998,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if not assignment or assignment["publication_status"] != "PUBLISHED_LOCAL_DEMO":
                     raise AssertionError("local assignment publication did not persist")
+                if assignment.get("grading_config", {}).get("graph_id") != graph_id:
+                    raise AssertionError("assignment is not bound to this uploaded lesson graph")
+                if assignment["grading_config"].get("graph_version") != saved_graph["version"]:
+                    raise AssertionError("assignment is not bound to the saved reviewed version")
                 write_json(assignments_path, assignment)
                 event(
                     actor_type="instructor",
@@ -992,6 +1054,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 if not job_id:
                     raise AssertionError("feedback URL did not contain a job identifier")
                 feedback_job = get_json(contexts["student"], feedback_href.replace("/feedback?", "/api/feedback?"))
+                assert_learner_payload(feedback_job)
+                if feedback_job.get("grading", {}).get("score") != 0:
+                    raise AssertionError("persisted job grading does not match 0% receipt")
                 if feedback_job.get("submitted_sql") != INCORRECT_SQL:
                     raise AssertionError("persisted feedback job did not retain this browser submission")
                 submission_path = output_dir / "outputs/submissions/04_student_submission.json"
@@ -1078,6 +1143,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 attempt_id = attempt_field.get_attribute("value")
                 if not attempt_id:
                     raise AssertionError("feedback page did not expose the stable attempt identifier")
+                persisted = assert_persisted_attempt(submission_store, attempt_id, before_attempt_count)
+                write_json(output_dir / "outputs/submissions/04_persisted_attempt_and_profile.json", persisted)
+                assert_learner_payload(feedback_result)
+                grading_context = ((feedback_result.get("feedback") or {}).get("grounding_provenance")
+                    or feedback_result.get("grounding_provenance")
+                    or feedback_result.get("grading", {}).get("_grounding") or {})
+                expected_context = {"assignment_id": assignment_id, "graph_id": graph_id,
+                                    "graph_version": saved_graph["version"],
+                                    "source_document_id": source_document_id,
+                                    "source_sha256": expected_hash}
+                consumed = all(grading_context.get(k) == v for k, v in expected_context.items())
+                manifest["course_graph_consumption"] = {
+                    "classification": "REAL_PIPELINE_VERIFIED" if consumed else "NOT_CONNECTED",
+                    "expected": expected_context, "observed": grading_context}
+                if args.require_course_graph and not consumed:
+                    raise AssertionError("feedback job did not consume this assignment's reviewed graph context")
+                if not consumed:
+                    manifest["limitations"].append("Uploaded course graph not verified as consumed by grading/feedback")
                 submission_path = output_dir / "outputs/submissions/04_student_submission.json"
                 submission_record = json.loads(submission_path.read_text(encoding="utf-8"))
                 submission_record["attempt_id"] = attempt_id
@@ -1297,6 +1380,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "Generate profile-informed healthcare SQL project",
                 )
                 student.goto(f"{args.base_url}/projects", wait_until="networkidle")
+                if student.locator("select[name='interest']").count():
+                    student.locator("select[name='interest']").select_option("healthcare")
                 click_and_wait(student, student.get_by_role("button", name="Generate My Project"))
                 project_id = parse_qs(urlparse(student.url).query).get("id", [None])[0]
                 if not project_id:
@@ -1306,8 +1391,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 if project_student.get("student_id") != "S001":
                     raise AssertionError("generated project was not bound to S001")
-                if any("reference_sql" in item for item in project_student.get("milestones", [])):
-                    raise AssertionError("learner project JSON exposed reference SQL")
+                assert_learner_payload(project_student)
+                if project_student.get("instructor_approval_status") == "APPROVED":
+                    raise AssertionError("new project bypassed instructor approval")
                 project_path = output_dir / "outputs/projects/09_personalized_project.json"
                 write_json(project_path, project_student)
                 event(
@@ -1351,6 +1437,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             with clock.action("09 Approved learner project", "student"):
                 student.goto(f"{args.base_url}/projects?id={project_id}", wait_until="networkidle")
                 expect(student.get_by_text("Status: APPROVED", exact=True)).to_be_visible()
+                approved_learner_project = get_json(contexts["student"],
+                    f"{args.base_url}/api/projects?id={project_id}")
+                assert_learner_payload(approved_learner_project)
+                if approved_learner_project.get("instructor_approval_status") != "APPROVED":
+                    raise AssertionError("approved project is not accessible to its learner")
+                write_json(output_dir / "outputs/projects/09_approved_learner_project.json", approved_learner_project)
                 learner_html = student.content()
                 if "Reference SQL Solution" in learner_html or "Approve Project" in learner_html:
                     raise AssertionError("learner project DOM exposed instructor-only material")
@@ -1427,16 +1519,31 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     write_video_chapters(clock.actions, output_dir)
     render_observability(event_repo, output_dir)
     ffmpeg = discover_ffmpeg(args.ffmpeg)
-    manifest["video_packaging"] = package_videos(
-        ffmpeg, raw_video_paths, clock.actions, output_dir
-    )
+    try:
+        manifest["video_packaging"] = package_videos(
+            ffmpeg, raw_video_paths, clock.actions, output_dir
+        )
+    except Exception as exc:
+        manifest["video_packaging"] = {"limitations": [f"Packaging failed: {type(exc).__name__}: {exc}"],
+            "raw_recordings": {actor: str(path) for actor, path in raw_video_paths.items()}}
     manifest["completed_at_utc"] = utc_now()
+    packaging = manifest["video_packaging"]
+    duration = (packaging.get("professor_probe") or {}).get("duration_seconds") or 0
+    video_accepted = bool(packaging.get("professor_mp4") and packaging.get("uncut_mp4")
+                          and duration >= args.minimum_professor_seconds
+                          and all(p.get("valid") and p.get("resolution") == "1920x1080"
+                                  for p in packaging.get("raw_probes", {}).values()))
+    manifest["recording_acceptance"] = {"accepted": video_accepted,
+        "minimum_professor_seconds": args.minimum_professor_seconds,
+        "measured_professor_seconds": duration}
     if run_error is None:
-        manifest["status"] = "completed"
+        manifest["status"] = "completed" if video_accepted else "workflow_completed_recording_incomplete"
     write_json(output_dir / "run_manifest.json", manifest)
     write_demo_readme(output_dir, manifest)
     if run_error is not None:
         raise run_error
+    if not video_accepted:
+        raise RuntimeError("Workflow completed but recording acceptance failed; inspect run_manifest.json")
     return manifest
 
 

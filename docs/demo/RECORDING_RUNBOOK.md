@@ -17,9 +17,9 @@ database unchanged.
 
 ## Scientific and platform boundaries
 
-- The dashboard's generated candidate graph is an explicitly labelled **synthetic fixture**. The
-  upstream InstructKG extractor is unavailable in this checkout; the recording must not describe
-  this fixture as actual InstructKG extraction.
+- The dashboard labels the actual graph extraction mode: local extraction or an explicitly
+  labelled **synthetic fixture** fallback. Upstream InstructKG execution must be independently
+  verified before making that claim; a local fallback never constitutes upstream execution.
 - Assignment publication is **LOCAL SIIP ASSIGNMENT PUBLICATION — SYNTHETIC DEMO**. It is not
   native PrairieLearn instructor publication. The practice submission does execute the existing
   PrairieLearn Python grading bridge and deterministic SQL grader.
@@ -77,16 +77,19 @@ $env:PLAYWRIGHT_BROWSERS_PATH = 'D:\AI\Cache\Playwright'
   --base-url http://127.0.0.1:8080 `
   --lesson-path demo_materials\SYNTHETIC_SQL_JOINS_LESSON.md `
   --output-dir D:\AI\SIIP\demo\2026-10-20 `
-  --dwell-seconds 20 `
+  --dwell-seconds 30 `
+  --minimum-professor-seconds 480 `
+  --require-course-graph `
+  --feedback-timeout 240 `
   --headless
 ```
 
 `--dwell-seconds` controls how long each named, already-verified evidence state remains readable
-after capture. The default is 1.5 seconds for engineering smoke tests; 20–25 seconds is appropriate
+after capture. The default is 1.5 seconds for engineering smoke tests; 30 seconds across the current evidence captures produces approximately 9–11 minutes and is appropriate
 for the professor-facing run. This changes presentation time only, not mutations or timestamps.
 
 Use `--no-headless` for a visible dress rehearsal. Use `--ffmpeg C:\path\to\ffmpeg.exe` to select a
-full FFmpeg build. The runner also discovers Playwright's bundled encoder. That bundled Windows
+full FFmpeg build. The runner prefers the optional installed `imageio_ffmpeg` full build before Playwright's bundled encoder. The verified local full encoder is `C:\Users\ian\Desktop\PROJECT\insructkg_sandbox\.venv\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe`. No encoder download is required in this environment. That bundled Windows
 binary commonly decodes/encodes WebM/VP9 but lacks an MP4 muxer and concat filter. In that case the
 runner preserves and probes the original instructor/student WebMs, records the exact limitation in
 `run_manifest.json`, and does **not** claim an MP4 exists.
@@ -98,7 +101,7 @@ all mutations. After every mutation, the runner checks persisted state through a
 read-only API or a rendered-state assertion before appending a completed event:
 
 1. Instructor login, lesson upload, stored source provenance.
-2. Fixture KG generation, at least two nodes and one directed edge, edge approval, saved version.
+2. Labelled KG generation/fallback, at least two nodes and one directed edge, edge approval, saved version.
 3. Local assignment draft and publication.
 4. S001 assignment visibility and incorrect INNER JOIN submission to `sql_join_04`.
 5. Deterministic 0% grade, queued job, completed async feedback and provenance.
@@ -133,5 +136,51 @@ not permission to rename a WebM or declare success.
 Run the focused contract check without launching a browser:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests\e2e\test_professor_demo_script.py -q
+.\.venv\Scripts\python.exe -m unittest discover -s tests/e2e -p test_professor_demo_script.py -v
 ```
+
+
+## Required files and actual acceptance
+
+The exact deliverables are `videos/SIIP_Professor_Full_Sandbox_Demo.mp4` and
+`videos/SIIP_Uncut_Engineering_Verification.mp4`. The professor cut concatenates measured completed
+action segments; phase slates act as concise captions. `--minimum-professor-seconds 480` rejects a
+short recording. Choose 30 seconds dwell for the full run and inspect the resulting duration;
+no frozen synthetic frames or manufactured timecodes are appended to reach the requested duration.
+The completed status requires both MP4s, decoded valid raw videos at 1920×1080, and the minimum.
+
+The engineering MP4 concatenates the **complete instructor context, then the complete student
+context**. The contexts execute concurrently; this is explicitly not a chronological composite.
+It retains login, idle waits, all action failures, and recording tails. Original actor WebMs and
+`videos/uncut_segments.json` preserve the exact sources and segment durations. Failed runs preserve
+videos, screenshots, action statuses, logs, and a failed manifest; reruns use a new output directory.
+
+`--require-course-graph` is mandatory for the final integrated recording. It verifies that the
+completed feedback's actual grounding identifiers equal this run's uploaded source SHA, source ID,
+selected graph, saved version, and published assignment. An absent integration is labelled
+`NOT_CONNECTED` in short compatibility runs and fails the final strict run. Extraction classification
+comes from the actual graph record and may be local extraction or explicitly labelled fixture
+fallback. Neither is claimed to be original upstream InstructKG execution.
+
+The recorder reads the same SQLite database as the services to assert the exact newly submitted
+attempt and its deterministic grade, exactly one additional S001 attempt, and a persisted concept
+profile. A DOM history row from a previous attempt cannot satisfy this check. Nested learner JSON
+is inspected for hidden reference SQL before and after project approval.
+
+## Isolated complete browser test
+
+This test starts its own dashboard and feedback worker on a free port in 8890–8989, uses a fresh
+synthetic database, and preserves artifacts under `artifacts/full-browser-*`. It does not mutate a
+shared demo service. Run it in the original or integration checkout using the available Python:
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = 'D:\AI\Cache\Playwright'
+$env:SIIP_RUN_FULL_BROWSER = '1'
+.\.venv\Scripts\python.exe -m unittest discover -s tests/e2e -p test_full_sandbox_browser.py -v
+```
+
+In a worktree without its own virtual environment, substitute the original checkout's absolute
+`.venv\Scripts\python.exe` path. The test requires the integrated course graph consumption path and uses zero presentation dwell while retaining the same
+browser mutations and persisted assertions. Its short recordings are engineering test evidence,
+not the 8–12 minute professor deliverable. Run the strict final command against the running final
+service only after integrating the graph consumption changes.

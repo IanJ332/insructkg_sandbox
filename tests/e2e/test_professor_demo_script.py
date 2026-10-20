@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -67,6 +68,29 @@ class ProfessorDemoScriptContractTests(unittest.TestCase):
         self.assertIn("PUBLISHED_LOCAL_DEMO", source)
         self.assertIn("not native PrairieLearn", source)
         self.assertIn("separate", source.lower())
+
+    def test_nested_learner_payload_rejects_hidden_answer_keys(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "reference_sql"):
+            MODULE.assert_learner_payload({"project": {"milestones": [{"reference_sql": "SELECT 1"}]}})
+        MODULE.assert_learner_payload({"submitted_sql": "SELECT 1", "grading": {"score": 0}})
+
+    def test_profile_verification_requires_new_exact_persisted_attempt(self) -> None:
+        store = Mock()
+        record = {"question_id": "sql_join_04", "submitted_sql": MODULE.INCORRECT_SQL,
+                  "grading": {"score": 0}}
+        store.attempt_for_student.return_value = record
+        store.profile.return_value = {"concepts": {"LEFT_OUTER_JOIN": {"attempt_count": 1}}}
+        store.records.return_value = [record]
+        self.assertEqual(MODULE.assert_persisted_attempt(store, "attempt-a", 0)["attempt_count_after"], 1)
+        with self.assertRaisesRegex(AssertionError, "exactly one"):
+            MODULE.assert_persisted_attempt(store, "attempt-a", 1)
+
+    def test_required_deliverable_names_and_uncut_semantics(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("SIIP_Professor_Full_Sandbox_Demo.mp4", source)
+        self.assertIn("SIIP_Uncut_Engineering_Verification.mp4", source)
+        self.assertIn("uncut_segments = [(actor, 0.0, None) for actor in raw_videos]", source)
+        self.assertIn('"uncut_semantics"', source)
 
 
 if __name__ == "__main__":
