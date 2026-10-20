@@ -1,0 +1,3617 @@
+{
+  "metadata": {
+    "title": "SIIP Authentic Student SQL Evaluation Benchmark Manifest",
+    "version": "1.1.0",
+    "updated_at": "2026-10-15T17:15:00Z",
+    "audit_verified": true,
+    "audit_findings": {
+      "total_cases": 25,
+      "distinct_exercises_count": 7,
+      "distinct_exercises": [
+        4,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "distinct_students_count": 21,
+      "unique_sql_count": 24,
+      "duplicate_sql_instances": 1,
+      "rule_based_fallback_count": 20,
+      "ground_truth_note": "ANU corpus provides coarse execution category ('partially correct'). Rule-based structural patterns and pedagogical concepts are automated heuristics and must not be presented as expert-validated ground truth.",
+      "executable_database_audit": "Submission.sqlite contains queryable tables (movie, person, director, writer, etc.). However, grading reproduction cannot be claimed from schema descriptions alone; it requires the full test execution environment."
+    },
+    "provenance": {
+      "dataset": "ANU Relational Database Course (Wang et al., 2020)",
+      "source": "Zenodo: https://zenodo.org/records/6526769",
+      "citation": "Wang, Jinshui, Yunpeng Zhao, Zhengyi Tang, and Zhenchang Xing. 'Combining dynamic and static analysis for automated grading SQL statements.' Journal of Network Intelligence 5, no. 4 (2020): 179-190.",
+      "license": "Creative Commons Attribution 4.0 International (CC-BY 4.0)",
+      "file_hashes": {
+        "Submission.sqlite": "7248ea9a868b3418c28799393abfd3463d6d22154ab388c1d63d124b1ca46817",
+        "db_schema.pdf": "f319424eb470721bab8e76d5ba917734fdf6e860de4085267eaa114cd2e5c5e2",
+        "README.md": "22fbd7d790bcef897aa57d2e64451ff97b2c97542edc0a097b889900f5a841a7"
+      }
+    },
+    "experimental_conditions": {
+      "Condition_A": "Baseline LLM (Schema + Question text only)",
+      "Condition_B": "Authentic Lecture RAG (Schema + Question + Authentic Lecture/Doc Excerpts)",
+      "Condition_C": "Authentic Lecture RAG + Verified KG (Schema + Question + Excerpts + Verified Subgraph)",
+      "Condition_D": "Verified KG without prior student history",
+      "Condition_E": "Verified KG with genuine prior student history"
+    }
+  },
+  "cases": [
+    {
+      "eval_id": "eval-anu-001",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 4,
+      "exercise_title": "SQL Exercise 4",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. Use a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who have directed at least two movies that were written by themselves (i.e., a director is one of the writers for the same movie)? Show their ids, the \ufb01rst and last names",
+      "reference_sql": "SELECT dw.id, dw.first_name, dw.last_name \r\nFROM (person p NATURAL JOIN director NATURAL JOIN writer) AS dw \r\nGROUP BY dw.id \r\nHAVING count(*) > 1;",
+      "submission_id": 168,
+      "student_id": "anu-student-69",
+      "submission_timestamp": "2018-08-12 21:00:21.819207+10",
+      "authentic_student_sql": "SELECT id, first_name, last_name FROM person p \r\n\tWHERE EXISTS (SELECT * FROM director d WHERE d.id = p.id);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "missing_group_by_aggregation",
+      "structural_error_pattern": "missing_group_by_aggregation",
+      "pedagogical_concepts": [
+        "NATURAL_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-69",
+        "has_valid_history": true,
+        "prior_attempts": 6,
+        "prior_submission_ids": [
+          162,
+          163,
+          164,
+          165,
+          166,
+          167
+        ],
+        "historical_observation_count": 6,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          12
+        ],
+        "prior_overall_accuracy": 0.5,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 11,
+        "target_submission_time": "2018-08-12 21:00:21.819207+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-002",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 4,
+      "exercise_title": "SQL Exercise 4",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. Use a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who have directed at least two movies that were written by themselves (i.e., a director is one of the writers for the same movie)? Show their ids, the \ufb01rst and last names",
+      "reference_sql": "SELECT dw.id, dw.first_name, dw.last_name \r\nFROM (person p NATURAL JOIN director NATURAL JOIN writer) AS dw \r\nGROUP BY dw.id \r\nHAVING count(*) > 1;",
+      "submission_id": 262,
+      "student_id": "anu-student-98",
+      "submission_timestamp": "2018-08-13 23:51:08.534202+10",
+      "authentic_student_sql": "SELECT p.id, p.first_name, p.last_name\r\n FROM PERSON p\r\n WHERE p.id in(SELECT d.id FROM DIRECTOR d NATURAL JOIN MOVIE e GROUP BY id HAVING COUNT (*) > 1);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "NATURAL_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-98",
+        "has_valid_history": true,
+        "prior_attempts": 5,
+        "prior_submission_ids": [
+          239,
+          241,
+          243,
+          246,
+          258
+        ],
+        "historical_observation_count": 5,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          12
+        ],
+        "prior_overall_accuracy": 0.8,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 26,
+        "target_submission_time": "2018-08-13 23:51:08.534202+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-003",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 4,
+      "exercise_title": "SQL Exercise 4",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. Use a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who have directed at least two movies that were written by themselves (i.e., a director is one of the writers for the same movie)? Show their ids, the \ufb01rst and last names",
+      "reference_sql": "SELECT dw.id, dw.first_name, dw.last_name \r\nFROM (person p NATURAL JOIN director NATURAL JOIN writer) AS dw \r\nGROUP BY dw.id \r\nHAVING count(*) > 1;",
+      "submission_id": 265,
+      "student_id": "anu-student-77",
+      "submission_timestamp": "2018-08-14 00:18:24.78803+10",
+      "authentic_student_sql": "SELECT Director.Id, COUNT(Director.ID) AS NumberOfDirector FROM Director NATURAL JOIN Writer\r\nGroup By Director.Id HAVING NumberOfDirector>1;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "NATURAL_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-77",
+        "has_valid_history": true,
+        "prior_attempts": 3,
+        "prior_submission_ids": [
+          242,
+          251,
+          259
+        ],
+        "historical_observation_count": 3,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          12
+        ],
+        "prior_overall_accuracy": 1.0,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 38,
+        "target_submission_time": "2018-08-14 00:18:24.78803+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-004",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 4,
+      "exercise_title": "SQL Exercise 4",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. Use a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who have directed at least two movies that were written by themselves (i.e., a director is one of the writers for the same movie)? Show their ids, the \ufb01rst and last names",
+      "reference_sql": "SELECT dw.id, dw.first_name, dw.last_name \r\nFROM (person p NATURAL JOIN director NATURAL JOIN writer) AS dw \r\nGROUP BY dw.id \r\nHAVING count(*) > 1;",
+      "submission_id": 266,
+      "student_id": "anu-student-99",
+      "submission_timestamp": "2018-08-14 00:20:10.592113+10",
+      "authentic_student_sql": "select d.id from DIRECTOR d where exists (select * from DIRECTOR d natural join WRITER w) group by d.id having count (*) >= 2;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "NATURAL_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-99",
+        "has_valid_history": true,
+        "prior_attempts": 4,
+        "prior_submission_ids": [
+          245,
+          248,
+          249,
+          260
+        ],
+        "historical_observation_count": 4,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          12
+        ],
+        "prior_overall_accuracy": 1.0,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 52,
+        "target_submission_time": "2018-08-14 00:20:10.592113+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-005",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 5,
+      "exercise_title": "SQL Exercise 5",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Which movies were written by Kevin Williamson? List the titles and production years of these movies.",
+      "reference_sql": "SELECT\r\n    w.title, w.production_year\r\nFROM\r\n    writer w,\r\n    person p\r\nWHERE\r\n    w.id = p.id\r\n    AND lower(first_name)= 'kevin'\r\n    AND lower(last_name)= 'williamson';",
+      "submission_id": 375,
+      "student_id": "anu-student-43",
+      "submission_timestamp": "2018-08-14 23:01:15.159439+10",
+      "authentic_student_sql": "select w.title, w.production_year\r\nfrom writer w inner join person p\r\nwhere lower(p.first_name) = 'kevin' and lower(p.last_name) = 'williamson';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "INNER_JOIN",
+        "PREDICATE_FILTERING",
+        "STRING_NORMALIZATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-43",
+        "has_valid_history": true,
+        "prior_attempts": 23,
+        "prior_submission_ids": [
+          116,
+          124,
+          125,
+          126,
+          127,
+          130,
+          132,
+          134,
+          144,
+          145,
+          146,
+          169,
+          170,
+          171,
+          174,
+          175,
+          250,
+          255,
+          261,
+          363,
+          366,
+          369,
+          372
+        ],
+        "historical_observation_count": 23,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "prior_overall_accuracy": 0.522,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.556,
+            "attempt_count": 7,
+            "success_count": 4,
+            "empirical_success_rate": 0.571
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.417,
+            "attempt_count": 10,
+            "success_count": 4,
+            "empirical_success_rate": 0.4
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "HAVING": {
+            "mastery_estimate": 0.2,
+            "attempt_count": 3,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COMPOUND_KEY_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "UNION": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "CORRELATED_SUBQUERY": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "NOT_IN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "SET_DIFFERENCE": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "SUBQUERY_NEGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NULL_HAZARD": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "DERIVED_TABLES": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 52,
+        "target_submission_time": "2018-08-14 23:01:15.159439+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-006",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 5,
+      "exercise_title": "SQL Exercise 5",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Which movies were written by Kevin Williamson? List the titles and production years of these movies.",
+      "reference_sql": "SELECT\r\n    w.title, w.production_year\r\nFROM\r\n    writer w,\r\n    person p\r\nWHERE\r\n    w.id = p.id\r\n    AND lower(first_name)= 'kevin'\r\n    AND lower(last_name)= 'williamson';",
+      "submission_id": 379,
+      "student_id": "anu-student-100",
+      "submission_timestamp": "2018-08-14 23:09:58.985139+10",
+      "authentic_student_sql": "SELECT DISTINCT title,production_year FROM(SELECT*FROM person NATURE JOIN movie INNER JOIN writer) WHERE first_name='Kevin' AND last_name='Williamson';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "INNER_JOIN",
+        "PREDICATE_FILTERING",
+        "STRING_NORMALIZATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-100",
+        "has_valid_history": true,
+        "prior_attempts": 11,
+        "prior_submission_ids": [
+          234,
+          235,
+          236,
+          237,
+          238,
+          309,
+          310,
+          358,
+          360,
+          364,
+          365
+        ],
+        "historical_observation_count": 11,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          12
+        ],
+        "prior_overall_accuracy": 0.455,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.286,
+            "attempt_count": 5,
+            "success_count": 1,
+            "empirical_success_rate": 0.2
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "HAVING": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          }
+        },
+        "excluded_future_records_count": 18,
+        "target_submission_time": "2018-08-14 23:09:58.985139+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-007",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 5,
+      "exercise_title": "SQL Exercise 5",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Which movies were written by Kevin Williamson? List the titles and production years of these movies.",
+      "reference_sql": "SELECT\r\n    w.title, w.production_year\r\nFROM\r\n    writer w,\r\n    person p\r\nWHERE\r\n    w.id = p.id\r\n    AND lower(first_name)= 'kevin'\r\n    AND lower(last_name)= 'williamson';",
+      "submission_id": 589,
+      "student_id": "anu-student-68",
+      "submission_timestamp": "2018-08-16 15:22:08.405137+10",
+      "authentic_student_sql": "SELECT DISTINCT m.title, m.production_year, p.first_name, p.last_name \r\nFROM movie m, writer w, person p\r\nWHERE p.first_name = 'Kevin' \r\nAND p.last_name = 'Williamson'\r\nAND P.id = w.id\r\nORDER BY m.production_year;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "INNER_JOIN",
+        "PREDICATE_FILTERING",
+        "STRING_NORMALIZATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-68",
+        "has_valid_history": true,
+        "prior_attempts": 4,
+        "prior_submission_ids": [
+          389,
+          390,
+          531,
+          536
+        ],
+        "historical_observation_count": 4,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          12
+        ],
+        "prior_overall_accuracy": 0.0,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          }
+        },
+        "excluded_future_records_count": 28,
+        "target_submission_time": "2018-08-16 15:22:08.405137+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-008",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 5,
+      "exercise_title": "SQL Exercise 5",
+      "difficulty": 2,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Which movies were written by Kevin Williamson? List the titles and production years of these movies.",
+      "reference_sql": "SELECT\r\n    w.title, w.production_year\r\nFROM\r\n    writer w,\r\n    person p\r\nWHERE\r\n    w.id = p.id\r\n    AND lower(first_name)= 'kevin'\r\n    AND lower(last_name)= 'williamson';",
+      "submission_id": 596,
+      "student_id": "anu-student-95",
+      "submission_timestamp": "2018-08-16 15:48:34.94947+10",
+      "authentic_student_sql": "SELECT d.title FROM director d\r\nWHERE d.id = (SELECT CAST(p.id AS varchar(10)) FROM person p\r\nWHERE p.first_name = \"Kevin\" AND p.last_name = \"Williamson\") ;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "INNER_JOIN",
+        "PREDICATE_FILTERING",
+        "STRING_NORMALIZATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-95",
+        "has_valid_history": true,
+        "prior_attempts": 6,
+        "prior_submission_ids": [
+          555,
+          556,
+          557,
+          562,
+          567,
+          571
+        ],
+        "historical_observation_count": 6,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          12
+        ],
+        "prior_overall_accuracy": 0.667,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "HAVING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 41,
+        "target_submission_time": "2018-08-16 15:48:34.94947+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-009",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 8,
+      "exercise_title": "SQL Exercise 8",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: List the titles and production years of all movies that have won a \"BAFTA Film Award\" under the category \u2018Best Film\u2019, together with the \ufb01rst names and last names of their directors.",
+      "reference_sql": "SELECT\r\n    ma.title,\r\n    ma.production_year,\r\n    p.first_name,\r\n    p.last_name\r\nFROM (\r\n        SELECT\r\n            title,\r\n            production_year\r\n        FROM\r\n            movie_award\r\n        WHERE\r\n            lower(award_name)= 'bafta film award'\r\n            AND lower(category)= 'best film'\r\n            AND lower(RESULT)= 'won' ) AS ma,\r\n    director AS d,\r\n    person AS p\r\nWHERE\r\n    ma.title = d.title\r\n    AND ma.production_year = d.production_year\r\n    AND d.id = p.id;",
+      "submission_id": 100,
+      "student_id": "anu-student-28",
+      "submission_timestamp": "2018-08-11 17:57:10.410871+10",
+      "authentic_student_sql": "select m.title,m.production_year,first_name,last_name\r\nfrom movie m natural join director d natural join person p natural join movie_award a\r\nwhere award_name = 'BAFTA Film Award' and category = 'best film';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "SUBQUERY_IN_FROM",
+        "MULTI_TABLE_JOIN",
+        "EQUALITY_JOIN"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-28",
+        "has_valid_history": true,
+        "prior_attempts": 8,
+        "prior_submission_ids": [
+          90,
+          91,
+          93,
+          95,
+          96,
+          97,
+          98,
+          99
+        ],
+        "historical_observation_count": 8,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          6,
+          7
+        ],
+        "prior_overall_accuracy": 0.5,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          }
+        },
+        "excluded_future_records_count": 13,
+        "target_submission_time": "2018-08-11 17:57:10.410871+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-010",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 8,
+      "exercise_title": "SQL Exercise 8",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: List the titles and production years of all movies that have won a \"BAFTA Film Award\" under the category \u2018Best Film\u2019, together with the \ufb01rst names and last names of their directors.",
+      "reference_sql": "SELECT\r\n    ma.title,\r\n    ma.production_year,\r\n    p.first_name,\r\n    p.last_name\r\nFROM (\r\n        SELECT\r\n            title,\r\n            production_year\r\n        FROM\r\n            movie_award\r\n        WHERE\r\n            lower(award_name)= 'bafta film award'\r\n            AND lower(category)= 'best film'\r\n            AND lower(RESULT)= 'won' ) AS ma,\r\n    director AS d,\r\n    person AS p\r\nWHERE\r\n    ma.title = d.title\r\n    AND ma.production_year = d.production_year\r\n    AND d.id = p.id;",
+      "submission_id": 136,
+      "student_id": "anu-student-25",
+      "submission_timestamp": "2018-08-11 23:15:02.757415+10",
+      "authentic_student_sql": "SELECT m.title, m.production_year,p.first_name,p.last_name FROM person p INNER JOIN director d\r\nUSING(id)\r\nINNER JOIN movie_award\r\nUSING(title)\r\nINNER JOIN movie m\r\nUSING(title)\r\nWHERE award_name = 'BAFTA Film Award'\r\nAND category = 'best film';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "SUBQUERY_IN_FROM",
+        "MULTI_TABLE_JOIN",
+        "EQUALITY_JOIN"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-25",
+        "has_valid_history": true,
+        "prior_attempts": 18,
+        "prior_submission_ids": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          92,
+          94,
+          108,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          131,
+          133,
+          135
+        ],
+        "historical_observation_count": 18,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          12
+        ],
+        "prior_overall_accuracy": 0.389,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.2,
+            "attempt_count": 8,
+            "success_count": 1,
+            "empirical_success_rate": 0.125
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 173,
+        "target_submission_time": "2018-08-11 23:15:02.757415+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-011",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 8,
+      "exercise_title": "SQL Exercise 8",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: List the titles and production years of all movies that have won a \"BAFTA Film Award\" under the category \u2018Best Film\u2019, together with the \ufb01rst names and last names of their directors.",
+      "reference_sql": "SELECT\r\n    ma.title,\r\n    ma.production_year,\r\n    p.first_name,\r\n    p.last_name\r\nFROM (\r\n        SELECT\r\n            title,\r\n            production_year\r\n        FROM\r\n            movie_award\r\n        WHERE\r\n            lower(award_name)= 'bafta film award'\r\n            AND lower(category)= 'best film'\r\n            AND lower(RESULT)= 'won' ) AS ma,\r\n    director AS d,\r\n    person AS p\r\nWHERE\r\n    ma.title = d.title\r\n    AND ma.production_year = d.production_year\r\n    AND d.id = p.id;",
+      "submission_id": 211,
+      "student_id": "anu-student-79",
+      "submission_timestamp": "2018-08-13 13:37:43.392775+10",
+      "authentic_student_sql": "select b.title, b.production_year, b.first_name, b.last_name\r\nfrom(person natural join director natural join Movie_Award)as b\r\nwhere b.category= 'Best Film' and b.result='BAFTA Film Award';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "SUBQUERY_IN_FROM",
+        "MULTI_TABLE_JOIN",
+        "EQUALITY_JOIN"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-79",
+        "has_valid_history": true,
+        "prior_attempts": 13,
+        "prior_submission_ids": [
+          193,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          205,
+          206,
+          207,
+          208,
+          209,
+          210
+        ],
+        "historical_observation_count": 13,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          12
+        ],
+        "prior_overall_accuracy": 0.538,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "HAVING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          }
+        },
+        "excluded_future_records_count": 71,
+        "target_submission_time": "2018-08-13 13:37:43.392775+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-012",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 8,
+      "exercise_title": "SQL Exercise 8",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: List the titles and production years of all movies that have won a \"BAFTA Film Award\" under the category \u2018Best Film\u2019, together with the \ufb01rst names and last names of their directors.",
+      "reference_sql": "SELECT\r\n    ma.title,\r\n    ma.production_year,\r\n    p.first_name,\r\n    p.last_name\r\nFROM (\r\n        SELECT\r\n            title,\r\n            production_year\r\n        FROM\r\n            movie_award\r\n        WHERE\r\n            lower(award_name)= 'bafta film award'\r\n            AND lower(category)= 'best film'\r\n            AND lower(RESULT)= 'won' ) AS ma,\r\n    director AS d,\r\n    person AS p\r\nWHERE\r\n    ma.title = d.title\r\n    AND ma.production_year = d.production_year\r\n    AND d.id = p.id;",
+      "submission_id": 339,
+      "student_id": "anu-student-110",
+      "submission_timestamp": "2018-08-14 19:59:31.689229+10",
+      "authentic_student_sql": "select distinct ma.title, ma.production_year, p.first_name, p.last_name\r\nfrom movie_award as ma inner join director as d on ma.title=d.title inner join person as p on d.id=p.id;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "missing_predicate_filter",
+      "structural_error_pattern": "missing_predicate_filter",
+      "pedagogical_concepts": [
+        "SUBQUERY_IN_FROM",
+        "MULTI_TABLE_JOIN",
+        "EQUALITY_JOIN"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-110",
+        "has_valid_history": true,
+        "prior_attempts": 12,
+        "prior_submission_ids": [
+          287,
+          289,
+          291,
+          292,
+          324,
+          326,
+          329,
+          331,
+          332,
+          334,
+          335,
+          338
+        ],
+        "historical_observation_count": 12,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          12
+        ],
+        "prior_overall_accuracy": 0.75,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.833,
+            "attempt_count": 4,
+            "success_count": 4,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.833,
+            "attempt_count": 4,
+            "success_count": 4,
+            "empirical_success_rate": 1.0
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 50,
+        "target_submission_time": "2018-08-14 19:59:31.689229+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-013",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 9,
+      "exercise_title": "SQL Exercise 9",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many writer awards have been given to Woody Allen between 1991 and 1995 (inclusive)? List the number of the awards.",
+      "reference_sql": "SELECT\r\n    COUNT(*) AS number_of_award\r\nFROM\r\n    writer_award wa,\r\n    writer w,\r\n    person p\r\nWHERE\r\n    wa.title = w.title\r\n    AND wa.production_year = w.production_year\r\n    AND wa.id = w.id\r\n    AND w.id = p.id\r\n    AND lower(RESULT)= 'won'\r\n    AND lower(first_name)= 'woody'\r\n    AND lower(last_name)= 'allen'\r\n    AND year_of_award >= 1991\r\n    AND year_of_award <= 1995;",
+      "submission_id": 65,
+      "student_id": "anu-student-12",
+      "submission_timestamp": "2018-08-10 15:13:06.079342+10",
+      "authentic_student_sql": "SELECT COUNT(*) FROM writer_award NATURAL JOIN person \r\nWHERE \r\n\tLOWER(first_name)='woody' \r\n\tAND LOWER(last_name)='allen';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "MULTI_TABLE_JOIN",
+        "RANGE_PREDICATE",
+        "COUNT_AGGREGATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-12",
+        "has_valid_history": true,
+        "prior_attempts": 12,
+        "prior_submission_ids": [
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64
+        ],
+        "historical_observation_count": 12,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.917,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.875,
+            "attempt_count": 6,
+            "success_count": 6,
+            "empirical_success_rate": 1.0
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.833,
+            "attempt_count": 4,
+            "success_count": 4,
+            "empirical_success_rate": 1.0
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 12,
+        "target_submission_time": "2018-08-10 15:13:06.079342+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-014",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 9,
+      "exercise_title": "SQL Exercise 9",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many writer awards have been given to Woody Allen between 1991 and 1995 (inclusive)? List the number of the awards.",
+      "reference_sql": "SELECT\r\n    COUNT(*) AS number_of_award\r\nFROM\r\n    writer_award wa,\r\n    writer w,\r\n    person p\r\nWHERE\r\n    wa.title = w.title\r\n    AND wa.production_year = w.production_year\r\n    AND wa.id = w.id\r\n    AND w.id = p.id\r\n    AND lower(RESULT)= 'won'\r\n    AND lower(first_name)= 'woody'\r\n    AND lower(last_name)= 'allen'\r\n    AND year_of_award >= 1991\r\n    AND year_of_award <= 1995;",
+      "submission_id": 418,
+      "student_id": "anu-student-94",
+      "submission_timestamp": "2018-08-15 11:38:58.69785+10",
+      "authentic_student_sql": "select count(*)\r\nfrom writer_award wa\r\nwhere exists( select * from person p where wa.id=p.id and p.first_name='Woody' and p.last_name='Allen' and wa.year_of_award>1990 and wa.year_of_award<1996);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "MULTI_TABLE_JOIN",
+        "RANGE_PREDICATE",
+        "COUNT_AGGREGATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-94",
+        "has_valid_history": true,
+        "prior_attempts": 16,
+        "prior_submission_ids": [
+          320,
+          322,
+          323,
+          325,
+          327,
+          330,
+          333,
+          336,
+          409,
+          410,
+          411,
+          412,
+          413,
+          414,
+          415,
+          417
+        ],
+        "historical_observation_count": 16,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          12
+        ],
+        "prior_overall_accuracy": 0.562,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.625,
+            "attempt_count": 6,
+            "success_count": 4,
+            "empirical_success_rate": 0.667
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.455,
+            "attempt_count": 9,
+            "success_count": 4,
+            "empirical_success_rate": 0.444
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "HAVING": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          }
+        },
+        "excluded_future_records_count": 29,
+        "target_submission_time": "2018-08-15 11:38:58.69785+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-015",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 9,
+      "exercise_title": "SQL Exercise 9",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many writer awards have been given to Woody Allen between 1991 and 1995 (inclusive)? List the number of the awards.",
+      "reference_sql": "SELECT\r\n    COUNT(*) AS number_of_award\r\nFROM\r\n    writer_award wa,\r\n    writer w,\r\n    person p\r\nWHERE\r\n    wa.title = w.title\r\n    AND wa.production_year = w.production_year\r\n    AND wa.id = w.id\r\n    AND w.id = p.id\r\n    AND lower(RESULT)= 'won'\r\n    AND lower(first_name)= 'woody'\r\n    AND lower(last_name)= 'allen'\r\n    AND year_of_award >= 1991\r\n    AND year_of_award <= 1995;",
+      "submission_id": 610,
+      "student_id": "anu-student-151",
+      "submission_timestamp": "2018-08-16 16:28:25.318176+10",
+      "authentic_student_sql": "select count(*) from writer_award where id = (select id from person where first_name = 'Woody' and last_name = 'Allen') and year_of_award>=1991 and year_of_award<=1995;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "MULTI_TABLE_JOIN",
+        "RANGE_PREDICATE",
+        "COUNT_AGGREGATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-151",
+        "has_valid_history": true,
+        "prior_attempts": 14,
+        "prior_submission_ids": [
+          546,
+          547,
+          549,
+          550,
+          552,
+          554,
+          600,
+          601,
+          604,
+          605,
+          606,
+          607,
+          608,
+          609
+        ],
+        "historical_observation_count": 14,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          12
+        ],
+        "prior_overall_accuracy": 0.571,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.429,
+            "attempt_count": 5,
+            "success_count": 2,
+            "empirical_success_rate": 0.4
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 4,
+            "success_count": 1,
+            "empirical_success_rate": 0.25
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.556,
+            "attempt_count": 7,
+            "success_count": 4,
+            "empirical_success_rate": 0.571
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "HAVING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 7,
+        "target_submission_time": "2018-08-16 16:28:25.318176+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-016",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 9,
+      "exercise_title": "SQL Exercise 9",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many writer awards have been given to Woody Allen between 1991 and 1995 (inclusive)? List the number of the awards.",
+      "reference_sql": "SELECT\r\n    COUNT(*) AS number_of_award\r\nFROM\r\n    writer_award wa,\r\n    writer w,\r\n    person p\r\nWHERE\r\n    wa.title = w.title\r\n    AND wa.production_year = w.production_year\r\n    AND wa.id = w.id\r\n    AND w.id = p.id\r\n    AND lower(RESULT)= 'won'\r\n    AND lower(first_name)= 'woody'\r\n    AND lower(last_name)= 'allen'\r\n    AND year_of_award >= 1991\r\n    AND year_of_award <= 1995;",
+      "submission_id": 693,
+      "student_id": "anu-student-167",
+      "submission_timestamp": "2018-08-17 22:24:13.369591+10",
+      "authentic_student_sql": "select count(*) from writer_award\r\ninner join (select id from person\r\nwhere first_name = 'Woody' and last_name = 'Allen') as l\r\non l.id = writer_award.id\r\nwhere year_of_award between '1991' and '1995';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "MULTI_TABLE_JOIN",
+        "RANGE_PREDICATE",
+        "COUNT_AGGREGATION"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-167",
+        "has_valid_history": true,
+        "prior_attempts": 11,
+        "prior_submission_ids": [
+          670,
+          671,
+          672,
+          673,
+          674,
+          675,
+          676,
+          677,
+          686,
+          688,
+          690
+        ],
+        "historical_observation_count": 11,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          5,
+          6,
+          7,
+          12
+        ],
+        "prior_overall_accuracy": 0.545,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.286,
+            "attempt_count": 5,
+            "success_count": 1,
+            "empirical_success_rate": 0.2
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 97,
+        "target_submission_time": "2018-08-17 22:24:13.369591+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-017",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 10,
+      "exercise_title": "SQL Exercise 10",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who appeared in exactly one scene in the movie \u2018Psycho\u2019 produced in 1960? List ids of these actors/actresses.",
+      "reference_sql": "SELECT\r\n    r.id\r\nFROM\r\n    scene s,\r\n    appearance a,\r\n    ROLE r\r\nWHERE\r\n    s.title = a.title\r\n    AND s.production_year = a.production_year\r\n    AND s.scene_no = a.scene_no\r\n    AND s.title = r.title\r\n    AND s.production_year = r.production_year\r\n    AND a.description = r.description\r\n    AND lower(a.title) = 'psycho'\r\n    AND a.production_year = 1960\r\nGROUP BY\r\n    r.id\r\nHAVING\r\n    count(*) = 1;",
+      "submission_id": 473,
+      "student_id": "anu-student-27",
+      "submission_timestamp": "2018-08-15 17:26:41.26095+10",
+      "authentic_student_sql": "SELECT id, count(*)\r\nFROM appearance NATURAL JOIN (SELECT id, description FROM role)\r\nWHERE lower(title) = 'psycho'\r\nGROUP BY description\r\nHAVING count(*) = 1;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "COMPOUND_KEY_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-27",
+        "has_valid_history": true,
+        "prior_attempts": 16,
+        "prior_submission_ids": [
+          449,
+          450,
+          451,
+          452,
+          456,
+          457,
+          463,
+          464,
+          465,
+          466,
+          467,
+          468,
+          469,
+          470,
+          471,
+          472
+        ],
+        "historical_observation_count": 16,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.625,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.714,
+            "attempt_count": 5,
+            "success_count": 4,
+            "empirical_success_rate": 0.8
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.545,
+            "attempt_count": 9,
+            "success_count": 5,
+            "empirical_success_rate": 0.556
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 4,
+            "success_count": 1,
+            "empirical_success_rate": 0.25
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 4,
+            "success_count": 1,
+            "empirical_success_rate": 0.25
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 47,
+        "target_submission_time": "2018-08-15 17:26:41.26095+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-018",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 10,
+      "exercise_title": "SQL Exercise 10",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who appeared in exactly one scene in the movie \u2018Psycho\u2019 produced in 1960? List ids of these actors/actresses.",
+      "reference_sql": "SELECT\r\n    r.id\r\nFROM\r\n    scene s,\r\n    appearance a,\r\n    ROLE r\r\nWHERE\r\n    s.title = a.title\r\n    AND s.production_year = a.production_year\r\n    AND s.scene_no = a.scene_no\r\n    AND s.title = r.title\r\n    AND s.production_year = r.production_year\r\n    AND a.description = r.description\r\n    AND lower(a.title) = 'psycho'\r\n    AND a.production_year = 1960\r\nGROUP BY\r\n    r.id\r\nHAVING\r\n    count(*) = 1;",
+      "submission_id": 543,
+      "student_id": "anu-student-148",
+      "submission_timestamp": "2018-08-16 02:16:43.205071+10",
+      "authentic_student_sql": "SELECT person.id\r\nFROM movie, role, appearance, person\r\nWHERE movie.title = role.title = appearance.title AND movie.production_year = role.production_year = appearance.production_year\r\n\tAND role.id = person.id\r\n\tAND movie.title = 'Psycho'\r\n\tAND movie.production_year = 1960\r\n\tAND appearance.scene_no = 1;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "missing_group_by_aggregation",
+      "structural_error_pattern": "missing_group_by_aggregation",
+      "pedagogical_concepts": [
+        "COMPOUND_KEY_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-148",
+        "has_valid_history": true,
+        "prior_attempts": 18,
+        "prior_submission_ids": [
+          496,
+          503,
+          506,
+          507,
+          508,
+          516,
+          517,
+          529,
+          530,
+          533,
+          534,
+          535,
+          537,
+          538,
+          539,
+          540,
+          541,
+          542
+        ],
+        "historical_observation_count": 18,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.556,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.714,
+            "attempt_count": 5,
+            "success_count": 4,
+            "empirical_success_rate": 0.8
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.462,
+            "attempt_count": 11,
+            "success_count": 5,
+            "empirical_success_rate": 0.455
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "HAVING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 4,
+            "success_count": 1,
+            "empirical_success_rate": 0.25
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 4,
+            "success_count": 1,
+            "empirical_success_rate": 0.25
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 23,
+        "target_submission_time": "2018-08-16 02:16:43.205071+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-019",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 10,
+      "exercise_title": "SQL Exercise 10",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who appeared in exactly one scene in the movie \u2018Psycho\u2019 produced in 1960? List ids of these actors/actresses.",
+      "reference_sql": "SELECT\r\n    r.id\r\nFROM\r\n    scene s,\r\n    appearance a,\r\n    ROLE r\r\nWHERE\r\n    s.title = a.title\r\n    AND s.production_year = a.production_year\r\n    AND s.scene_no = a.scene_no\r\n    AND s.title = r.title\r\n    AND s.production_year = r.production_year\r\n    AND a.description = r.description\r\n    AND lower(a.title) = 'psycho'\r\n    AND a.production_year = 1960\r\nGROUP BY\r\n    r.id\r\nHAVING\r\n    count(*) = 1;",
+      "submission_id": 658,
+      "student_id": "anu-student-156",
+      "submission_timestamp": "2018-08-17 15:23:29.595807+10",
+      "authentic_student_sql": "select id from (\r\n\tselect id,count(id) num from role\r\n\twhere title like \"Psycho\" and production_year = 1960\r\n\tgroup by id\r\n)\r\nwhere num = 1;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "missing_having_filter",
+      "structural_error_pattern": "missing_having_filter",
+      "pedagogical_concepts": [
+        "COMPOUND_KEY_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-156",
+        "has_valid_history": true,
+        "prior_attempts": 17,
+        "prior_submission_ids": [
+          575,
+          576,
+          633,
+          634,
+          635,
+          636,
+          637,
+          638,
+          639,
+          640,
+          642,
+          643,
+          645,
+          646,
+          647,
+          648,
+          649
+        ],
+        "historical_observation_count": 17,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.647,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.375,
+            "attempt_count": 6,
+            "success_count": 2,
+            "empirical_success_rate": 0.333
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.727,
+            "attempt_count": 9,
+            "success_count": 7,
+            "empirical_success_rate": 0.778
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.857,
+            "attempt_count": 5,
+            "success_count": 5,
+            "empirical_success_rate": 1.0
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 43,
+        "target_submission_time": "2018-08-17 15:23:29.595807+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-020",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 10,
+      "exercise_title": "SQL Exercise 10",
+      "difficulty": 4,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: Who appeared in exactly one scene in the movie \u2018Psycho\u2019 produced in 1960? List ids of these actors/actresses.",
+      "reference_sql": "SELECT\r\n    r.id\r\nFROM\r\n    scene s,\r\n    appearance a,\r\n    ROLE r\r\nWHERE\r\n    s.title = a.title\r\n    AND s.production_year = a.production_year\r\n    AND s.scene_no = a.scene_no\r\n    AND s.title = r.title\r\n    AND s.production_year = r.production_year\r\n    AND a.description = r.description\r\n    AND lower(a.title) = 'psycho'\r\n    AND a.production_year = 1960\r\nGROUP BY\r\n    r.id\r\nHAVING\r\n    count(*) = 1;",
+      "submission_id": 699,
+      "student_id": "anu-student-93",
+      "submission_timestamp": "2018-08-17 23:46:38.631222+10",
+      "authentic_student_sql": "select id from role r\r\njoin scene s on r.title = s.title\r\nwhere s.title like 'Psycho' and s.production_year = '1960'\r\ngroup by id\r\nhaving count(id)=1\r\n;",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "COMPOUND_KEY_JOIN",
+        "MULTI_TABLE_JOIN",
+        "GROUP_BY",
+        "HAVING"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-93",
+        "has_valid_history": true,
+        "prior_attempts": 11,
+        "prior_submission_ids": [
+          221,
+          222,
+          679,
+          680,
+          682,
+          683,
+          684,
+          685,
+          694,
+          695,
+          698
+        ],
+        "historical_observation_count": 11,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.818,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 6,
+            "success_count": 5,
+            "empirical_success_rate": 0.833
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.75,
+            "attempt_count": 2,
+            "success_count": 2,
+            "empirical_success_rate": 1.0
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 13,
+        "target_submission_time": "2018-08-17 23:46:38.631222+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-021",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 11,
+      "exercise_title": "SQL Exercise 11",
+      "difficulty": 5,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many movies have never won any award, i.e., received none of movie awards, crew awards, director awards, writer awards and actor awards? List the total number of such movies stored in the database.",
+      "reference_sql": "SELECT count(*) \r\nFROM movie m \r\nWHERE not exists (\r\n\tSELECT title, production_year \r\n\tFROM movie_award ma \r\n\tWHERE lower(ma.result) = 'won' and ma.title = m.title and ma.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM crew_award ca \r\n\tWHERE lower(ca.result) = 'won' and ca.title = m.title and ca.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM director_award da \r\n\tWHERE lower(da.result) = 'won' and da.title = m.title and da.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM actor_award aa \r\n\tWHERE lower(aa.result) = 'won' and aa.title = m.title and aa.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM writer_award wa \r\n\tWHERE lower(wa.result) = 'won' and wa.title = m.title and wa.production_year = m.production_year\r\n);",
+      "submission_id": 68,
+      "student_id": "anu-student-12",
+      "submission_timestamp": "2018-08-10 15:30:59.995148+10",
+      "authentic_student_sql": "SELECT title, production_year FROM movie\r\nEXCEPT\r\nSELECT title, production_year FROM movie_award WHERE LOWER(result)='won'\r\nEXCEPT\r\nSELECT title, production_year FROM crew_award WHERE LOWER(result)='won'\r\nEXCEPT\r\nSELECT title, production_year FROM director_award WHERE LOWER(result)='won'\r\nEXCEPT\r\nSELECT title, production_year FROM writer_award WHERE LOWER(result)='won'\r\nEXCEPT\r\nSELECT title, production_year FROM actor_award WHERE LOWER(result)='won';",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "missing_anti_join_negation",
+      "structural_error_pattern": "missing_anti_join_negation",
+      "pedagogical_concepts": [
+        "ANTI_JOIN",
+        "NOT_EXISTS",
+        "UNION",
+        "CORRELATED_SUBQUERY"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-12",
+        "has_valid_history": true,
+        "prior_attempts": 15,
+        "prior_submission_ids": [
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67
+        ],
+        "historical_observation_count": 15,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          12
+        ],
+        "prior_overall_accuracy": 0.8,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.8,
+            "attempt_count": 3,
+            "success_count": 3,
+            "empirical_success_rate": 1.0
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.727,
+            "attempt_count": 9,
+            "success_count": 7,
+            "empirical_success_rate": 0.778
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 4,
+            "success_count": 3,
+            "empirical_success_rate": 0.75
+          },
+          "HAVING": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.714,
+            "attempt_count": 5,
+            "success_count": 4,
+            "empirical_success_rate": 0.8
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "COMPOUND_KEY_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 9,
+        "target_submission_time": "2018-08-10 15:30:59.995148+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-022",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 11,
+      "exercise_title": "SQL Exercise 11",
+      "difficulty": 5,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many movies have never won any award, i.e., received none of movie awards, crew awards, director awards, writer awards and actor awards? List the total number of such movies stored in the database.",
+      "reference_sql": "SELECT count(*) \r\nFROM movie m \r\nWHERE not exists (\r\n\tSELECT title, production_year \r\n\tFROM movie_award ma \r\n\tWHERE lower(ma.result) = 'won' and ma.title = m.title and ma.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM crew_award ca \r\n\tWHERE lower(ca.result) = 'won' and ca.title = m.title and ca.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM director_award da \r\n\tWHERE lower(da.result) = 'won' and da.title = m.title and da.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM actor_award aa \r\n\tWHERE lower(aa.result) = 'won' and aa.title = m.title and aa.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM writer_award wa \r\n\tWHERE lower(wa.result) = 'won' and wa.title = m.title and wa.production_year = m.production_year\r\n);",
+      "submission_id": 152,
+      "student_id": "anu-student-25",
+      "submission_timestamp": "2018-08-12 17:01:24.924839+10",
+      "authentic_student_sql": "SELECT DISTINCT COUNT(title) FROM movie\r\n\tWHERE title NOT IN (SELECT title FROM movie_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM writer_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM crew_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM director_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM actor_award);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "ANTI_JOIN",
+        "NOT_EXISTS",
+        "UNION",
+        "CORRELATED_SUBQUERY"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-25",
+        "has_valid_history": true,
+        "prior_attempts": 26,
+        "prior_submission_ids": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          92,
+          94,
+          108,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          131,
+          133,
+          135,
+          136,
+          137,
+          138,
+          139,
+          141,
+          143,
+          150,
+          151
+        ],
+        "historical_observation_count": 26,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12
+        ],
+        "prior_overall_accuracy": 0.346,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.2,
+            "attempt_count": 8,
+            "success_count": 1,
+            "empirical_success_rate": 0.125
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 13,
+            "success_count": 5,
+            "empirical_success_rate": 0.385
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          }
+        },
+        "excluded_future_records_count": 165,
+        "target_submission_time": "2018-08-12 17:01:24.924839+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-023",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 11,
+      "exercise_title": "SQL Exercise 11",
+      "difficulty": 5,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many movies have never won any award, i.e., received none of movie awards, crew awards, director awards, writer awards and actor awards? List the total number of such movies stored in the database.",
+      "reference_sql": "SELECT count(*) \r\nFROM movie m \r\nWHERE not exists (\r\n\tSELECT title, production_year \r\n\tFROM movie_award ma \r\n\tWHERE lower(ma.result) = 'won' and ma.title = m.title and ma.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM crew_award ca \r\n\tWHERE lower(ca.result) = 'won' and ca.title = m.title and ca.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM director_award da \r\n\tWHERE lower(da.result) = 'won' and da.title = m.title and da.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM actor_award aa \r\n\tWHERE lower(aa.result) = 'won' and aa.title = m.title and aa.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM writer_award wa \r\n\tWHERE lower(wa.result) = 'won' and wa.title = m.title and wa.production_year = m.production_year\r\n);",
+      "submission_id": 153,
+      "student_id": "anu-student-25",
+      "submission_timestamp": "2018-08-12 17:01:35.479303+10",
+      "authentic_student_sql": "SELECT DISTINCT COUNT(title) FROM movie\r\n\tWHERE title NOT IN (SELECT title FROM movie_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM writer_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM crew_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM director_award\r\n\t\t\t\t\tUNION\r\n\t\t\t\t\tSELECT title FROM actor_award);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "ANTI_JOIN",
+        "NOT_EXISTS",
+        "UNION",
+        "CORRELATED_SUBQUERY"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-25",
+        "has_valid_history": true,
+        "prior_attempts": 27,
+        "prior_submission_ids": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          92,
+          94,
+          108,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          131,
+          133,
+          135,
+          136,
+          137,
+          138,
+          139,
+          141,
+          143,
+          150,
+          151,
+          152
+        ],
+        "historical_observation_count": 27,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11,
+          12
+        ],
+        "prior_overall_accuracy": 0.333,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.2,
+            "attempt_count": 8,
+            "success_count": 1,
+            "empirical_success_rate": 0.125
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 13,
+            "success_count": 5,
+            "empirical_success_rate": 0.385
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "UNION": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "CORRELATED_SUBQUERY": {
+            "mastery_estimate": 0.333,
+            "attempt_count": 1,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          }
+        },
+        "excluded_future_records_count": 164,
+        "target_submission_time": "2018-08-12 17:01:35.479303+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-024",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 11,
+      "exercise_title": "SQL Exercise 11",
+      "difficulty": 5,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>. \r\n\r\nYour task is to answer the following questions using SQL queries. For each question, your answer must be a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many movies have never won any award, i.e., received none of movie awards, crew awards, director awards, writer awards and actor awards? List the total number of such movies stored in the database.",
+      "reference_sql": "SELECT count(*) \r\nFROM movie m \r\nWHERE not exists (\r\n\tSELECT title, production_year \r\n\tFROM movie_award ma \r\n\tWHERE lower(ma.result) = 'won' and ma.title = m.title and ma.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM crew_award ca \r\n\tWHERE lower(ca.result) = 'won' and ca.title = m.title and ca.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM director_award da \r\n\tWHERE lower(da.result) = 'won' and da.title = m.title and da.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM actor_award aa \r\n\tWHERE lower(aa.result) = 'won' and aa.title = m.title and aa.production_year = m.production_year\r\n\tUNION\r\n\tSELECT title, production_year \r\n\tFROM writer_award wa \r\n\tWHERE lower(wa.result) = 'won' and wa.title = m.title and wa.production_year = m.production_year\r\n);",
+      "submission_id": 157,
+      "student_id": "anu-student-25",
+      "submission_timestamp": "2018-08-12 17:29:36.444732+10",
+      "authentic_student_sql": "SELECT count(title) FROM movie\r\n\tWHERE title NOT IN \r\n\r\n\r\n\r\n\r\n(SELECT title FROM movie_award);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "ANTI_JOIN",
+        "NOT_EXISTS",
+        "UNION",
+        "CORRELATED_SUBQUERY"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-25",
+        "has_valid_history": true,
+        "prior_attempts": 28,
+        "prior_submission_ids": [
+          85,
+          86,
+          87,
+          88,
+          89,
+          92,
+          94,
+          108,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          131,
+          133,
+          135,
+          136,
+          137,
+          138,
+          139,
+          141,
+          143,
+          150,
+          151,
+          152,
+          153
+        ],
+        "historical_observation_count": 28,
+        "distinct_exercises_attempted": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11,
+          12
+        ],
+        "prior_overall_accuracy": 0.321,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.231,
+            "attempt_count": 11,
+            "success_count": 2,
+            "empirical_success_rate": 0.182
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.2,
+            "attempt_count": 8,
+            "success_count": 1,
+            "empirical_success_rate": 0.125
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 6,
+            "success_count": 3,
+            "empirical_success_rate": 0.5
+          },
+          "ANTI_JOIN": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "NOT_EXISTS": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 3,
+            "success_count": 1,
+            "empirical_success_rate": 0.333
+          },
+          "NULL_SEMANTICS": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "NATURAL_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "MULTI_TABLE_JOIN": {
+            "mastery_estimate": 0.4,
+            "attempt_count": 13,
+            "success_count": 5,
+            "empirical_success_rate": 0.385
+          },
+          "GROUP_BY": {
+            "mastery_estimate": 0.6,
+            "attempt_count": 3,
+            "success_count": 2,
+            "empirical_success_rate": 0.667
+          },
+          "HAVING": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "INNER_JOIN": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "STRING_NORMALIZATION": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "COUNT_AGGREGATION": {
+            "mastery_estimate": 0.571,
+            "attempt_count": 5,
+            "success_count": 3,
+            "empirical_success_rate": 0.6
+          },
+          "SUBQUERY_IN_FROM": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "EQUALITY_JOIN": {
+            "mastery_estimate": 0.222,
+            "attempt_count": 7,
+            "success_count": 1,
+            "empirical_success_rate": 0.143
+          },
+          "RANGE_PREDICATE": {
+            "mastery_estimate": 0.667,
+            "attempt_count": 1,
+            "success_count": 1,
+            "empirical_success_rate": 1.0
+          },
+          "UNION": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          },
+          "CORRELATED_SUBQUERY": {
+            "mastery_estimate": 0.25,
+            "attempt_count": 2,
+            "success_count": 0,
+            "empirical_success_rate": 0.0
+          }
+        },
+        "excluded_future_records_count": 163,
+        "target_submission_time": "2018-08-12 17:29:36.444732+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    },
+    {
+      "eval_id": "eval-anu-025",
+      "benchmark_source": "ANU Relational Database Course (Wang et al., 2020)",
+      "license": "CC-BY 4.0",
+      "exercise_id": 12,
+      "exercise_title": "SQL Exercise 12",
+      "difficulty": 3,
+      "question_prompt": "Consider the given relational database moviedb with this <a href=\"https://cs.anu.edu.au/dab/bench/static/sql_doc/moviedb_schema.pdf\" target=\"_blank\">database schema</a>\r\n\r\nYour task is to answer the following questions using SQL queries. Use a single SQL query that may contain subqueries.\r\n\r\nQuestion: How many persons have never directed any movies in this database? List the total number of such persons.",
+      "reference_sql": "SELECT count(*) \r\nFROM person p \r\nWHERE NOT EXISTS (SELECT * \r\n\tFROM director d \r\n\tWHERE p.id = d.id);",
+      "submission_id": 83,
+      "student_id": "anu-student-21",
+      "submission_timestamp": "2018-08-11 16:29:34.861376+10",
+      "authentic_student_sql": "SELECT count(*)\r\nFROM Person\r\nWHERE NOT EXISTS (SELECT * FROM Director);",
+      "authentic_anu_label": "partially correct",
+      "ground_truth_category": "partially correct",
+      "rule_based_structural_pattern": "semantic_projection_or_condition_error",
+      "structural_error_pattern": "semantic_projection_or_condition_error",
+      "pedagogical_concepts": [
+        "ANTI_JOIN",
+        "NOT_EXISTS",
+        "NULL_SEMANTICS"
+      ],
+      "authentic_prior_history": {
+        "status": "authentic_prior_history",
+        "student_id": "anu-student-21",
+        "has_valid_history": true,
+        "prior_attempts": 4,
+        "prior_submission_ids": [
+          79,
+          80,
+          81,
+          82
+        ],
+        "historical_observation_count": 4,
+        "distinct_exercises_attempted": [
+          1,
+          2
+        ],
+        "prior_overall_accuracy": 0.5,
+        "concept_mastery": {
+          "SELECT_PROJECTION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "SUBQUERY_SCALAR": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 4,
+            "success_count": 2,
+            "empirical_success_rate": 0.5
+          },
+          "MAX_AGGREGATION": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          },
+          "PREDICATE_FILTERING": {
+            "mastery_estimate": 0.5,
+            "attempt_count": 2,
+            "success_count": 1,
+            "empirical_success_rate": 0.5
+          }
+        },
+        "excluded_future_records_count": 6,
+        "target_submission_time": "2018-08-11 16:29:34.861376+10",
+        "profile_computation_version": "anu-authentic-temporal-v1"
+      }
+    }
+  ]
+}

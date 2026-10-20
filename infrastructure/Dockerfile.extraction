@@ -1,0 +1,9 @@
+# CPU/API-only upstream environment; no research source or credentials in image layers.
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce
+RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 libgomp1 tesseract-ocr ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY infrastructure/extraction-cpu.lock /opt/extraction-cpu.lock
+RUN python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 'torch==2.14.1+cpu' 'torchvision==0.29.1+cpu'
+RUN python -m pip install --no-cache-dir -r /opt/extraction-cpu.lock
+ENV TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS=2
+WORKDIR /research
+CMD ["python", "main.py", "--help"]

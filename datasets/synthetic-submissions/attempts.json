@@ -1,0 +1,191 @@
+[
+  {
+    "student_id": "S001",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S001-01",
+    "timestamp": "2026-10-13T09:05:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S001",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S001-02",
+    "timestamp": "2026-10-13T09:10:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S001",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S001-03",
+    "timestamp": "2026-10-13T09:15:00-05:00",
+    "submitted_sql": "SELECT e.name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id WHERE d.department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S002",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S002-01",
+    "timestamp": "2026-10-13T10:05:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S002",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S002-02",
+    "timestamp": "2026-10-13T10:10:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S002",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S002-03",
+    "timestamp": "2026-10-13T10:15:00-05:00",
+    "submitted_sql": "SELECT name FROM Employees WHERE department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S002",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S002-04",
+    "timestamp": "2026-10-13T10:20:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S003",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S003-01",
+    "timestamp": "2026-10-13T11:05:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e, Departments d;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S003",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S003-02",
+    "timestamp": "2026-10-13T11:10:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S003",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S003-03",
+    "timestamp": "2026-10-13T11:15:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S003",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S003-04",
+    "timestamp": "2026-10-13T11:20:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S003",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S003-05",
+    "timestamp": "2026-10-13T11:25:00-05:00",
+    "submitted_sql": "SELECT e.name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id WHERE d.department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S004",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S004-01",
+    "timestamp": "2026-10-13T12:05:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S004",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S004-02",
+    "timestamp": "2026-10-13T12:10:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e LEFT JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S004",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S004-03",
+    "timestamp": "2026-10-13T12:15:00-05:00",
+    "submitted_sql": "SELECT name FROM Employees WHERE department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S004",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S004-04",
+    "timestamp": "2026-10-13T12:20:00-05:00",
+    "submitted_sql": "SELECT name FROM Employees WHERE department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S005",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S005-01",
+    "timestamp": "2026-10-13T13:05:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e, Departments d;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S005",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_01",
+    "attempt_id": "fixture-S005-02",
+    "timestamp": "2026-10-13T13:10:00-05:00",
+    "submitted_sql": "SELEC name FROM Employees",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S005",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_02",
+    "attempt_id": "fixture-S005-03",
+    "timestamp": "2026-10-13T13:15:00-05:00",
+    "submitted_sql": "SELECT e.name, d.department_name FROM Employees e INNER JOIN Departments d ON e.department_id=d.department_id;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S005",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S005-04",
+    "timestamp": "2026-10-13T13:20:00-05:00",
+    "submitted_sql": "SELECT name FROM Employees WHERE department_id IS NULL;",
+    "source": "synthetic_fixture"
+  },
+  {
+    "student_id": "S005",
+    "assessment_id": "sql-sandbox",
+    "question_id": "sql_join_03",
+    "attempt_id": "fixture-S005-05",
+    "timestamp": "2026-10-13T13:25:00-05:00",
+    "submitted_sql": "SELECT name FROM MissingTable;",
+    "source": "synthetic_fixture"
+  }
+]

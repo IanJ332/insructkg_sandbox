@@ -1,0 +1,26 @@
+name: siip-sandbox
+services:
+  prairielearn:
+    image: prairielearn/prairielearn@sha256:f030faf735fdbb80c0307cc1b599d0757bb76a2f4573fbab9a7303adad4275ac
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ../prairielearn-course:/course:ro
+      - pl-postgres-data:/var/postgres
+      - ../artifacts/jobs:/jobs:rw
+    environment:
+      SIIP_FEEDBACK_PROVIDER: ${SIIP_FEEDBACK_PROVIDER:-deterministic}
+      SIIP_LLM_BASE_URL: ${SIIP_LLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      SIIP_LLM_MODEL: ${SIIP_LLM_MODEL:-local-model}
+      SIIP_LLM_API_KEY: ${SIIP_LLM_API_KEY:-}
+      SIIP_LLM_TIMEOUT_SECONDS: ${SIIP_LLM_TIMEOUT_SECONDS:-8}
+      SIIP_LLM_MAX_TOKENS: ${SIIP_LLM_MAX_TOKENS:-350}
+      SIIP_LLM_RETRIES: ${SIIP_LLM_RETRIES:-0}
+      SIIP_ALLOW_PAID_API: ${SIIP_ALLOW_PAID_API:-}
+      SIIP_FEEDBACK_JOBS_DB: /jobs/feedback_jobs.sqlite3
+      SIIP_QUEUE_URL: ${SIIP_QUEUE_URL:-http://host.docker.internal:8080/api/queue/enqueue}
+      SIIP_FEEDBACK_SERVICE_URL: ${SIIP_FEEDBACK_SERVICE_URL:-http://127.0.0.1:8080}
+      SIIP_ASYNC_FEEDBACK: ${SIIP_ASYNC_FEEDBACK:-0}
+    restart: "no"
+volumes:
+  pl-postgres-data:

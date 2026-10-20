@@ -1,0 +1,15 @@
+# Optional upstream API extraction stack. Use a separate supported Python environment.
+# Deliberately excludes vLLM and visualization/Word tooling.
+docling==2.109.0
+openai
+anthropic
+python-dotenv
+pydantic>=2.7
+requests
+tqdm
+typing_extensions>=4.12
+sentence-transformers
+scikit-learn
+umap-learn
+hdbscan
+json_repair

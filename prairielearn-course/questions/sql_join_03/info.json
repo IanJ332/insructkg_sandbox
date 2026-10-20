@@ -1,0 +1,10 @@
+{
+  "uuid": "cdfe9e54-75da-5b71-847f-f36808453171",
+  "title": "Find employees without a department match",
+  "topic": "SQL",
+  "tags": [
+    "synthetic"
+  ],
+  "type": "v3",
+  "singleVariant": true
+}

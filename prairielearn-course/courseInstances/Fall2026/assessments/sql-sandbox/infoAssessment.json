@@ -1,0 +1,37 @@
+{
+  "uuid": "5a9c8cee-261f-5048-82fe-e8685adaa4e9",
+  "type": "Homework",
+  "title": "SQL Concept-Aware Feedback Sandbox",
+  "set": "Homework",
+  "number": "1",
+  "allowAccess": [
+    {
+      "startDate": "2026-01-01T00:00:00",
+      "endDate": "2027-12-31T23:59:59",
+      "credit": 100
+    }
+  ],
+  "zones": [
+    {
+      "title": "SQL JOINs and NULL Semantics",
+      "questions": [
+        {
+          "id": "sql_join_01",
+          "points": 1
+        },
+        {
+          "id": "sql_join_02",
+          "points": 1
+        },
+        {
+          "id": "sql_join_03",
+          "points": 1
+        },
+        {
+          "id": "sql_join_04",
+          "points": 1
+        }
+      ]
+    }
+  ]
+}

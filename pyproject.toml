@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "siip-sql-sandbox"
+version = "0.2.1"
+description = "Synthetic local PrairieLearn and InstructKG integration research sandbox"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "prairielearn-course/serverFilesCourse"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["prairielearn-course/serverFilesCourse"]
+include = ["siip"]
+
+[tool.setuptools.package-data]
+siip = ["data/questions.json", "data/mapping.json", "data/provenance.json", "data/dataset_*.sql", "data/provisional_relations.jsonl", "py.typed"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["research", "artifacts", ".venv"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
+"tests/*.py" = ["E402"]
+"tests/e2e/*.py" = ["E402"]
+"research_tests/*.py" = ["E402"]
+
+[tool.mypy]
+files = ["prairielearn-course/serverFilesCourse/siip/configuration.py", "prairielearn-course/serverFilesCourse/siip/observability.py", "prairielearn-course/serverFilesCourse/siip/ingestion.py"]
+strict = true
+follow_imports = "skip"
+
+[tool.bandit]
+exclude_dirs = ["research", "artifacts", "tests", "research_tests", ".venv"]
+# B101 test/tool assertions; B404/B603 are the deliberate bounded SQL subprocess.
+# B311 not used. No blanket severity suppression: findings are reviewed by exact IDs.
+skips = ["B101", "B404", "B603"]

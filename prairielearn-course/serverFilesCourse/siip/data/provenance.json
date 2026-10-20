@@ -1,0 +1,8 @@
+{
+  "kind": "existing_model_generated",
+  "repo": "https://github.com/code-royce/instructkg",
+  "commit": "c34a7786528e78766f15d918ab17aca2a9f7dc0b",
+  "file": "out/relations_sql_qwen14b.jsonl",
+  "scope": "Multiple SQL lectures, not solely the available JOIN PDF",
+  "model": "qwen14b (filename attribution; per-record model metadata absent)"
+}

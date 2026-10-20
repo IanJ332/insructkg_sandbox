@@ -1,0 +1,14 @@
+include pyproject.toml
+include README.md
+recursive-include prairielearn-course/serverFilesCourse/siip *.py
+include prairielearn-course/serverFilesCourse/siip/py.typed
+include prairielearn-course/serverFilesCourse/siip/data/questions.json
+include prairielearn-course/serverFilesCourse/siip/data/mapping.json
+include prairielearn-course/serverFilesCourse/siip/data/provenance.json
+include prairielearn-course/serverFilesCourse/siip/data/dataset_*.sql
+include prairielearn-course/serverFilesCourse/siip/data/provisional_relations.jsonl
+exclude prairielearn-course/serverFilesCourse/siip/data/lecture.json
+exclude prairielearn-course/serverFilesCourse/siip/data/existing_relations.jsonl
+exclude prairielearn-course/serverFilesCourse/siip/data/reviews.json
+prune research
+prune artifacts

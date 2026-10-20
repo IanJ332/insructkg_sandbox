@@ -1,0 +1,23 @@
+{
+  "uuid": "1c7c4928-376b-52fb-bf9a-149d93f17e06",
+  "name": "SIIP SQL",
+  "title": "SIIP Synthetic SQL Research Sandbox",
+  "timezone": "America/Chicago",
+  "options": {
+    "questionsReceiveUserData": true
+  },
+  "topics": [
+    {
+      "name": "SQL",
+      "color": "blue1",
+      "description": "JOINs and NULL semantics"
+    }
+  ],
+  "tags": [
+    {
+      "name": "synthetic",
+      "color": "gray1",
+      "description": "Synthetic local research"
+    }
+  ]
+}

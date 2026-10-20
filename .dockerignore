@@ -1,0 +1,5 @@
+**
+!infrastructure/
+!infrastructure/requirements-pipeline.txt
+!infrastructure/Dockerfile.extraction
+!infrastructure/extraction-cpu.lock
