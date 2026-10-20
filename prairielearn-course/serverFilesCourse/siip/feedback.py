@@ -407,7 +407,7 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
     )
     if result.get("score"):
         text = "Your result matches all grading cases. Explain to yourself how the query treats unmatched rows before moving on."
-    elif qid == "sql_join_04":
+    elif qid == "sql_join_04" and result.get("status") == "semantic_error":
         text = "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors."
     elif result.get("observation") == "missing_unmatched_rows":
         text = "Your result omits employees without a matching department. Consider which join preserves rows from the employee table when there is no match."

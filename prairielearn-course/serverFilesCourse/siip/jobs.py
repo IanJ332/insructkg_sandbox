@@ -734,6 +734,10 @@ class FeedbackWorker:
                         cutoff = min(cutoff, current["timestamp"])
                     except PermissionError:
                         # Native provisional events can precede submission import.
+                        if job.attempt_kind == "provisional":
+                            raise ValueError(
+                                "Prior history unavailable until attempt reconciliation"
+                            )
                         pass
                     prof = self.submission_repo.profile(job.student_id, as_of=cutoff, before=True)
                     if prof and isinstance(prof, dict) and prof.get("concepts"):

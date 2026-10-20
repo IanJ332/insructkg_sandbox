@@ -1362,7 +1362,7 @@ def authenticate_feedback_request(headers, params, job_id):
 
     # 2. Try session token (Authorization: Bearer <token>, X-Synthetic-Session, or Cookie)
     session_token = extract_session_token(headers)
-    if session_token:
+    if session_token and synthetic_auth_enabled():
         p, r = verify_signed_session_token_role(session_token)
         if p and (r == "student" or is_student_principal(p) or is_instructor_principal(p)):
             return p, None

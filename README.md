@@ -20,7 +20,7 @@ Invoke-RestMethod http://127.0.0.1:8810/health
 
 Open [local demo login](http://127.0.0.1:8810/login). Choose `instructor_alawini` to create a course/module, upload `demo_materials/SYNTHETIC_SQL_JOINS_LESSON.md`, generate/review the labeled graph, save its version, create an assignment, and publish locally. Sign out and choose `S001` to submit SQL to that assignment, inspect grading/completed feedback, submit an optional EM reflection, and generate an interest-selected project. Return as instructor to review reflection/project and inspect analytics/lineage. These are simulated roles, not faculty review or SSO.
 
-The launch receipt and separate submission/job/EM/project stores live under ignored `artifacts/full-sandbox/runtime`. Change `-OutputRoot` and `-Port` for independent runs. Stop only the recorded, verified SIIP processes with `scripts/stop_full_sandbox.ps1`. Restart with the same output root to preserve state. See [clean-room setup](docs/release/CLEAN_ROOM_SETUP.md).
+The launch receipt and submission/EM/project database and separate job store live under ignored `artifacts/full-sandbox/runtime`. Change `-OutputRoot` and `-Port` for independent runs. Stop only the recorded, verified SIIP processes with `scripts/stop_full_sandbox.ps1`. Restart with the same output root to preserve state. See [clean-room setup](docs/release/CLEAN_ROOM_SETUP.md).
 
 ## Optional installed local model
 

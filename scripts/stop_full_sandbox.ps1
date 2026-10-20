@@ -2,6 +2,7 @@ param([string]$OutputRoot = '')
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $OutputRoot) { $OutputRoot = Join-Path $repoRoot 'artifacts/full-sandbox' }
+$OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $receiptPath = Join-Path $OutputRoot 'runtime/launch.json'
 $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
 if ([IO.Path]::GetFullPath($receipt.repository) -ne [IO.Path]::GetFullPath($repoRoot)) {

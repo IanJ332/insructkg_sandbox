@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $OutputRoot) { $OutputRoot = Join-Path $repoRoot 'artifacts/full-sandbox' }
+$OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $runtimeRoot = Join-Path $OutputRoot 'runtime'
 New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $baseUrl = "http://127.0.0.1:$Port"
@@ -19,8 +20,6 @@ $env:SIIP_ENV = 'development'
 $env:SIIP_ALLOW_SYNTHETIC_AUTH = '1'
 $env:SIIP_ASYNC_FEEDBACK = '1'
 $env:SIIP_DB_PATH = Join-Path $runtimeRoot 'synthetic.sqlite3'
-$env:SIIP_EM_DB_PATH = Join-Path $runtimeRoot 'em.sqlite3'
-$env:SIIP_PROJECT_DB_PATH = Join-Path $runtimeRoot 'projects.sqlite3'
 $env:SIIP_FEEDBACK_JOBS_DB = Join-Path $runtimeRoot 'feedback_jobs.sqlite3'
 $env:SIIP_DATA_DIR = Join-Path $runtimeRoot 'public-data'
 $env:SIIP_DEMO_STATE_DIR = Join-Path $runtimeRoot 'demo-state'
@@ -31,6 +30,7 @@ $env:SIIP_FEEDBACK_SERVICE_URL = $baseUrl
 if (-not $env:SIIP_LLM_BASE_URL) { $env:SIIP_LLM_BASE_URL = 'http://127.0.0.1:11434/v1' }
 if (-not $env:SIIP_LLM_MODEL) { $env:SIIP_LLM_MODEL = 'qwen3:8b' }
 $env:SIIP_LOCAL_KG_MODEL = $env:SIIP_LLM_MODEL
+Remove-Item Env:SIIP_LLM_MODEL_DIGEST -ErrorAction SilentlyContinue
 $env:SIIP_LLM_TIMEOUT_SECONDS = '60'
 $env:SIIP_LLM_MAX_TOKENS = '500'
 $env:SIIP_LLM_TRANSPORT = 'ollama'

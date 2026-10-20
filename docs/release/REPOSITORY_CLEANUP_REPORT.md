@@ -14,6 +14,6 @@ Status: PASS for scoped source-tree reconciliation; historical evidence preserve
 
 Deletion inventory: **no runtime, test, research, report or evidence files deleted**. README content is replaced to remove stale three-question/121-test/current-inference-blocked claims. No large directory restructuring was justified. No branches/worktrees are automatically removed.
 
-Portability: replace fixed output/cache drive assumptions; default launcher to deterministic/no GPU; preserve explicit browser/model configuration; isolate submission/job/EM/project databases; add receipt-verified stop command. Current data/model/video files remain external. Publication scan checks prospective files and all reachable Git history; raw scan output stays ignored.
+Portability: replace fixed output/cache drive assumptions; default launcher to deterministic/no GPU; preserve explicit browser/model configuration; isolate submission/EM/project and job databases; add receipt-verified stop command. Current data/model/video files remain external. Publication scan checks prospective files and all reachable Git history; raw scan output stays ignored.
 
 Retirement proposals after successful consolidation: PR #1/#2/#3 source branches and the authoring/extraction/verification worktrees may be reviewed for retirement only after ancestry and clean-state checks. The original checkout has uncommitted prototype work and is **not eligible** for automatic retirement. Preserve every dirty worktree. The full-sandbox worktree and external professor video remain useful rollback/evidence references.

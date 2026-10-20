@@ -93,6 +93,7 @@ class ReleaseAuthenticationTests(unittest.TestCase):
                     "SIIP_ALLOW_SYNTHETIC_AUTH": "1",
                     "SIIP_AUTH_SECRET": secrets.token_hex(32),
                     "SIIP_SERVICE_KEY": secrets.token_hex(32),
+                    "SIIP_FEEDBACK_JOBS_DB": str(Path(directory) / "jobs.sqlite3"),
                 },
             ),
         ):
@@ -119,6 +120,15 @@ class ReleaseAuthenticationTests(unittest.TestCase):
                 token = json.loads(body)["token"]
                 self.assertEqual(request("GET", "/api/demo/lessons", token="invalid")[0], 401)
                 student = create_signed_session_token("S001")
+                job = FeedbackJobRepository(Path(directory) / "jobs.sqlite3").enqueue(
+                    "auth-boundary",
+                    "S001",
+                    "sql_join_04",
+                    "SELECT 1",
+                    {"status": "semantic_error", "score": 0, "observation": "result_mismatch"},
+                )
+                feedback_path = "/api/feedback?job_id=" + job.job_id
+                self.assertEqual(request("GET", feedback_path, token=student)[0], 200)
                 self.assertEqual(request("GET", "/api/demo/lessons", token=student)[0], 403)
                 self.assertEqual(
                     request("POST", "/api/auth/synthetic-session", {"instructor_id": "arbitrary"})[
@@ -149,6 +159,7 @@ class ReleaseAuthenticationTests(unittest.TestCase):
                             403,
                         )
                         self.assertEqual(request("GET", "/api/demo/lessons", token=token)[0], 401)
+                        self.assertEqual(request("GET", feedback_path, token=student)[0], 401)
             finally:
                 server.shutdown()
                 server.server_close()
@@ -156,6 +167,15 @@ class ReleaseAuthenticationTests(unittest.TestCase):
 
 
 class ReleaseFeedbackTests(unittest.TestCase):
+    def test_compilation_failure_retains_parser_guidance(self):
+        feedback = generate_feedback(
+            "sql_join_04",
+            "invalid",
+            {"status": "compilation_error", "score": 0, "observation": "compilation_error"},
+            mode="baseline",
+        )
+        self.assertIn("parser", feedback["feedback_text"])
+
     def test_left_join_count_identifier_is_correct(self):
         result = grade("sql_join_04", QUESTIONS["sql_join_04"]["reference_sql"])
         self.assertEqual(result["score"], 1)
@@ -219,6 +239,31 @@ class ReleaseFeedbackTests(unittest.TestCase):
 
 
 class ReleaseConsistencyTests(unittest.TestCase):
+    def test_unreconciled_provisional_job_does_not_guess_prior_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            submissions = SubmissionRepository(Path(directory) / "sub.sqlite3")
+            submissions.process(
+                {
+                    "attempt_id": "pl-imported",
+                    "student_id": "S001",
+                    "question_id": "sql_join_04",
+                    "submitted_sql": "SELECT 1",
+                    "timestamp": "2026-10-19T01:00:00Z",
+                    "source": "synthetic_fixture",
+                }
+            )
+            queue = FeedbackJobRepository(Path(directory) / "jobs.sqlite3")
+            job = queue.enqueue(
+                "prov-unreconciled",
+                "S001",
+                "sql_join_04",
+                "SELECT 1",
+                {"status": "semantic_error", "score": 0, "observation": "result_mismatch"},
+                attempt_kind="provisional",
+            )
+            FeedbackWorker(queue, submission_repo=submissions).process_one()
+            self.assertFalse(queue.get(job.job_id).result["personalized"])
+
     def test_instructor_project_review_history_is_append_only(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = ProjectRepository(Path(directory) / "projects.sqlite3")

@@ -22,7 +22,7 @@ GitHub evidence: PR #1/#2/#3 were individually fetched, open and Draft. All thre
 - Source `engineering/windows-migration`; no separate numbered PR in the supplied set.
 - Range `61c60d2..ec81b84a10b29ef29d9fa0187974f0a8cbc7742a`: 10 commits, 45 files, +11,279/−111 lines.
 - Reviewed implementation: cross-platform process/path support, durable queue, trusted identity resolution, evidence registry, upstream schema tests and scientific-readiness infrastructure.
-- Defects in later demo tooling: fixed D: output/cache assumptions, default local-model dependency, and nonisolated EM/project paths. Release launcher defaults deterministic, uses configurable ignored output and independent stores; explicit installed local model remains optional.
+- Defects in later demo tooling: fixed D: output/cache assumptions, default local-model dependency and relative-output/model-digest handling. Release launcher defaults deterministic, uses configurable ignored output and isolated runtime stores; explicit installed local model remains optional.
 - No original InstructKG execution or institutional deployment is established by Windows compatibility. Docker is unavailable on this audit workstation; native PL execution must pass on GitHub.
 - Dependency: Phase 2; entirely included in Phase 5/Full Sandbox. Disposition: retain ancestry without separate cherry-picks.
 
