@@ -27,15 +27,11 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 sys.path.insert(0, str(ROOT / "scripts"))
-
-# Ensure Playwright browser cache on D: drive is used
-d_cache = Path("D:/AI/Cache/Playwright")
-if d_cache.is_dir() and "PLAYWRIGHT_BROWSERS_PATH" not in os.environ:
-    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(d_cache)
 
 if "SIIP_DATA_DIR" not in os.environ:
     os.environ["SIIP_DATA_DIR"] = str(ROOT / "artifacts/public-data")
@@ -64,6 +60,9 @@ class AsyncWorkerThread(threading.Thread):
 
 class TestRealBrowserE2E(unittest.TestCase):
     def setUp(self):
+        environment = patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.dir_path = Path(self.tmp.name)
         self.jobs_db = self.dir_path / "real_e2e_jobs.sqlite3"
@@ -75,6 +74,8 @@ class TestRealBrowserE2E(unittest.TestCase):
         os.environ["SIIP_EM_DB_PATH"] = str(self.sub_db)
         os.environ["SIIP_PROJECT_DB_PATH"] = str(self.sub_db)
         os.environ["SIIP_ASYNC_FEEDBACK"] = "1"
+        # The bridge routes a configured local provider to the queue. The test
+        # worker explicitly uses process_one(provider=None): no model call occurs.
         os.environ["SIIP_FEEDBACK_PROVIDER"] = "local"
         os.environ["SIIP_ALLOW_SYNTHETIC_AUTH"] = "1"
         os.environ["SIIP_ENV"] = "development"
@@ -159,6 +160,14 @@ class TestRealBrowserE2E(unittest.TestCase):
             # Verify grounded feedback and EM reflection prompt
             expect(page.locator("h2").first).to_contain_text("Personalized AI feedback")
             expect(page.locator("text=Learner: S001")).to_be_visible()
+            deadline = time.monotonic() + 15
+            while not page.get_by_text("COMPLETED", exact=True).count():
+                self.assertTrue(self.worker_thread.is_alive(), "Feedback worker exited")
+                self.assertLess(
+                    time.monotonic(), deadline, f"Queue did not complete: {self.jobs_repo.stats()}"
+                )
+                page.wait_for_timeout(100)
+                page.reload()
             expect(page.locator("text=COMPLETED").first).to_be_visible()
             expect(
                 page.locator("text=Entrepreneurial Mindset (EM) Reflection (Optional)")

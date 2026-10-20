@@ -10,6 +10,7 @@ import hmac
 import json
 import os
 import secrets
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -98,25 +99,66 @@ _EPHEMERAL_SECRET: Optional[bytes] = None
 _EPHEMERAL_SERVICE_KEY: Optional[str] = None
 
 
+def synthetic_auth_enabled() -> bool:
+    """Synthetic principals require two explicit local demonstration settings."""
+    return (
+        os.environ.get("SIIP_ENV") == "development"
+        and os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
+    )
+
+
+def validate_dashboard_auth() -> None:
+    """Reject hosted startup: this sandbox has no institutional auth adapter."""
+    environment = os.environ.get("SIIP_ENV", "")
+    if environment not in {"", "development"}:
+        raise ValueError(
+            "Hosted authentication is unavailable; dashboard startup refused. "
+            "Synthetic authentication is supported only in explicit development mode."
+        )
+    if os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1" and not synthetic_auth_enabled():
+        raise ValueError("Synthetic authentication requires SIIP_ENV=development")
+
+
+def _publish_local_key(path: Path, value: bytes) -> bytes:
+    """Publish a complete key without replacing another process's key."""
+    descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=".siip-key-")
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(value)
+        try:
+            os.link(name, path)
+        except FileExistsError:
+            pass
+        persisted = path.read_bytes()
+        if not persisted:
+            raise ValueError("Persisted authentication key is empty")
+        return persisted
+    finally:
+        os.unlink(name)
+
+
 def get_auth_secret() -> bytes:
     """Return local authentication secret bytes from environment, untracked key file, or secure random."""
     global _EPHEMERAL_SECRET
     custom = os.environ.get("SIIP_AUTH_SECRET")
+    if custom is not None and not custom.strip():
+        raise ValueError("SIIP_AUTH_SECRET must not be blank")
     if custom:
         return custom.strip().encode("utf-8")
     secret_file = DATA_DIR / "auth_secret.key"
     if secret_file.exists():
         try:
-            val = secret_file.read_bytes().strip()
+            # Binary HMAC keys may begin/end in whitespace bytes. Stripping
+            # them invalidated the first login intermittently on fresh stores.
+            val = secret_file.read_bytes()
             if val:
                 return val
+            raise ValueError("Persisted authentication key is empty")
         except OSError:
             pass
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        generated = secrets.token_bytes(32)
-        secret_file.write_bytes(generated)
-        return generated
+        return _publish_local_key(secret_file, secrets.token_hex(32).encode("ascii"))
     except OSError:
         pass
     if _EPHEMERAL_SECRET is None:
@@ -128,6 +170,8 @@ def get_service_key() -> str:
     """Return shared service-to-service authentication key for queue operations."""
     global _EPHEMERAL_SERVICE_KEY
     custom = os.environ.get("SIIP_SERVICE_KEY")
+    if custom is not None and not custom.strip():
+        raise ValueError("SIIP_SERVICE_KEY must not be blank")
     if custom:
         return custom.strip()
     key_file = DATA_DIR / "service.key"
@@ -140,9 +184,7 @@ def get_service_key() -> str:
             pass
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        generated = secrets.token_hex(32)
-        key_file.write_text(generated)
-        return generated
+        return _publish_local_key(key_file, secrets.token_hex(32).encode("ascii")).decode("ascii")
     except OSError:
         pass
     if _EPHEMERAL_SERVICE_KEY is None:

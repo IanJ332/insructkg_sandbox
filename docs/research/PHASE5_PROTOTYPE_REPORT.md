@@ -1,3 +1,5 @@
+> Historical phase evidence. Current release status: [release audit](../release/FINAL_PR_AUDIT.md) and [test evidence](../release/RELEASE_TEST_EVIDENCE.md). Earlier pending/completion claims are preserved as history.
+
 # SIIP Phase 5 — Integrated Research Prototype Report
 
 **Project:** SIIP PrairieLearn × InstructKG  

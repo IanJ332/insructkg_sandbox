@@ -1,3 +1,5 @@
+> Historical phase evidence. Current release status: [release audit](../release/FINAL_PR_AUDIT.md) and [test evidence](../release/RELEASE_TEST_EVIDENCE.md). Earlier pending/completion claims are preserved as history.
+
 # Next implementation plan — after cross-validation follow-up
 
 The accepted prototype is retained. This phase completes synthetic post-submission personalization, deterministic API reconciliation contracts and a compatible non-generative CPU ingestion path. No remaining task proposes rebuilding functioning components. Current user instruction keeps all generative inference blocked.

@@ -1,3 +1,5 @@
+> Historical phase evidence. Current release status: [release audit](../release/FINAL_PR_AUDIT.md) and [test evidence](../release/RELEASE_TEST_EVIDENCE.md). Earlier pending/completion claims are preserved as history.
+
 # Full requirements audit — October 19, 2026
 
 This audit began against inherited prototype snapshot `7b13fa0`, followed by scoped authoring hardening. The integrated verification update below supersedes initial missing-connection findings where actual evidence resolves them. The integration owner must append the final exact commit, final recording results, final regression count and remote CI results.

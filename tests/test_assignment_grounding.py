@@ -117,6 +117,20 @@ class AssignmentGroundingTests(unittest.TestCase):
                 grounding={**self.ids, "source_sha256": "0" * 64},
             )
 
+    def test_same_lesson_new_version_cannot_use_old_graph(self):
+        registry = DemoAuthoringRegistry(self.root / "authoring")
+        lesson = registry.upload_lesson(
+            (ROOT / "demo_materials/SYNTHETIC_SQL_JOINS_LESSON.md").read_bytes()
+            + b"\nRevised LEFT OUTER JOIN material and NULL semantics.",
+            source_document_id=self.ids["source_document_id"],
+            course_id=self.ids["course_id"],
+            original_filename="revised.md",
+        )
+        with self.assertRaisesRegex(ValueError, "Graph source mismatch"):
+            resolve_grounding(
+                {**self.ids, "source_version": lesson.version, "source_sha256": lesson.sha256}
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

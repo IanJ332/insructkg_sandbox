@@ -36,6 +36,8 @@ class DemoHTTPAuthorizationTests(unittest.TestCase):
             patch.dict(
                 os.environ,
                 {
+                    "SIIP_ENV": "development",
+                    "SIIP_ALLOW_SYNTHETIC_AUTH": "1",
                     "SIIP_DB_PATH": str(directory / "submissions.sqlite3"),
                     "SIIP_EM_DB_PATH": str(directory / "em.sqlite3"),
                     "SIIP_PROJECT_DB_PATH": str(directory / "projects.sqlite3"),

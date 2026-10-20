@@ -1,3 +1,5 @@
+> Historical phase evidence. Current release status: [release audit](../release/FINAL_PR_AUDIT.md) and [test evidence](../release/RELEASE_TEST_EVIDENCE.md). Earlier pending/completion claims are preserved as history.
+
 # Current status — Phase 5.0 CI Stabilization and Baseline Restoration
 
 Snapshot date: 2026-10-15, America/Chicago. Branch: `engineering/windows-migration`. All 201 distinct public tests pass (53.3s). Code formatting, linting, Mypy strict typing, and configuration validation are 100% clean.

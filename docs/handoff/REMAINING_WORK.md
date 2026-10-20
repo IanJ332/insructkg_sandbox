@@ -1,3 +1,5 @@
+> Historical phase evidence. Current release status: [release audit](../release/FINAL_PR_AUDIT.md) and [test evidence](../release/RELEASE_TEST_EVIDENCE.md). Earlier pending/completion claims are preserved as history.
+
 # Remaining work after Phase 4.3 Security Closure & Research Handoff
 
 Completed in Phase 4.3:

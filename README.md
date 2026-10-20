@@ -1,51 +1,76 @@
-# SIIP — PrairieLearn × InstructKG SQL sandbox
+# SIIP Integrated Synthetic Research Sandbox
 
-Original integration code for a local SQL learning research prototype. Three **actual PrairieLearn** questions share a bounded SQLite grader, concept diagnosis, Baseline/RAG/KG feedback interface, and synthetic instructor analytics. Immediate feedback is stored by PrairieLearn; an explicit supported CSV export/import connects its attempts to longitudinal profiles.
+SIIP connects instructor lesson upload, source-grounded graph review, local SQL assignment publication, deterministic grading, asynchronous feedback, prior-only learner profiles, entrepreneurial mindset (EM) reflections, personalized projects, and instructor analytics. Four native PrairieLearn SQL question hooks are also included.
 
-The accepted Phase 2 prototype is preserved and extended. **121 distinct tests pass** (119 public + 2 local research), including 38 new cross-validation regressions. Actual PL browser submissions/feedback/retries/CSV import and exact restart checks pass. The local store now has 42 synthetic records across 5 students. **Live generative inference remains BLOCKED**; no paid API or production deployment ran.
+This is a **synthetic research sandbox**. Local `PUBLISHED_LOCAL_DEMO` publication does not publish an assessment inside PrairieLearn. All demo identities and histories are artificial. Local Ollama extraction is labeled `LOCAL_LLM_ASSISTED_EXTRACTION`, separate from original InstructKG. Original upstream extraction, institutional authentication, native dynamic publication, authentic student-data delivery, faculty endorsement, and classroom outcomes are not established. Hosted dashboard startup is refused because trusted institutional authentication is not implemented.
 
-Historical personalization is verified only in the **local post-submission synthetic service**, using contrasting prior histories for identical current SQL. The immediate PL hook remains history-free. Supported API snapshot synchronization is mock/contract verified; authenticated live polling and hosted learner identity/delivery are not claimed. Existing CSV fallback stays intact.
+## Install and run on Windows
 
-Actual non-generative Docling CPU ingestion now completes 13 chunks with native or Tesseract OCR, with original upstream source preserved and generative enrichment disabled. This is not a fresh completed KG or proof that original VLM settings succeeded. [Lifecycle](docs/architecture/PERSONALIZED_FEEDBACK_LIFECYCLE.md) · [Sync](docs/engineering/SUBMISSION_SYNCHRONIZATION.md) · [CPU profiling](docs/engineering/INGESTION_PROFILING.md) · [Windows GPU readiness](docs/engineering/WINDOWS_GPU_READINESS.md) · [Feedback claim distinctions](docs/research/FEEDBACK_CAPABILITIES.md)
+Use Git and Python 3.11 or 3.13 (CI versions). Python 3.14 is additionally checked locally. No GPU, model, Docker, or paid API is needed for the default SIIP demo.
 
-[Current status](docs/handoff/CURRENT_STATUS.md) · [External review packet](docs/handoff/EXTERNAL_REVIEW_PACKET.md) · [Next implementation plan](docs/handoff/NEXT_IMPLEMENTATION_PLAN.md) · [Documentation index](docs/README.md)
-
-## Clean public-code setup
-
-Requires Git, Python 3.11 or 3.13 and Docker Desktop/Compose for PrairieLearn. Public tests need no university services, paid credentials or GPU.
-
-```sh
-python3 scripts/manage.py install
-.venv/bin/python scripts/manage.py test-public
-.venv/bin/python scripts/manage.py quality
-.venv/bin/python scripts/init_public.py prairielearn-course/serverFilesCourse/siip/data
-.venv/bin/python scripts/seed.py
-.venv/bin/python scripts/manage.py start
-.venv/bin/python scripts/smoke.py
+```powershell
+git clone https://github.com/IanJ332/insructkg_sandbox.git
+cd insructkg_sandbox
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+.\scripts\start_full_sandbox.ps1 -Python "$PWD\.venv\Scripts\python.exe" -Deterministic
+Invoke-RestMethod http://127.0.0.1:8810/health
 ```
 
-The fixture initializer creates a **clearly synthetic contract graph and lesson**, not an InstructKG extraction. Use its course-data target only in a fresh public checkout: it must not overwrite local research data. For authorized real local research preparation use [Local setup](docs/engineering/LOCAL_SETUP.md).
+Open [local demo login](http://127.0.0.1:8810/login). Choose `instructor_alawini` to create a course/module, upload `demo_materials/SYNTHETIC_SQL_JOINS_LESSON.md`, generate/review the labeled graph, save its version, create an assignment, and publish locally. Sign out and choose `S001` to submit SQL to that assignment, inspect grading/completed feedback, submit an optional EM reflection, and generate an interest-selected project. Return as instructor to review reflection/project and inspect analytics/lineage. These are simulated roles, not faculty review or SSO.
 
-Open [PrairieLearn](http://localhost:3000/pl), **Load from disk**, open SIIP SQL → Fall 2026 Synthetic Sandbox → SQL Concept-Aware Feedback Sandbox, then Dev User → Student view. [Analytics](http://127.0.0.1:8080/) shows profiles, graph review and feedback comparisons. See [demo steps](docs/DEMO.md).
+The launch receipt and separate submission/job/EM/project stores live under ignored `artifacts/full-sandbox/runtime`. Change `-OutputRoot` and `-Port` for independent runs. Stop only the recorded, verified SIIP processes with `scripts/stop_full_sandbox.ps1`. Restart with the same output root to preserve state. See [clean-room setup](docs/release/CLEAN_ROOM_SETUP.md).
 
-```sh
-.venv/bin/python -m playwright install chromium
-.venv/bin/python scripts/manage.py e2e   # adds actual local synthetic submissions
-.venv/bin/python scripts/manage.py evaluate  # 63 deterministic fallback comparisons, zero model calls
-.venv/bin/python scripts/manage.py stop  # retains both databases
-.venv/bin/python scripts/manage.py start
+## Optional installed local model
+
+With Ollama and a model already installed, stop the deterministic service, then opt in:
+
+```powershell
+$env:SIIP_LLM_MODEL = 'qwen3:8b'
+$env:SIIP_LLM_BASE_URL = 'http://127.0.0.1:11434/v1'
+.\scripts\start_full_sandbox.ps1 -Python "$PWD\.venv\Scripts\python.exe" -LocalModel
 ```
 
-## Implemented boundaries
+The launcher downloads no model. Extraction/feedback failures retain visible fallback labels. Provider/model/digest, prompt version, source/graph lineage, validation state, and measured latency are retained when available; a missing digest stays unknown. Successful inference does not establish pedagogical correctness. Known unsupported COUNT/grouping diagnoses trigger a review-required fallback; accepted model guidance remains unreviewed.
 
-`prairielearn-course/serverFilesCourse/siip/` holds grading, graph, feedback and storage; question hooks are thin. PrairieLearn's digest-pinned official image owns PostgreSQL history. Our analytics use a separate SQLite store. The dashboard binds loopback and has no public authentication. No PL core changes, hosted course synchronization or Neo4j service are required.
+## Validation
 
-`.env.example` documents literal environment configuration. The default deterministic provider makes no inference requests. Compatible providers implement bounded timeouts, response validation and explicit paid-consent gating; credentials alone never authorize spending. Leave inference disabled under the current instruction.
+```powershell
+$env:SIIP_ENV = 'development'
+$env:SIIP_ALLOW_SYNTHETIC_AUTH = '1'
+$env:SIIP_DATA_DIR = "$PWD\artifacts\public-data"
+.\.venv\Scripts\python.exe scripts/init_public.py
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe -m mypy
+.\.venv\Scripts\python.exe -m pip check
+$env:SIIP_RUN_FULL_BROWSER = '1'
+.\.venv\Scripts\python.exe -m unittest discover -s tests/e2e -p test_full_sandbox_browser.py -v
+```
 
-GitHub Actions passed two-Python quality/tests/build, full-history publication scanning, Bandit and dependency audit, plus the actual PL browser/restart workflow. Exact run links are in the current status and verification record. CD is reproducible local startup and a restricted-data-free wheel; there is no automatic institutional deployment.
+The full browser test starts isolated services, drives instructor/student flows, verifies persisted graph consumption, and restarts the dashboard. Browser tests are reported separately from unit/integration totals. Native PrairieLearn UI/Postgres restart tests require Docker; GitHub's Local platform integration workflow runs them. [Release evidence](docs/release/RELEASE_TEST_EVIDENCE.md) records actual counts and failures.
 
-## Data and research limits
+## Maintained layout and entry points
 
-Research checkouts, course PDF/text, original KG outputs, databases, model caches, screenshots and raw logs stay ignored locally. The existing local graph has 469 judgments / 121 nodes; none are instructor approved. Eight developer provisional edges are separate. Public CI uses different original contract fixtures. Profiles are descriptive beta heuristics, not validated mastery measures; no student learning benefit is established.
+| Area | Location / entry point |
+|---|---|
+| HTTP UI, authorization, JSON API | `scripts/dashboard.py` |
+| Async queue and worker | `siip/jobs.py`, `scripts/feedback_worker.py` |
+| Authoring, reviewed graph, learner lifecycle | `siip/demo_authoring.py`, `demo_kg.py`, `demo_student.py` |
+| KG extraction and grounding | `siip/local_kg_extractor.py`, `assignment_grounding.py`, `instructkg_schema.py` |
+| Model feedback and SQL grading | `siip/feedback.py`, `grader.py`, `sql_worker.py` |
+| Profiles, EM, projects, analytics | `siip/store.py`, `em_repository.py`, `project_generator.py`, dashboard |
+| Native PrairieLearn course | `prairielearn-course/questions`, `courseInstances`, `siip/pl_bridge.py` |
+| Evaluation/reproducibility | `scripts/experiment_runner.py`, `benchmark_adapters.py`, `research_tests` |
+| Deployment/CI | `infrastructure`, `.github/workflows`, `scripts/manage.py` |
+| Tests/demo tools | `tests`, `tests/e2e`, `demo_materials`, `record_professor_demo.py` |
 
-Original code publication is authorized. Third-party redistribution and blanket licensing rights are not established; see [NOTICE](NOTICE.md). Old root-level docs under `docs/` preserve Phase 1 history; the organized Phase 2 handoff is authoritative for current status.
+`siip` lives under `prairielearn-course/serverFilesCourse`. Its wheel contains the library; UI/demo tools run from a source checkout.
+
+API index: `GET /health`; development-only `POST /api/auth/synthetic-session`; instructor `/api/demo/{lessons,graphs,assignments,lineage,events}` reads and `/api/demo/lessons/upload`, `/api/demo/kg/{generate,review,save}`, `/api/demo/assignments/{create,publish}` writes; learner `POST /practice`, signed `GET /api/feedback?job_id=...`, profile/recommendation and EM/project routes; service-key protected queue routes. [Architecture/contracts](docs/release/INTEGRATION_CONTRACTS.md) describe trust boundaries.
+
+[Release audit](docs/release/FINAL_PR_AUDIT.md) · [Release report](docs/release/MAIN_RELEASE_REPORT.md) · [Cleanup](docs/release/REPOSITORY_CLEANUP_REPORT.md) · [Next phase](docs/release/NEXT_PHASE_BLOCKERS.md) · [Documentation index](docs/README.md)
+
+Earlier Phase 2–5 reports remain historical evidence. Current release documents take precedence for counts, authentication, extraction and completion status. External professor recordings preserve original failures and model-quality limitations outside Git.

@@ -25,11 +25,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-# Ensure Playwright browser cache on D: drive is used
-d_cache = Path("D:/AI/Cache/Playwright")
-if d_cache.is_dir() and "PLAYWRIGHT_BROWSERS_PATH" not in os.environ:
-    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(d_cache)
-
 if "SIIP_DATA_DIR" not in os.environ:
     os.environ["SIIP_DATA_DIR"] = str(ROOT / "artifacts/public-data")
 

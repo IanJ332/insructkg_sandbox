@@ -97,6 +97,8 @@ class FeedbackJob:
                     "history_provenance": res.get("history_provenance", "none"),
                     "grounding_provenance": res.get("grounding_provenance"),
                     "inference_status": res.get("inference_status"),
+                    "feedback_quality": res.get("feedback_quality", "legacy_unreviewed"),
+                    "quality_validation_scope": res.get("quality_validation_scope"),
                     "model_digest": res.get("model_digest"),
                 }
                 if self.status == "completed" and self.result
@@ -559,14 +561,14 @@ class FeedbackJobRepository:
             try:
                 # Verify provisional record exists and get its evidence
                 prov_row = db.execute(
-                    "SELECT job_id, student_id, question_id, created_at FROM feedback_jobs WHERE attempt_id = ?",
+                    "SELECT job_id, student_id, question_id, created_at, submitted_sql FROM feedback_jobs WHERE attempt_id = ?",
                     (provisional_attempt_id,),
                 ).fetchone()
                 if not prov_row:
                     db.commit()
                     return None
 
-                prov_job_id, prov_student, prov_question, prov_created = prov_row
+                prov_job_id, prov_student, prov_question, prov_created, prov_sql = prov_row
 
                 # Evidence verification: student_id must match if supplied
                 if student_id and prov_student != student_id:
@@ -584,11 +586,15 @@ class FeedbackJobRepository:
 
                 # Check if authoritative record already exists
                 existing_auth = db.execute(
-                    "SELECT job_id, student_id, question_id FROM feedback_jobs WHERE attempt_id = ?",
+                    "SELECT job_id, student_id, question_id, submitted_sql FROM feedback_jobs WHERE attempt_id = ?",
                     (authoritative_attempt_id,),
                 ).fetchone()
                 if existing_auth:
-                    auth_job_id, auth_student, auth_question = existing_auth
+                    auth_job_id, auth_student, auth_question, auth_sql = existing_auth
+                    if auth_student != prov_student or auth_question != prov_question:
+                        raise AttemptConflictError("Reconciliation ownership or question mismatch")
+                    if auth_sql != prov_sql:
+                        raise AttemptConflictError("Reconciliation SQL evidence mismatch")
                     if student_id and auth_student != student_id:
                         raise AttemptConflictError(
                             f"Authoritative student mismatch: existing belongs to '{auth_student}', "
@@ -720,9 +726,16 @@ class FeedbackWorker:
             history_provenance = "none"
             if student_mastery is None and self.submission_repo is not None:
                 try:
-                    prof = self.submission_repo.profile(
-                        job.student_id, as_of=job.created_at, before=True
-                    )
+                    cutoff = job.created_at
+                    try:
+                        current = self.submission_repo.attempt_for_student(
+                            job.attempt_id, job.student_id
+                        )
+                        cutoff = min(cutoff, current["timestamp"])
+                    except PermissionError:
+                        # Native provisional events can precede submission import.
+                        pass
+                    prof = self.submission_repo.profile(job.student_id, as_of=cutoff, before=True)
                     if prof and isinstance(prof, dict) and prof.get("concepts"):
                         student_mastery = prof["concepts"]
                         history_provenance = "prior_submissions"

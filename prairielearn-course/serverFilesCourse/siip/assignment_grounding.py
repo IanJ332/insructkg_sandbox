@@ -1,5 +1,6 @@
 """Resolve persisted local assignment lineage; never accept uploaded prompt instructions."""
 
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -43,6 +44,10 @@ def resolve_grounding(value):
     if assignment is None or assignment.publication_status != "PUBLISHED_LOCAL_DEMO":
         raise ValueError("Grounding assignment is unavailable")
     config = assignment.grading_config
+    for key in ("source_document_id", "source_version", "graph_id", "graph_version"):
+        binding = getattr(assignment, key, None)
+        if binding is not None and binding != ids[key]:
+            raise ValueError("Assignment source or graph binding mismatch")
     if (
         assignment.course_id != ids["course_id"]
         or config.get("graph_id") != ids["graph_id"]
@@ -59,7 +64,11 @@ def resolve_grounding(value):
     graph = DemoKGRepository(root / "knowledge_graph").retrieve(
         ids["graph_id"], ids["graph_version"]
     )
-    if graph["source_document_id"] != ids["source_document_id"]:
+    if (
+        graph["source_document_id"] != ids["source_document_id"]
+        or graph.get("source_version") != ids["source_version"]
+        or graph.get("course_id") != ids["course_id"]
+    ):
         raise ValueError("Graph source mismatch")
     approved = [edge for edge in graph["edges"] if edge["review_state"] == "APPROVED"]
     if not approved:
@@ -67,6 +76,10 @@ def resolve_grounding(value):
     text = registry.read_lesson_bytes(ids["source_document_id"], ids["source_version"]).decode(
         "utf-8"
     )
+    if hashlib.sha256(text.encode("utf-8")).hexdigest() != ids["source_sha256"] or hashlib.sha256(
+        text.strip().encode("utf-8")
+    ).hexdigest() != graph.get("source_content_sha256"):
+        raise ValueError("Grounding source bytes do not match persisted provenance")
     chunks = [
         {
             "id": f"{ids['source_document_id']}:v{ids['source_version']}:chunk:{i}",

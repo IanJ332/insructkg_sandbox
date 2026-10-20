@@ -46,7 +46,10 @@ jobs:
       - name: Full instructor-to-student browser lifecycle with persisted graph grounding
         env:
           SIIP_RUN_FULL_BROWSER: "1"
-        run: .venv/bin/python -m unittest discover -s tests/e2e -p test_full_sandbox_browser.py -v
+        run: |
+          for attempt in 1 2; do
+            .venv/bin/python -m unittest discover -s tests/e2e -p test_full_sandbox_browser.py -v
+          done
       - run: .venv/bin/python scripts/seed.py
       - run: .venv/bin/python scripts/manage.py start
       - run: .venv/bin/python scripts/smoke.py

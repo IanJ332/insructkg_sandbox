@@ -35,6 +35,8 @@ from siip.identity import (
     generate_csrf_token,
     is_instructor_principal,
     is_student_principal,
+    synthetic_auth_enabled,
+    validate_dashboard_auth,
     verify_csrf_token,
     verify_service_request,
     verify_signed_session_token_role,
@@ -63,7 +65,7 @@ class RequestAuth:
         self.is_service = verify_service_request(self.headers)
         self.csrf_token: str | None = None
 
-        if self.raw_token:
+        if self.raw_token and synthetic_auth_enabled():
             p, r = verify_signed_session_token_role(self.raw_token)
             if p and r:
                 if r == "student" and (is_student_principal(p) or p in STUDENTS):
@@ -604,7 +606,7 @@ def overview(repo):
     authoring_summary = (
         "<section><h2>Assignment activity and feedback status</h2>"
         + table(["Assignment", "Publication", "Attempts", "Correct outcomes"], assignment_rows)
-        + f"<p>Durable feedback jobs: {esc(pretty(get_jobs_repo().stats()))}</p></section>"
+        + f"<p>Durable feedback jobs: {pretty(get_jobs_repo().stats())}</p></section>"
     )
     ambiguity_summary = (
         "<section><h2>Candidate curriculum ambiguities</h2><p>Shared error patterns are candidates for instructor review. They do not establish that instructional material is defective.</p>"
@@ -1440,7 +1442,7 @@ def feedback_page(job_id, headers, params, csrf_token=None):
     if status == "completed" and learner_view.get("feedback"):
         fb = learner_view["feedback"]
         if fb.get("grounding_provenance"):
-            body += f'<section data-testid="assignment-grounding"><h3>Uploaded lesson and reviewed graph used for feedback</h3><pre>{esc(pretty(fb["grounding_provenance"]))}</pre><p>Inference: {esc(fb.get("inference_status"))} · model digest: {esc(fb.get("model_digest") or "not applicable")}</p></section>'
+            body += f'<section data-testid="assignment-grounding"><h3>Uploaded lesson and reviewed graph used for feedback</h3>{pretty(fb["grounding_provenance"])}<p>Inference: {esc(fb.get("inference_status"))} · model digest: {esc(fb.get("model_digest") or "not applicable")}</p></section>'
         hist_note = ""
         if fb.get("personalized"):
             hist_note = f"<p><small class='badge' style='background:#e8f5e9;color:#1b5e20;'>Historical personalization: Active ({esc(fb.get('history_provenance', 'prior_submissions'))})</small></p>"
@@ -1449,7 +1451,7 @@ def feedback_page(job_id, headers, params, csrf_token=None):
 
         body += f"""
         <section style="border-left:4px solid #087674;">
-          <h3>Pedagogical guidance</h3>
+          <h3>Pedagogical guidance</h3><p data-testid="feedback-quality">Feedback quality: {esc(fb.get("feedback_quality", "legacy_unreviewed"))}. Model guidance requires review; automated checks do not guarantee teaching correctness.</p>
           {hist_note}
           <p style="font-size:17px;line-height:1.6;">{esc(fb.get("feedback_text", "No guidance generated."))}</p>
           <h4>Possible concept gaps</h4>
@@ -1801,14 +1803,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(
                     shell(
                         "Entity data lineage",
-                        f'<section><h2>Source → reviewed graph → assignment → attempt → grade → feedback → review</h2><p>Only persisted identifiers and explicit associations create links. Profiles and recommendations are computed views. <a href="/timeline">Event timeline</a> · <a href="/api/demo/lineage">Export lineage JSON</a></p>{nodes}</section><section><h2>Traceable entity relationships</h2>{edges}<p>Unresolved references: {esc(pretty(lineage["unresolved_references"]))}</p></section>',
+                        f'<section><h2>Source → reviewed graph → assignment → attempt → grade → feedback → review</h2><p>Only persisted identifiers and explicit associations create links. Profiles and recommendations are computed views. <a href="/timeline">Event timeline</a> · <a href="/api/demo/lineage">Export lineage JSON</a></p>{nodes}</section><section><h2>Traceable entity relationships</h2>{edges}<p>Unresolved references: {pretty(lineage["unresolved_references"])}</p></section>',
                     )
                 )
             elif parsed.path == "/login":
-                is_dev_mode = (
-                    os.environ.get("SIIP_ENV", "development") == "development"
-                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
-                )
+                is_dev_mode = synthetic_auth_enabled()
                 if not is_dev_mode:
                     self.send(
                         "Synthetic login is disabled outside isolated development mode. "
@@ -2596,10 +2595,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 0a: Synthetic demo login form submission
             if self.path == "/login":
-                is_dev_mode = (
-                    os.environ.get("SIIP_ENV", "development") == "development"
-                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
-                )
+                is_dev_mode = synthetic_auth_enabled()
                 if not is_dev_mode:
                     return self.send(
                         "Synthetic login is disabled outside isolated development mode. "
@@ -2802,10 +2798,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Route 1: Synthetic local authentication session endpoint
             if self.path == "/api/auth/synthetic-session":
-                is_dev_mode = (
-                    os.environ.get("SIIP_ENV", "development") == "development"
-                    or os.environ.get("SIIP_ALLOW_SYNTHETIC_AUTH") == "1"
-                )
+                is_dev_mode = synthetic_auth_enabled()
                 if not is_dev_mode:
                     self.send(
                         json.dumps(
@@ -3464,9 +3457,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not proj:
                     return self.send("Project not found", 404)
 
-                proj.instructor_approval_status = status_val
-                proj.instructor_notes = notes
-                project_repo.save_project(proj)
+                proj = project_repo.review_project(proj_id, status_val, reviewer, notes)
                 if status_val == "APPROVED":
                     record_demo_event(
                         actor_type="instructor",
@@ -3587,6 +3578,7 @@ class DashboardServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, repository, port=8080, host=None):
+        validate_dashboard_auth()
         self.repository = repository
         self.ingestion_lock = threading.Lock()
         bind_host = host if host is not None else os.environ.get("SIIP_DASHBOARD_HOST", "127.0.0.1")

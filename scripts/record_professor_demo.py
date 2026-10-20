@@ -155,7 +155,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path(r"D:\AI\SIIP\demo\2026-10-20"),
+        default=ROOT / "artifacts/professor-demo",
     )
     parser.add_argument(
         "--headless",

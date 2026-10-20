@@ -20,6 +20,7 @@ from .project_models import (
     ProjectSpecification,
     StudentInterest,
 )
+from .review_audit import record_review
 
 GENERATOR_VERSION = "siip-project-generator-v1"
 
@@ -523,6 +524,25 @@ class ProjectRepository:
                 return None
             data = json.loads(row["record"])
             return self._dict_to_project(data)
+
+    def review_project(self, project_id, decision, reviewer_id, notes=None):
+        if decision not in {"APPROVED", "REVISED", "REJECTED"}:
+            raise ValueError("Invalid project review decision")
+        with closing(self.connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT record FROM projects WHERE project_id=?", (project_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError("Project not found")
+            data = json.loads(row["record"])
+            data.update(instructor_approval_status=decision, instructor_notes=notes)
+            db.execute(
+                "UPDATE projects SET record=? WHERE project_id=?", (json.dumps(data), project_id)
+            )
+            record_review(db, "project", project_id, decision, reviewer_id, notes)
+            db.commit()
+        return self._dict_to_project(data)
 
     def list_projects_for_student(self, student_id: str) -> List[ProjectSpecification]:
         with closing(self.connect()) as db:

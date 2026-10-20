@@ -132,6 +132,35 @@ class FullSandboxBrowserTests(unittest.TestCase):
                     output / "evidence/outputs/submissions/04_persisted_attempt_and_profile.json"
                 ).is_file()
             )
+            # Restart the dashboard against the same isolated persisted stores.
+            processes[0].terminate()
+            processes[0].wait(timeout=10)
+            processes[0] = subprocess.Popen(
+                [sys.executable, str(ROOT / "scripts/dashboard.py")],
+                cwd=ROOT,
+                env=environment,
+                stdout=handles[0],
+                stderr=subprocess.STDOUT,
+            )
+            deadline = time.monotonic() + 30
+            while True:
+                try:
+                    with urlopen(base + "/health", timeout=2) as response:
+                        self.assertEqual(response.status, 200)
+                    break
+                except OSError:
+                    self.assertIsNone(processes[0].poll(), f"Restart failed: {output}")
+                    self.assertLess(time.monotonic(), deadline, f"Restart unavailable: {output}")
+                    time.sleep(0.1)
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                page = browser.new_page()
+                RECORDER.login(page, base, "instructor_alawini")
+                page.goto(base + "/assignments", wait_until="networkidle")
+                self.assertIn(manifest["records"]["assignment_id"], page.content())
+                browser.close()
             print(f"Full browser evidence: {output}", flush=True)
         finally:
             for process in reversed(processes):

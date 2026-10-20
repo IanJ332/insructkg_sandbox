@@ -13,7 +13,7 @@ from .grader import DATA, QUESTIONS, public_grade
 from .graph import ConceptGraph
 from .observability import event
 
-PROMPT_VERSION = "siip-feedback-v3"
+PROMPT_VERSION = "siip-feedback-v4"
 MODES = {"baseline", "rag", "kg"}
 SAFE_CONCEPT_LABELS = {
     # Keep internal graph identifiers out of learner-facing prose. The leakage
@@ -216,7 +216,7 @@ def build_context(qid, sql, result, mode, mastery=None, grounding=None):
     return context
 
 
-def valid_output(obj, context, qid):
+def valid_output(obj, context, qid, *, check_quality=False):
     if not isinstance(obj, dict) or set(obj) != {
         "feedback_text",
         "candidate_concepts",
@@ -244,6 +244,23 @@ def valid_output(obj, context, qid):
     available = {p["id"] for p in context.get("lecture_evidence", [])}
     if not isinstance(refs, list) or not all(isinstance(r, str) and r in available for r in refs):
         raise ValueError("Fabricated citation")
+    # Conservative guard for a reproduced teaching error. This is not a SQL
+    # equivalence checker and does not certify other model explanations.
+    sql = context.get("student_sql", "")
+    if (
+        check_quality
+        and qid == "sql_join_04"
+        and re.search(r"\bcount\s*\(\s*\w+\.employee_id\s*\)", sql, re.I)
+        and re.search(r"\b(count|counting|aggregate|aggregation)\b", text, re.I)
+    ):
+        raise FeedbackQualityError("unsupported_count_diagnosis")
+    if (
+        check_quality
+        and qid == "sql_join_04"
+        and re.search(r"\bgroup\s+by\s+\w+\.department_id\s*,\s*\w+\.department_name", sql, re.I)
+        and re.search(r"\b(group\s*by|grouping)\b", text, re.I)
+    ):
+        raise FeedbackQualityError("unsupported_grouping_diagnosis")
     return obj
 
 
@@ -275,6 +292,14 @@ class CompatibleProvider:
             + json.dumps(
                 QUESTIONS[context["_question_id"]]["concepts"] if context["mode"] == "kg" else []
             )
+        )
+        prompt += (
+            " The deterministic grade is authoritative. A result mismatch alone does not establish "
+            "which query components are wrong. Do not speculate about extra errors or treat the "
+            "allowed concept list as a list of proven gaps. Preserve correct components. "
+            "Counting a matched right-side non-null employee identifier is valid with a LEFT JOIN "
+            "and returns zero for unmatched departments; do not blame that count for omitted rows. "
+            "If the root cause is uncertain, state uncertainty and ask the learner to inspect row preservation."
         )
         payload = {
             "model": self.model,
@@ -382,6 +407,8 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
     )
     if result.get("score"):
         text = "Your result matches all grading cases. Explain to yourself how the query treats unmatched rows before moving on."
+    elif qid == "sql_join_04":
+        text = "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors."
     elif result.get("observation") == "missing_unmatched_rows":
         text = "Your result omits employees without a matching department. Consider which join preserves rows from the employee table when there is no match."
     elif result.get("observation") == "missing_nonnull_unmatched_reference":
@@ -436,9 +463,12 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
     if provider is not None and context_error is None:
         try:
             generated, usage = provider.generate(context)
-            obj = valid_output(generated, context, qid)
+            obj = valid_output(generated, context, qid, check_quality=True)
             model = getattr(provider, "last_model", provider.model)
             status = "live_success"
+        except FeedbackQualityError as exc:
+            error = str(exc)
+            status = "feedback_quality_fallback"
         except Exception as exc:
             error = (
                 exc.code if isinstance(exc, ProviderError) else type(exc).__name__
@@ -460,6 +490,14 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
         "prompt_version": PROMPT_VERSION,
         "non_revealing_validation": "passed_rule_filter",
         "inference_status": status,
+        "feedback_quality": (
+            "review_required_fallback"
+            if status == "feedback_quality_fallback"
+            else "model_unreviewed"
+            if status == "live_success"
+            else "deterministic_guidance"
+        ),
+        "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
         "error_details": error,
         "latency_ms": round((time.monotonic() - started) * 1000, 3),
         "token_usage": usage,
@@ -490,6 +528,10 @@ class ProviderError(RuntimeError):
     def __init__(self, code):
         self.code = code
         super().__init__(code)
+
+
+class FeedbackQualityError(ValueError):
+    """A model explanation makes a known unsupported pedagogical claim."""
 
 
 class OllamaProvider(CompatibleProvider):

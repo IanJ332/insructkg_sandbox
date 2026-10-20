@@ -351,9 +351,6 @@ elif cmd == "build":
     script("check_wheel.py")
 elif cmd == "e2e":
     env = dict(os.environ)
-    d_cache = Path("D:/AI/Cache/Playwright")
-    if d_cache.is_dir() and "PLAYWRIGHT_BROWSERS_PATH" not in env:
-        env["PLAYWRIGHT_BROWSERS_PATH"] = str(d_cache)
     run(
         [get_python(), str(ROOT / "tests/e2e/prairielearn_flow.py"), "--ack-local-synthetic"],
         env=env,

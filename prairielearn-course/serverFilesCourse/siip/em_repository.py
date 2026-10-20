@@ -22,6 +22,7 @@ from .em_models import (
     EMResponseStatus,
     EMReviewStatus,
 )
+from .review_audit import record_review
 
 DEFAULT_PROMPTS = [
     EMReflectionPrompt(
@@ -389,7 +390,7 @@ class EMRepository:
         now = datetime.now(timezone.utc).isoformat()
         status_val = status.value if isinstance(status, EMReviewStatus) else status
         with closing(self.connect()) as db:
-            db.execute(
+            cursor = db.execute(
                 """
                 UPDATE em_evidence
                 SET review_status = ?, instructor_notes = ?, reviewed_at = ?, reviewer_id = ?
@@ -397,6 +398,8 @@ class EMRepository:
                 """,
                 (status_val, notes, now, reviewer_id, evidence_id),
             )
+            if cursor.rowcount:
+                record_review(db, "em_evidence", evidence_id, status_val, reviewer_id, notes)
             db.commit()
         return self.get_evidence(evidence_id)
 

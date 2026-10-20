@@ -18,7 +18,9 @@ import json
 import os
 import re
 import tempfile
+import threading
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -26,6 +28,19 @@ PIPELINE_VERSION = "siip-demo-kg-synthetic-fixture-v1"
 EXTRACTION_METHOD = "synthetic_fixture_keyword_mapping"
 SOURCE_TYPE = "synthetic_fixture"
 SCIENTIFIC_BOUNDARY = "SYNTHETIC EXAMPLE KNOWLEDGE GRAPH — NOT ACTUAL INSTRUCTKG EXTRACTION"
+_MUTATION_LOCK = threading.RLock()
+
+
+def _serialize_mutation(method):
+    @wraps(method)
+    def locked(*args, **kwargs):
+        # Dashboard threads share mutable drafts; published versions additionally
+        # use exclusive filesystem publication across independent processes.
+        with _MUTATION_LOCK:
+            return method(*args, **kwargs)
+
+    return locked
+
 
 _CONCEPTS = (
     ("INNER_JOIN", "Inner Join"),
@@ -70,7 +85,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _atomic_json_write(path: Path, record: Mapping[str, Any]) -> None:
+def _atomic_json_write(path: Path, record: Mapping[str, Any], *, immutable=False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
@@ -79,7 +94,13 @@ def _atomic_json_write(path: Path, record: Mapping[str, Any]) -> None:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2, sort_keys=True, ensure_ascii=False)
             handle.write("\n")
-        os.replace(temporary_name, path)
+        if immutable:
+            # Same-filesystem hard-link publication is atomic and never replaces
+            # an existing version, even across independent worker processes.
+            os.link(temporary_name, path)
+            os.unlink(temporary_name)
+        else:
+            os.replace(temporary_name, path)
     except BaseException:
         try:
             os.unlink(temporary_name)
@@ -357,6 +378,7 @@ class DemoKGRepository:
             )
         return result
 
+    @_serialize_mutation
     def review_edge(
         self,
         graph_id: str,
@@ -402,6 +424,7 @@ class DemoKGRepository:
         _atomic_json_write(self._graph_directory(graph_id) / "draft.json", graph)
         return copy.deepcopy(graph)
 
+    @_serialize_mutation
     def save_version(self, graph_id: str) -> dict[str, Any]:
         """Save an immutable numbered snapshot of the reviewed draft."""
 
@@ -419,7 +442,16 @@ class DemoKGRepository:
             }
         )
         version_path = self._graph_directory(graph_id) / "versions" / f"v{next_version:04d}.json"
-        _atomic_json_write(version_path, snapshot)
+        while True:
+            try:
+                _atomic_json_write(version_path, snapshot, immutable=True)
+                break
+            except FileExistsError:
+                next_version += 1
+                snapshot["version"] = next_version
+                version_path = (
+                    self._graph_directory(graph_id) / "versions" / f"v{next_version:04d}.json"
+                )
 
         # Continue from the saved snapshot while clearly retaining draft mutability.
         draft = copy.deepcopy(snapshot)

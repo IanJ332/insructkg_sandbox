@@ -17,6 +17,16 @@ dist/
 !.env.example
 *.sqlite3*
 *.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.gguf
+*.safetensors
+*.onnx
+*.pt
+*.pth
 *.dump
 *.pem
 *.key

@@ -1,3 +1,8 @@
+# Current release documentation
+
+Start with [root README](../README.md), [release audit](release/FINAL_PR_AUDIT.md), [test evidence](release/RELEASE_TEST_EVIDENCE.md), [contracts](release/INTEGRATION_CONTRACTS.md) and [next-phase blockers](release/NEXT_PHASE_BLOCKERS.md).
+
+The following index preserves historical phase reports. Historical counts and completion states do not override the release audit.
 # Documentation index
 
 Start with [current status](handoff/CURRENT_STATUS.md), [external review packet](handoff/EXTERNAL_REVIEW_PACKET.md) and [next implementation plan](handoff/NEXT_IMPLEMENTATION_PLAN.md).
