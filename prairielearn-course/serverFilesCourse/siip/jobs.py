@@ -95,6 +95,9 @@ class FeedbackJob:
                     "evidence_references": res.get("evidence_references", []),
                     "personalized": res.get("personalized", False),
                     "history_provenance": res.get("history_provenance", "none"),
+                    "grounding_provenance": res.get("grounding_provenance"),
+                    "inference_status": res.get("inference_status"),
+                    "model_digest": res.get("model_digest"),
                 }
                 if self.status == "completed" and self.result
                 else None
@@ -228,12 +231,17 @@ class FeedbackJobRepository:
         mode: str = "kg",
         max_retries: int = 2,
         attempt_kind: str = "authoritative",
+        grounding: Optional[Dict[str, Any]] = None,
     ) -> FeedbackJob:
         """Idempotently enqueue a feedback job. Returns existing job if attempt_id is known."""
         # Never store hidden rows, reference SQL or raw engine datasets in durable job queue
         minimized_grading = {
             k: grading[k] for k in ["status", "score", "observation"] if k in grading
         }
+        if grounding is not None:
+            from .assignment_grounding import validate_grounding
+
+            minimized_grading["_grounding"] = validate_grounding(grounding)
         now = datetime.now(timezone.utc).isoformat()
         with closing(self.connect()) as db:
             db.execute("BEGIN IMMEDIATE")
@@ -254,6 +262,7 @@ class FeedbackJobRepository:
                         or existing.grading.get("score") != minimized_grading.get("score")
                         or existing.grading.get("observation")
                         != minimized_grading.get("observation")
+                        or existing.grading.get("_grounding") != minimized_grading.get("_grounding")
                     ):
                         raise AttemptConflictError(
                             f"Attempt ID '{attempt_id}' already exists with conflicting payload"
@@ -730,7 +739,11 @@ class FeedbackWorker:
                 mode=job.feedback_mode,
                 mastery=student_mastery,
                 provider=provider,
+                grounding=job.grading.get("_grounding"),
             )
+            if feedback_result.get("grounding_provenance"):
+                provenance = feedback_result["grounding_provenance"]
+                graph_sha = f"{provenance['graph_id']}:v{provenance['graph_version']}"
             feedback_result["personalized"] = bool(student_mastery)
             feedback_result["history_provenance"] = history_provenance
             if "historical_personalization" not in feedback_result:
@@ -742,6 +755,7 @@ class FeedbackWorker:
             if (
                 provider is not None
                 and feedback_result.get("inference_status") == "provider_error_fallback"
+                and not job.grading.get("_grounding")
             ):
                 raise RuntimeError(
                     f"Provider inference failed: {feedback_result.get('error_details', 'unknown')}"

@@ -39,6 +39,33 @@ from siip.store import SubmissionRepository
 
 
 class TestRoleAuthorizationSecurity(unittest.TestCase):
+    def test_student_generation_response_and_approval_gate(self):
+        status, data, _ = self._request(
+            "POST",
+            "/api/projects/generate",
+            body=json.dumps({"student_id": "S001", "interest": "healthcare"}),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.student_token}",
+            },
+        )
+        self.assertEqual(status, 201)
+        payload = json.loads(data)
+        self.assertNotIn("reference_sql", json.dumps(payload))
+        self.assertEqual(payload["milestones"], [])
+        project = self.proj_repo.get_project(payload["project_id"])
+        project.instructor_approval_status = "APPROVED"
+        self.proj_repo.save_project(project)
+        status, data, _ = self._request(
+            "GET",
+            f"/api/projects?id={project.project_id}",
+            headers={"Authorization": f"Bearer {self.student_token}"},
+        )
+        approved = json.loads(data)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(approved["milestones"]), 3)
+        self.assertNotIn("reference_sql", json.dumps(approved))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.tmp.name) / "test_auth.sqlite3"

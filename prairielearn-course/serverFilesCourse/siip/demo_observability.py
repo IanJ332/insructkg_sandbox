@@ -464,7 +464,8 @@ class DemoObservabilityRepository:
                 f"{html.escape(event.source_type)}</span></td>"
                 "</tr>"
             )
-        document = """<!doctype html>
+        document = (
+            """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SIIP Instructor Event Timeline</title>
@@ -478,9 +479,12 @@ code{white-space:nowrap}.status,.source{display:inline-block;padding:.15rem .42r
 <p>Chronological operations reported by the local research demonstration.</p>
 <p class="boundary"><strong>Scientific boundary:</strong> yellow source labels identify synthetic fixtures. This page does not infer or create successful operations.</p>
 <div class="table-wrap"><table><thead><tr><th>UTC timestamp</th><th>Actor</th><th>Phase</th><th>Event</th><th>Status</th><th>Duration</th><th>Entity</th><th>Workflow</th><th>Artifact</th><th>Source</th></tr></thead><tbody>
-""" + "\n".join(rows) + """
+"""
+            + "\n".join(rows)
+            + """
 </tbody></table></div></main></body></html>
 """
+        )
         self.timeline_path.write_text(document, encoding="utf-8")
         return self.timeline_path
 
@@ -505,16 +509,18 @@ code{white-space:nowrap}.status,.source{display:inline-block;padding:.15rem .42r
         """Export supplied cohort/concept records without computing invented values."""
 
         _enum(source_type, "source_type", SOURCE_TYPES)
-        if not _ARTIFACT_NAME_PATTERN.fullmatch(filename) or filename in {
-            self.lineage_path.name
-        }:
+        if not _ARTIFACT_NAME_PATTERN.fullmatch(filename) or filename in {self.lineage_path.name}:
             raise ValueError("filename must be a simple .json artifact name")
         normalized = []
         for record in records:
             if not isinstance(record, Mapping):
                 raise TypeError("each exported record must be a mapping")
             normalized.append(dict(record))
-        payload = {"source_type": source_type, "record_count": len(normalized), "records": normalized}
+        payload = {
+            "source_type": source_type,
+            "record_count": len(normalized),
+            "records": normalized,
+        }
         path = self.artifact_dir / filename
         self._write_json(path, payload)
         return path

@@ -300,6 +300,7 @@ def generate_personalized_project(
     student_id: str,
     interest: Optional[str] = None,
     profile: Optional[Dict[str, Any]] = None,
+    graph_context: Optional[Dict[str, Any]] = None,
 ) -> ProjectSpecification:
     """3-Stage Project Generator.
 
@@ -389,6 +390,25 @@ def generate_personalized_project(
         all_concepts.extend(m.target_concepts)
 
     unique_concepts = sorted(set(all_concepts))
+    if graph_context:
+        prerequisites = {}
+        for edge in graph_context.get("edges", []):
+            if edge.get("review_state") == "APPROVED" and edge.get("relation") == "depends_on":
+                prerequisites.setdefault(edge["source"], set()).add(edge["target"])
+
+        def depth(concept, seen=None):
+            seen = set() if seen is None else seen
+            if concept in seen:
+                return 0
+            return max(
+                (1 + depth(parent, seen | {concept}) for parent in prerequisites.get(concept, [])),
+                default=0,
+            )
+
+        for milestone in milestones:
+            milestone.concept_depth = max(
+                (depth(concept) for concept in milestone.target_concepts), default=0
+            )
 
     project = ProjectSpecification(
         project_id=project_id,
@@ -409,6 +429,20 @@ def generate_personalized_project(
             "profile_adaptation_rationale": profile_adaptation_rationale,
             "adaptation_scaffolding": adaptation_scaffolding,
             "synthetic_classification": "SYNTHETIC_COURSE_MATERIAL",
+            "graph_grounding": {
+                key: graph_context[key]
+                for key in ("graph_id", "version", "source_document_id")
+                if key in graph_context
+            }
+            if graph_context
+            else None,
+            "stages": [
+                "interest_collection",
+                "validated_template_candidate_construction",
+                "profile_scaffolding_and_reviewed_prerequisite_depth"
+                if graph_context
+                else "profile_scaffolding_and_template_ranking",
+            ],
         },
         created_at=now_iso,
     )

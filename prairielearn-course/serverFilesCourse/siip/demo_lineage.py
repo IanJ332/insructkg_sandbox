@@ -272,6 +272,11 @@ def build_entity_lineage(
         node("student", sid, {"student_id": sid})
         key = node("project", project["project_id"], project)
         edge(key, f"student:{sid}", "generated_for_student")
+        grounding = project.get("generation_provenance", {}).get("graph_grounding")
+        if grounding:
+            graph_key = f"graph:{grounding['graph_id']}:v{grounding['version']}"
+            if graph_key in nodes:
+                edge(key, graph_key, "scaffolded_from_reviewed_prerequisites")
     for sid in sorted(student_ids):
         profile = submission_repo.profile(sid)
         key = node("profile", sid, profile, persisted=False)

@@ -120,8 +120,7 @@ def main():
     sub_repo = None
     if args.sub_db:
         sub_path = Path(args.sub_db)
-        if sub_path.exists():
-            sub_repo = SubmissionRepository(sub_path)
+        sub_repo = SubmissionRepository(sub_path)
 
     worker = FeedbackWorker(repo, worker_id=args.worker_id, submission_repo=sub_repo)
     provider = configured_provider()

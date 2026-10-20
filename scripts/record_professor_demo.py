@@ -169,11 +169,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional FFmpeg executable. Auto-discovery includes Playwright's bundled binary.",
     )
-    parser.add_argument("--require-course-graph", action="store_true",
-                        help="Require uploaded lesson/graph identifiers in persisted grading context.")
+    parser.add_argument(
+        "--require-course-graph",
+        action="store_true",
+        help="Require uploaded lesson/graph identifiers in persisted grading context.",
+    )
     parser.add_argument("--feedback-timeout", type=float, default=90.0)
-    parser.add_argument("--minimum-professor-seconds", type=float, default=0.0,
-                        help="Reject acceptance if measured professor video is shorter than this.")
+    parser.add_argument(
+        "--minimum-professor-seconds",
+        type=float,
+        default=0.0,
+        help="Reject acceptance if measured professor video is shorter than this.",
+    )
     parser.add_argument(
         "--dwell-seconds",
         type=float,
@@ -215,6 +222,7 @@ def discover_ffmpeg(explicit: Path | None) -> Path | None:
     # imageio's optional full build supports MP4; Playwright's minimal build often does not.
     try:
         import imageio_ffmpeg
+
         bundled = Path(imageio_ffmpeg.get_ffmpeg_exe())
         if bundled.is_file():
             return bundled.resolve()
@@ -322,9 +330,7 @@ def probe_video(executable: Path, video_path: Path) -> dict[str, Any]:
         "size_bytes": video_path.stat().st_size if video_path.is_file() else 0,
         "duration_seconds": parse_duration(duration_match.group(1)) if duration_match else None,
         "resolution": (
-            f"{resolution_match.group(1)}x{resolution_match.group(2)}"
-            if resolution_match
-            else None
+            f"{resolution_match.group(1)}x{resolution_match.group(2)}" if resolution_match else None
         ),
         "codec": codec_match.group(1).strip() if codec_match else None,
         "decoder_exit_code": decoder_exit_code,
@@ -338,8 +344,8 @@ def probe_video(executable: Path, video_path: Path) -> dict[str, Any]:
 
 
 def click_and_wait(page: Any, locator: Any) -> None:
-    with page.expect_navigation(wait_until="networkidle"):
-        locator.click()
+    with page.expect_navigation(wait_until="networkidle", timeout=180000):
+        locator.click(timeout=180000)
 
 
 def show_slate(page: Any, phase: str, actor: str, action: str) -> None:
@@ -398,8 +404,13 @@ def assert_persisted_attempt(store: Any, attempt_id: str, before_count: int) -> 
     concepts = profile.get("concepts", {})
     if not concepts or not any(c.get("attempt_count", 0) > 0 for c in concepts.values()):
         raise AssertionError("persisted profile has no concept evidence")
-    return {"attempt": record, "profile": profile, "attempt_count_before": before_count,
-            "attempt_count_after": len(records), "capture_method": "persisted_submission_repository"}
+    return {
+        "attempt": record,
+        "profile": profile,
+        "attempt_count_before": before_count,
+        "attempt_count_after": len(records),
+        "capture_method": "persisted_submission_repository",
+    }
 
 
 def table_records(page: Any, index: int) -> list[dict[str, str]]:
@@ -537,8 +548,7 @@ def package_videos(
     capabilities = ffmpeg_capabilities(ffmpeg)
     result["encoder"] = capabilities
     result["raw_probes"] = {
-        actor: probe_video(ffmpeg, Path(path))
-        for actor, path in result["raw_recordings"].items()
+        actor: probe_video(ffmpeg, Path(path)) for actor, path in result["raw_recordings"].items()
     }
     required = (
         capabilities["has_concat_filter"]
@@ -557,8 +567,11 @@ def package_videos(
     all_segments = [a for a in actions if a.duration_seconds > 0.05]
     professor_segments = [a for a in all_segments if a.status == "completed"]
     encoder_output = subprocess.run(
-        [str(ffmpeg), "-hide_banner", "-encoders"], check=False,
-        capture_output=True, text=True, timeout=30,
+        [str(ffmpeg), "-hide_banner", "-encoders"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
     ).stdout
     encoder = "libx264" if "libx264" in encoder_output else "libvpx-vp9"
     intermediate = videos_dir / "encoded_segments"
@@ -568,27 +581,57 @@ def package_videos(
         encoded = []
         for index, (actor, start, duration) in enumerate(segments):
             segment_path = intermediate / f"{target.stem}-{index:03d}.mp4"
-            command = [str(ffmpeg), "-hide_banner", "-y", "-ss", str(start),
-                       "-i", str(raw_videos[actor])]
+            command = [
+                str(ffmpeg),
+                "-hide_banner",
+                "-y",
+                "-ss",
+                str(start),
+                "-i",
+                str(raw_videos[actor]),
+            ]
             if duration is not None:
                 command += ["-t", str(duration)]
             command += ["-an", "-vf", "fps=25,format=yuv420p", "-c:v", encoder]
             if encoder == "libx264":
                 command += ["-preset", "ultrafast", "-crf", "23"]
             command += [str(segment_path)]
-            conversion = subprocess.run(command, check=False, capture_output=True,
-                                        text=True, timeout=1800)
+            conversion = subprocess.run(
+                command, check=False, capture_output=True, text=True, timeout=1800
+            )
             if conversion.returncode:
                 return conversion.returncode, conversion.stderr[-1000:]
             encoded.append(segment_path)
         concat_path = intermediate / f"{target.stem}.txt"
-        concat_path.write_text("".join(
-            "file '" + path.resolve().as_posix().replace("'", "'\\''") + "'\n"
-            for path in encoded), encoding="utf-8")
+        concat_path.write_text(
+            "".join(
+                "file '" + path.resolve().as_posix().replace("'", "'\\''") + "'\n"
+                for path in encoded
+            ),
+            encoding="utf-8",
+        )
         conversion = subprocess.run(
-            [str(ffmpeg), "-hide_banner", "-y", "-f", "concat", "-safe", "0",
-             "-i", str(concat_path), "-c", "copy", "-movflags", "+faststart", str(target)],
-            check=False, capture_output=True, text=True, timeout=1800)
+            [
+                str(ffmpeg),
+                "-hide_banner",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_path),
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(target),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
         return conversion.returncode, conversion.stderr[-1000:]
 
     # Preserve each complete context, including login, idle time, failed actions and tails.
@@ -596,17 +639,30 @@ def package_videos(
     uncut_segments = [(actor, 0.0, None) for actor in raw_videos]
     result["uncut_order"] = list(raw_videos)
     result["uncut_semantics"] = "Complete concurrent actor contexts concatenated in actor order"
-    write_json(videos_dir / "uncut_segments.json", {
-        "semantics": result["uncut_semantics"],
-        "segments": [{"actor": actor, "source": str(raw_videos[actor]), "start_seconds": 0,
-                      "duration_seconds": result["raw_probes"][actor]["duration_seconds"]}
-                     for actor in raw_videos],
-    })
+    write_json(
+        videos_dir / "uncut_segments.json",
+        {
+            "semantics": result["uncut_semantics"],
+            "segments": [
+                {
+                    "actor": actor,
+                    "source": str(raw_videos[actor]),
+                    "start_seconds": 0,
+                    "duration_seconds": result["raw_probes"][actor]["duration_seconds"],
+                }
+                for actor in raw_videos
+            ],
+        },
+    )
     outputs = [("uncut", videos_dir / "SIIP_Uncut_Engineering_Verification.mp4", uncut_segments)]
     if professor_segments:
-        outputs.append(("professor", videos_dir / "SIIP_Professor_Full_Sandbox_Demo.mp4",
-                        [(a.source_video, a.start_seconds, a.duration_seconds)
-                         for a in professor_segments]))
+        outputs.append(
+            (
+                "professor",
+                videos_dir / "SIIP_Professor_Full_Sandbox_Demo.mp4",
+                [(a.source_video, a.start_seconds, a.duration_seconds) for a in professor_segments],
+            )
+        )
     else:
         result["limitations"].append("No completed professor action segments were available.")
     for label, target, segments in outputs:
@@ -654,17 +710,17 @@ def write_demo_readme(output_dir: Path, manifest: dict[str, Any]) -> None:
     limitations = packaging.get("limitations", []) + manifest.get("limitations", [])
     text = f"""# SIIP professor demonstration evidence
 
-Run ID: `{manifest['run_id']}`  
-Correlation ID: `{manifest['correlation_id']}`  
-Started UTC: `{manifest['started_at_utc']}`  
-Completed UTC: `{manifest.get('completed_at_utc', 'not completed')}`  
-Result: `{manifest['status']}`
+Run ID: `{manifest["run_id"]}`
+Correlation ID: `{manifest["correlation_id"]}`
+Started UTC: `{manifest["started_at_utc"]}`
+Completed UTC: `{manifest.get("completed_at_utc", "not completed")}`
+Result: `{manifest["status"]}`
 
 ## Videos
 
 - Professor MP4: `{mp4}`
 - Uncut MP4: `{uncut}`
-- Original Playwright recordings: `{packaging.get('raw_recordings', {})}`
+- Original Playwright recordings: `{packaging.get("raw_recordings", {})}`
 
 Video chapters are derived from measured recording-relative markers after the
 instructor and student contexts close; they are not storyboard estimates.
@@ -747,8 +803,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         os.environ.get("SIIP_DB_PATH") or ROOT / "artifacts/synthetic.sqlite3"
     ).resolve()
     jobs_db = Path(
-        os.environ.get("SIIP_FEEDBACK_JOBS_DB")
-        or ROOT / "artifacts/jobs/feedback_jobs.sqlite3"
+        os.environ.get("SIIP_FEEDBACK_JOBS_DB") or ROOT / "artifacts/jobs/feedback_jobs.sqlite3"
     ).resolve()
     submission_store = SubmissionRepository(submission_db)
     fixture_journey = DemoStudentJourney(
@@ -759,7 +814,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     fixture_receipt = fixture_journey.seed_fixture_histories()
     fixture_attempt_ids = set(fixture_receipt["attempt_ids"])
     persisted_fixture_attempts = [
-        record for record in submission_store.records() if record["attempt_id"] in fixture_attempt_ids
+        record
+        for record in submission_store.records()
+        if record["attempt_id"] in fixture_attempt_ids
     ]
     if len(persisted_fixture_attempts) != len(fixture_attempt_ids):
         raise AssertionError("not all labelled fixture histories persisted")
@@ -838,25 +895,39 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             login(instructor, args.base_url, "instructor_alawini")
 
             with clock.action("01 Instructor upload and provenance", "instructor"):
-                show_slate(instructor, "Phase 1", "Synthetic instructor", "Upload teaching material")
+                show_slate(
+                    instructor, "Phase 1", "Synthetic instructor", "Upload teaching material"
+                )
                 instructor.goto(f"{args.base_url}/authoring", wait_until="networkidle")
                 course_form = instructor.locator("form[action='/api/demo/courses/create']")
                 course_form.locator("input[name='course_id']").fill(course_id)
-                course_form.locator("input[name='title']").fill("Synthetic SQL course: instructor-to-learner lifecycle")
+                course_form.locator("input[name='title']").fill(
+                    "Synthetic SQL course: instructor-to-learner lifecycle"
+                )
                 click_and_wait(instructor, course_form.get_by_role("button"))
                 instructor.goto(authoring_url, wait_until="networkidle")
                 module_form = instructor.locator("form[action='/api/demo/modules/create']")
                 module_form.locator("input[name='module_id']").fill(module_id)
-                module_form.locator("input[name='title']").fill("JOIN semantics and preserving unmatched rows")
+                module_form.locator("input[name='title']").fill(
+                    "JOIN semantics and preserving unmatched rows"
+                )
                 click_and_wait(instructor, module_form.get_by_role("button"))
                 instructor.goto(authoring_url, wait_until="networkidle")
                 courses = get_json(contexts["instructor"], f"{args.base_url}/api/demo/courses")
-                modules = get_json(contexts["instructor"], f"{args.base_url}/api/demo/modules?course_id={course_id}")
+                modules = get_json(
+                    contexts["instructor"],
+                    f"{args.base_url}/api/demo/modules?course_id={course_id}",
+                )
                 course = next((c for c in courses if c.get("course_id") == course_id), None)
                 module = next((m for m in modules if m.get("module_id") == module_id), None)
                 if not course or not module or module.get("course_id") != course_id:
-                    raise AssertionError("fresh browser-created course/module association did not persist")
-                write_json(output_dir / "outputs/lesson/00_course_and_module.json", {"course": course, "module": module})
+                    raise AssertionError(
+                        "fresh browser-created course/module association did not persist"
+                    )
+                write_json(
+                    output_dir / "outputs/lesson/00_course_and_module.json",
+                    {"course": course, "module": module},
+                )
                 manifest["records"].update({"course_id": course_id, "module_id": module_id})
                 instructor.locator("select[name='course_id']").select_option(course_id)
                 instructor.locator("select[name='module_id']").select_option(module_id)
@@ -877,7 +948,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 if not lesson:
                     raise AssertionError("uploaded lesson was not returned by the lesson registry")
                 if lesson.get("course_id") != course_id or lesson.get("module_id") != module_id:
-                    raise AssertionError("uploaded lesson lost the browser-selected course/module association")
+                    raise AssertionError(
+                        "uploaded lesson lost the browser-selected course/module association"
+                    )
                 expected_hash = hashlib.sha256(args.lesson_path.read_bytes()).hexdigest()
                 if (lesson.get("source_sha256") or lesson.get("sha256")) != expected_hash:
                     raise AssertionError("uploaded lesson bytes do not match stored source hash")
@@ -917,7 +990,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     source_type="actual_execution",
                     status="started",
                 )
-                click_and_wait(instructor, row.get_by_role("button", name="Generate Knowledge Graph"))
+                click_and_wait(
+                    instructor, row.get_by_role("button", name="Generate Knowledge Graph")
+                )
                 expect(instructor.get_by_test_id("demo-kg-boundary")).to_be_visible()
                 if instructor.get_by_test_id("kg-node").count() < 2:
                     raise AssertionError("candidate graph did not render at least two nodes")
@@ -932,9 +1007,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     graph_path,
                 )
                 if graph.get("source_document_id") != source_document_id or not graph.get("edges"):
-                    raise AssertionError("graph provenance or edges did not match the uploaded lesson")
-                manifest["extraction"] = {k: graph.get(k) for k in
-                    ("extraction_mode", "source_type", "classification", "fallback_reason")}
+                    raise AssertionError(
+                        "graph provenance or edges did not match the uploaded lesson"
+                    )
+                manifest["extraction"] = {
+                    k: graph.get(k)
+                    for k in ("extraction_mode", "source_type", "classification", "fallback_reason")
+                }
                 capture(instructor, output_dir / "screenshots/02_graph_before_review.png")
                 event(
                     actor_type="system",
@@ -943,14 +1022,28 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     event_type="kg_extraction_completed",
                     entity_id=source_document_id,
                     artifact=graph_path,
-                    source_type=("synthetic_fixture" if graph.get("source_type") == "synthetic_fixture"
-                                 else "actual_execution"),
+                    source_type=(
+                        "synthetic_fixture"
+                        if graph.get("source_type") == "synthetic_fixture"
+                        else "actual_execution"
+                    ),
                 )
 
-                first_edge_id = graph["edges"][0]["edge_id"]
-                edge_row = instructor.locator("tr", has=instructor.locator(
-                    f"input[name='edge_id'][value='{first_edge_id}']"
-                ))
+                review_candidate = next(
+                    (
+                        edge
+                        for edge in graph["edges"]
+                        if edge["source"] == "LEFT_OUTER_JOIN" and edge["relation"] == "depends_on"
+                    ),
+                    next(
+                        (edge for edge in graph["edges"] if edge["relation"] == "depends_on"),
+                        graph["edges"][0],
+                    ),
+                )
+                first_edge_id = review_candidate["edge_id"]
+                edge_row = instructor.locator(
+                    "tr", has=instructor.locator(f"input[name='edge_id'][value='{first_edge_id}']")
+                )
                 edge_row.get_by_label("Review notes").fill(
                     f"Approved during recorded synthetic workflow {run_id}"
                 )
@@ -959,7 +1052,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     contexts["instructor"],
                     f"{args.base_url}/api/demo/graphs?graph_id={graph_id}",
                 )
-                reviewed_edge = next(edge for edge in reviewed["edges"] if edge["edge_id"] == first_edge_id)
+                reviewed_edge = next(
+                    edge for edge in reviewed["edges"] if edge["edge_id"] == first_edge_id
+                )
                 if reviewed_edge["review_state"] != "APPROVED":
                     raise AssertionError("edge approval did not persist")
                 capture(instructor, output_dir / "screenshots/02_graph_after_review.png")
@@ -967,8 +1062,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 expect(instructor.get_by_test_id("graph-notice")).to_contain_text(
                     "Saved reviewed graph version"
                 )
-                saved_graph = get_json(contexts["instructor"],
-                    f"{args.base_url}/api/demo/graphs?graph_id={graph_id}")
+                saved_graph = get_json(
+                    contexts["instructor"], f"{args.base_url}/api/demo/graphs?graph_id={graph_id}"
+                )
                 if saved_graph.get("version", 0) < 1 or not saved_graph.get("saved_at_utc"):
                     raise AssertionError("saved graph version did not persist")
                 approval_path = output_dir / "outputs/knowledge_graph/02_instructor_approval.json"
@@ -1063,13 +1159,19 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 click_and_wait(
                     student, student_row.get_by_role("link", name="Open student activity")
                 )
-                expect(student.get_by_role("heading", name="PrairieLearn Interactive SQL Practice")).to_be_visible()
+                expect(
+                    student.get_by_role("heading", name="PrairieLearn Interactive SQL Practice")
+                ).to_be_visible()
                 expect(student.locator("code", has_text="sql_join_04").first).to_be_visible()
                 student.locator("textarea#sql").fill(INCORRECT_SQL)
                 capture(student, output_dir / "screenshots/04_student_submission.png")
                 click_and_wait(student, student.locator("button#submit-query"))
-                expect(student.get_by_role("heading", name="PrairieLearn Grading Receipt")).to_be_visible()
-                receipt = student.locator("h3", has_text="PrairieLearn Grading Receipt").locator("..")
+                expect(
+                    student.get_by_role("heading", name="PrairieLearn Grading Receipt")
+                ).to_be_visible()
+                receipt = student.locator("h3", has_text="PrairieLearn Grading Receipt").locator(
+                    ".."
+                )
                 expect(receipt).to_contain_text("Score: 0%")
                 expect(student.locator("#ai-feedback-link")).to_be_visible()
                 capture(student, output_dir / "screenshots/04_grading_result.png")
@@ -1080,12 +1182,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 job_id = parse_qs(urlparse(feedback_href).query).get("job_id", [None])[0]
                 if not job_id:
                     raise AssertionError("feedback URL did not contain a job identifier")
-                feedback_job = get_json(contexts["student"], feedback_href.replace("/feedback?", "/api/feedback?"))
+                feedback_job = get_json(
+                    contexts["student"], feedback_href.replace("/feedback?", "/api/feedback?")
+                )
                 assert_learner_payload(feedback_job)
                 if feedback_job.get("grading", {}).get("score") != 0:
                     raise AssertionError("persisted job grading does not match 0% receipt")
                 if feedback_job.get("submitted_sql") != INCORRECT_SQL:
-                    raise AssertionError("persisted feedback job did not retain this browser submission")
+                    raise AssertionError(
+                        "persisted feedback job did not retain this browser submission"
+                    )
                 submission_path = output_dir / "outputs/submissions/04_student_submission.json"
                 grading_path = output_dir / "outputs/grading/04_grading_result.json"
                 write_json(
@@ -1155,9 +1261,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     student.wait_for_timeout(1000)
                     feedback_result = get_json(contexts["student"], api_feedback_url)
                 if feedback_result.get("status") != "completed":
-                    raise AssertionError(f"feedback completed with {feedback_result.get('status')!r}")
+                    raise AssertionError(
+                        f"feedback completed with {feedback_result.get('status')!r}"
+                    )
                 student.goto(feedback_href, wait_until="networkidle")
-                expect(student.get_by_role("heading", name="Personalized AI feedback")).to_be_visible()
+                expect(
+                    student.get_by_role("heading", name="Personalized AI feedback")
+                ).to_be_visible()
                 expect(student.get_by_text("COMPLETED", exact=True)).to_be_visible()
                 expect(student.get_by_text("Deterministic grading:")).to_be_visible()
                 capture(student, output_dir / "screenshots/05_feedback_visible.png")
@@ -1169,25 +1279,45 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 attempt_id = attempt_field.get_attribute("value")
                 if not attempt_id:
-                    raise AssertionError("feedback page did not expose the stable attempt identifier")
-                persisted = assert_persisted_attempt(submission_store, attempt_id, before_attempt_count)
-                write_json(output_dir / "outputs/submissions/04_persisted_attempt_and_profile.json", persisted)
+                    raise AssertionError(
+                        "feedback page did not expose the stable attempt identifier"
+                    )
+                persisted = assert_persisted_attempt(
+                    submission_store, attempt_id, before_attempt_count
+                )
+                write_json(
+                    output_dir / "outputs/submissions/04_persisted_attempt_and_profile.json",
+                    persisted,
+                )
                 assert_learner_payload(feedback_result)
-                grading_context = ((feedback_result.get("feedback") or {}).get("grounding_provenance")
+                grading_context = (
+                    (feedback_result.get("feedback") or {}).get("grounding_provenance")
                     or feedback_result.get("grounding_provenance")
-                    or feedback_result.get("grading", {}).get("_grounding") or {})
-                expected_context = {"assignment_id": assignment_id, "graph_id": graph_id,
-                                    "graph_version": saved_graph["version"],
-                                    "source_document_id": source_document_id,
-                                    "source_sha256": expected_hash, "course_id": course_id}
+                    or feedback_result.get("grading", {}).get("_grounding")
+                    or {}
+                )
+                expected_context = {
+                    "assignment_id": assignment_id,
+                    "graph_id": graph_id,
+                    "graph_version": saved_graph["version"],
+                    "source_document_id": source_document_id,
+                    "source_sha256": expected_hash,
+                    "course_id": course_id,
+                }
                 consumed = all(grading_context.get(k) == v for k, v in expected_context.items())
                 manifest["course_graph_consumption"] = {
                     "classification": "REAL_PIPELINE_VERIFIED" if consumed else "NOT_CONNECTED",
-                    "expected": expected_context, "observed": grading_context}
+                    "expected": expected_context,
+                    "observed": grading_context,
+                }
                 if args.require_course_graph and not consumed:
-                    raise AssertionError("feedback job did not consume this assignment's reviewed graph context")
+                    raise AssertionError(
+                        "feedback job did not consume this assignment's reviewed graph context"
+                    )
                 if not consumed:
-                    manifest["limitations"].append("Uploaded course graph not verified as consumed by grading/feedback")
+                    manifest["limitations"].append(
+                        "Uploaded course graph not verified as consumed by grading/feedback"
+                    )
                 submission_path = output_dir / "outputs/submissions/04_student_submission.json"
                 submission_record = json.loads(submission_path.read_text(encoding="utf-8"))
                 submission_record["attempt_id"] = attempt_id
@@ -1226,8 +1356,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "Inspect history-derived recommendation",
                 )
                 profile_a = profile_from_page(student, args.base_url, "S001")
-                if not any(row.get("Question") == "sql_join_04" for row in profile_a["attempt_history"]):
-                    raise AssertionError("S001 profile did not include the completed browser attempt")
+                if not any(
+                    row.get("Question") == "sql_join_04" for row in profile_a["attempt_history"]
+                ):
+                    raise AssertionError(
+                        "S001 profile did not include the completed browser attempt"
+                    )
                 rec_a = get_json(
                     contexts["student"], f"{args.base_url}/api/recommendation?student_id=S001"
                 )
@@ -1276,9 +1410,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         "captured_at_utc": utc_now(),
                     },
                 )
-                if rec_a.get("recommended_question_id") == rec_b.get(
-                    "recommended_question_id"
-                ):
+                if rec_a.get("recommended_question_id") == rec_b.get("recommended_question_id"):
                     raise AssertionError(
                         "labelled fixture histories did not produce contrasting actual recommender "
                         "question IDs"
@@ -1292,7 +1424,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "Submit optional Entrepreneurial Mindset reflection",
                 )
                 student.goto(feedback_href, wait_until="networkidle")
-                expect(student.get_by_text("Entrepreneurial Mindset (EM) Reflection").first).to_be_visible()
+                expect(
+                    student.get_by_text("Entrepreneurial Mindset (EM) Reflection").first
+                ).to_be_visible()
                 reflection_box = student.locator("textarea#reflection_text")
                 if reflection_box.count() == 0:
                     raise AssertionError(
@@ -1360,7 +1494,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     contexts["instructor"], f"{args.base_url}/api/analytics", concept_path
                 )
                 if cohort.get("submission_count", 0) < 1 or analytics.get("attempt_count", 0) < 1:
-                    raise AssertionError("instructor analytics did not include persisted submissions")
+                    raise AssertionError(
+                        "instructor analytics did not include persisted submissions"
+                    )
                 event(
                     actor_type="instructor",
                     actor_id="instructor_alawini",
@@ -1384,7 +1520,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     contexts["instructor"], f"{args.base_url}/api/em/summary?student_id=S001"
                 )
                 updated_evidence = next(
-                    record for record in updated_em["records"] if record["evidence_id"] == evidence_id
+                    record
+                    for record in updated_em["records"]
+                    if record["evidence_id"] == evidence_id
                 )
                 if updated_evidence["review_status"] != "ACCEPTED":
                     raise AssertionError("instructor EM review did not persist")
@@ -1419,7 +1557,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 if project_student.get("student_id") != "S001":
                     raise AssertionError("generated project was not bound to S001")
                 if project_student.get("domain_interest") != "healthcare":
-                    raise AssertionError("project did not retain the explicitly selected healthcare interest")
+                    raise AssertionError(
+                        "project did not retain the explicitly selected healthcare interest"
+                    )
                 assert_learner_payload(project_student)
                 if project_student.get("instructor_approval_status") == "APPROVED":
                     raise AssertionError("new project bypassed instructor approval")
@@ -1436,14 +1576,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 manifest["records"]["project_id"] = project_id
 
             with clock.action("09 Instructor project review", "instructor"):
-                instructor.goto(f"{args.base_url}/projects?id={project_id}", wait_until="networkidle")
-                expect(instructor.get_by_role("heading", name="Instructor Review & Approval")).to_be_visible()
+                instructor.goto(
+                    f"{args.base_url}/projects?id={project_id}", wait_until="networkidle"
+                )
+                expect(
+                    instructor.get_by_role("heading", name="Instructor Review & Approval")
+                ).to_be_visible()
                 instructor.locator("input[name='notes']").fill(
                     f"Approved for the synthetic professor demonstration {run_id}"
                 )
-                click_and_wait(
-                    instructor, instructor.get_by_role("button", name="Approve Project")
-                )
+                click_and_wait(instructor, instructor.get_by_role("button", name="Approve Project"))
                 expect(instructor.get_by_text("Status: APPROVED", exact=True)).to_be_visible()
                 project_review = get_json(
                     contexts["instructor"], f"{args.base_url}/api/projects?id={project_id}"
@@ -1466,12 +1608,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             with clock.action("09 Approved learner project", "student"):
                 student.goto(f"{args.base_url}/projects?id={project_id}", wait_until="networkidle")
                 expect(student.get_by_text("Status: APPROVED", exact=True)).to_be_visible()
-                approved_learner_project = get_json(contexts["student"],
-                    f"{args.base_url}/api/projects?id={project_id}")
+                approved_learner_project = get_json(
+                    contexts["student"], f"{args.base_url}/api/projects?id={project_id}"
+                )
                 assert_learner_payload(approved_learner_project)
                 if approved_learner_project.get("instructor_approval_status") != "APPROVED":
                     raise AssertionError("approved project is not accessible to its learner")
-                write_json(output_dir / "outputs/projects/09_approved_learner_project.json", approved_learner_project)
+                write_json(
+                    output_dir / "outputs/projects/09_approved_learner_project.json",
+                    approved_learner_project,
+                )
                 learner_html = student.content()
                 if "Reference SQL Solution" in learner_html or "Approve Project" in learner_html:
                     raise AssertionError("learner project DOM exposed instructor-only material")
@@ -1489,6 +1635,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     instructor.get_by_role("heading", name="SIIP System Event Timeline")
                 ).to_be_visible()
                 capture(instructor, output_dir / "screenshots/10_instructor_timeline.png")
+                entity_manifest = get_json(
+                    contexts["instructor"], f"{args.base_url}/api/demo/lineage"
+                )
+                if not any(
+                    node["entity_type"] == "assignment" and node["entity_id"] == assignment_id
+                    for node in entity_manifest["nodes"]
+                ):
+                    raise AssertionError("Explicit lineage is missing the published assignment")
+                write_json(output_dir / "architecture/entity_lineage.json", entity_manifest)
+                write_json(
+                    output_dir / "timeline/enriched_system_events.json",
+                    get_json(contexts["instructor"], f"{args.base_url}/api/demo/enriched-events"),
+                )
+                instructor.goto(f"{args.base_url}/lineage", wait_until="networkidle")
+                expect(
+                    instructor.get_by_role("heading", name="Traceable entity relationships")
+                ).to_be_visible()
+                capture(instructor, output_dir / "screenshots/10_entity_lineage.png")
                 dashboard_events = get_json(
                     contexts["instructor"], f"{args.base_url}/api/demo/events"
                 )
@@ -1522,7 +1686,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 instructor.goto(flow_html.resolve().as_uri(), wait_until="load")
                 capture(instructor, output_dir / "architecture/data_flow.png")
                 instructor.goto(paths["timeline"].resolve().as_uri(), wait_until="load")
-                expect(instructor.get_by_role("heading", name="SIIP System Event Timeline")).to_be_visible()
+                expect(
+                    instructor.get_by_role("heading", name="SIIP System Event Timeline")
+                ).to_be_visible()
                 capture(instructor, output_dir / "screenshots/10_runner_timeline.png")
         except Exception as exc:
             run_error = exc
@@ -1531,8 +1697,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             for actor, page in pages.items():
                 try:
                     screenshot(page, output_dir / f"screenshots/FAILED_{actor}.png")
-                except Exception:
-                    pass
+                except Exception as capture_error:
+                    manifest.setdefault("failed_capture_errors", []).append(
+                        f"{actor}: {type(capture_error).__name__}"
+                    )
         finally:
             for actor, context in contexts.items():
                 try:
@@ -1553,26 +1721,39 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             ffmpeg, raw_video_paths, clock.actions, output_dir
         )
     except Exception as exc:
-        manifest["video_packaging"] = {"limitations": [f"Packaging failed: {type(exc).__name__}: {exc}"],
-            "raw_recordings": {actor: str(path) for actor, path in raw_video_paths.items()}}
+        manifest["video_packaging"] = {
+            "limitations": [f"Packaging failed: {type(exc).__name__}: {exc}"],
+            "raw_recordings": {actor: str(path) for actor, path in raw_video_paths.items()},
+        }
     manifest["completed_at_utc"] = utc_now()
     packaging = manifest["video_packaging"]
     duration = (packaging.get("professor_probe") or {}).get("duration_seconds") or 0
-    video_accepted = bool(packaging.get("professor_mp4") and packaging.get("uncut_mp4")
-                          and duration >= args.minimum_professor_seconds
-                          and all(p.get("valid") and p.get("resolution") == "1920x1080"
-                                  for p in packaging.get("raw_probes", {}).values()))
-    manifest["recording_acceptance"] = {"accepted": video_accepted,
+    video_accepted = bool(
+        packaging.get("professor_mp4")
+        and packaging.get("uncut_mp4")
+        and duration >= args.minimum_professor_seconds
+        and all(
+            p.get("valid") and p.get("resolution") == "1920x1080"
+            for p in packaging.get("raw_probes", {}).values()
+        )
+    )
+    manifest["recording_acceptance"] = {
+        "accepted": video_accepted,
         "minimum_professor_seconds": args.minimum_professor_seconds,
-        "measured_professor_seconds": duration}
+        "measured_professor_seconds": duration,
+    }
     if run_error is None:
-        manifest["status"] = "completed" if video_accepted else "workflow_completed_recording_incomplete"
+        manifest["status"] = (
+            "completed" if video_accepted else "workflow_completed_recording_incomplete"
+        )
     write_json(output_dir / "run_manifest.json", manifest)
     write_demo_readme(output_dir, manifest)
     if run_error is not None:
         raise run_error
     if not video_accepted:
-        raise RuntimeError("Workflow completed but recording acceptance failed; inspect run_manifest.json")
+        raise RuntimeError(
+            "Workflow completed but recording acceptance failed; inspect run_manifest.json"
+        )
     return manifest
 
 

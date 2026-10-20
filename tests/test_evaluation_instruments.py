@@ -128,7 +128,12 @@ class TestCohortAnalyticsDashboardIntegration(unittest.TestCase):
         return status, data, resp_headers
 
     def test_overview_renders_cohort_metrics_and_bottlenecks(self):
-        status, data, _ = self._request("GET", "/")
+        status, public, _ = self._request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertNotIn("Curricular Concept Bottlenecks", public.decode("utf-8"))
+        status, data, _ = self._request(
+            "GET", "/", headers={"Authorization": "Bearer " + self.instructor_token}
+        )
         self.assertEqual(status, 200)
         html_str = data.decode("utf-8")
         self.assertIn("Curricular Concept Bottlenecks", html_str)

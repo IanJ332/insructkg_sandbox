@@ -124,7 +124,9 @@ class DemoObservabilityTests(unittest.TestCase):
                 phase,
                 event_type,
                 f"2026-10-20T01:00:{index:02d}Z",
-                source_type="synthetic_fixture" if phase == "knowledge_graph" else "actual_execution",
+                source_type="synthetic_fixture"
+                if phase == "knowledge_graph"
+                else "actual_execution",
             )
 
         paths = self.repository.render_all()

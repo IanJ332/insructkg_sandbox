@@ -1,9 +1,9 @@
-# SIIP Integrated Prototype — Professor Demonstration Brief
+# SIIP research sandbox — October 20, 2026
 
 **Course scenario:** *Introduction to Relational Databases — Personalized SQL Learning*  
 **Module:** *SQL JOINs, NULL Semantics, and Real-World Data Analysis*
 
-This local research demonstration follows one synthetic lesson from instructor authoring through a personalized learner activity. A synthetic instructor uploads an original lesson, verifies its source ID, version, SHA-256 hash, and provenance, and requests a concept graph. The available checkout does not contain a runnable upstream InstructKG extractor, so the graph-generation step is explicitly labeled **SYNTHETIC EXAMPLE KNOWLEDGE GRAPH — NOT ACTUAL INSTRUCTKG EXTRACTION**. The workflow still exercises the intended evidence contract: candidate concepts and directed relations retain source excerpts, source-document IDs, extraction method, confidence, and instructor review decisions.
+The instructor creates a course and module, uploads a new Markdown lesson about JOINs and NULL semantics, and inspects its stored identifier, version, timestamp, and SHA-256 digest. The uploaded bytes become the input to a bounded local `qwen3:8b` call. The resulting **LOCAL_LLM_ASSISTED_EXTRACTION** graph retains exact source passages, directed relations, teaching order, and extraction provenance. This adapter is separate from original InstructKG. The lesson produced five concepts and three candidate relations; one `part_of` candidate remains debatable. Source validation does not establish pedagogical correctness. A synthetic instructor reviews a relation and saves an immutable graph version.
 
 The instructor reviews a relation, saves a versioned graph, binds reviewed concepts to an existing tested SQL exercise, and publishes it through **LOCAL SIIP ASSIGNMENT PUBLICATION — SYNTHETIC DEMO**. This is not presented as native PrairieLearn instructor publication. The question and grading hook reuse the repository's PrairieLearn-compatible deterministic SQL engine. In a separate synthetic learner session, S001 submits an INNER JOIN for a task that must retain departments without employees. The submission is persisted, graded against two hidden datasets, diagnosed at the concept level, and placed on the durable feedback queue. Grading never waits for or depends on model inference.
 
@@ -13,4 +13,10 @@ The optional Entrepreneurial Mindset interaction asks how missing business recor
 
 The instructor dashboard connects assignment outcomes with concept estimates, observed SQL errors, remediation recommendations, graph evidence, feedback status, EM evidence, and project review. A structured event log records actor, timestamp, entity, correlation ID, artifact, status, subsystem phase, and whether the source was actual execution or a synthetic fixture. The rendered lineage and video chapters are derived after the demonstrated actions; they are not pre-filled storyboard claims.
 
-**Research boundary:** all identities, histories, course materials, reflections, and outcomes in this demonstration are synthetic. The prototype demonstrates integration and observability, not empirical learning improvement. The graph fixture still requires replacement by the runnable upstream extraction pipeline, local SIIP publication still requires a production PrairieLearn authoring integration, and any real course use remains subject to instructor validation, institutional authentication, privacy review, and applicable research approval.
+**Research boundary:** all identities, histories, materials, reflections, and approvals are synthetic. This demonstrates integration, not measured learning or mindset improvement. Native InstructKG execution and PrairieLearn authoring remain separate integration work. The missing reference ZIP prevents independent reconciliation against the full Year 3 proposal and supplied PDFs. Surveys remain drafts. Classroom use requires instructor validation and appropriate institutional authorization.
+
+**Decisions requested**
+
+1. Approve or revise the concept vocabulary, relation directions, and evidence standard for this JOIN/NULL lesson.
+2. Select the next PrairieLearn assignment and define what would count as useful, actionable instructor-aligned feedback.
+3. Choose a baseline/RAG/KG comparison protocol and confirm the institutional approval path before collecting classroom data.

@@ -21,6 +21,7 @@ import time
 
 from siip.demo_authoring import LOCAL_PUBLICATION_LABEL, DemoAuthoringRegistry
 from siip.demo_kg import SCIENTIFIC_BOUNDARY, DemoKGRepository
+from siip.demo_lineage import build_entity_lineage, derive_enriched_events
 from siip.demo_observability import DemoObservabilityRepository
 from siip.demo_student import DemoStudentJourney
 from siip.em_models import EMDimension, EMReviewStatus
@@ -182,6 +183,31 @@ def record_demo_event(
     )
 
 
+def entity_lineage(repository):
+    return build_entity_lineage(
+        get_demo_authoring(),
+        get_demo_kg(),
+        repository,
+        get_jobs_repo(),
+        get_em_repo(),
+        get_project_repo(),
+        os.environ.get("SIIP_DEMO_CORRELATION_ID", "siip-professor-demo"),
+    )
+
+
+def learner_project_payload(project):
+    payload = project.to_dict()
+    for milestone in payload.get("milestones", []):
+        milestone.pop("reference_sql", None)
+    if project.instructor_approval_status != "APPROVED":
+        payload["milestones"] = []
+        payload["schema_ddl"] = ""
+        payload["learner_notice"] = (
+            "Pending Instructor Approval: tasks remain locked until approved."
+        )
+    return payload
+
+
 def parse_multipart_upload(content_type, raw):
     """Parse one small local browser upload without trusting client paths."""
 
@@ -293,9 +319,20 @@ def login_page(auth=None, message=None, redirect_url="/"):
     return shell("Demo Login", body)
 
 
-def authoring_page(csrf_token=None, notice=None):
+def authoring_page(csrf_token=None, notice=None, course_id=None):
     registry = get_demo_authoring()
-    lessons = registry.list_lessons(course_id="intro-relational-databases")
+    courses = registry.list_courses()
+    course_id = course_id or (courses[0]["course_id"] if courses else "intro-relational-databases")
+    modules = registry.list_modules(course_id=course_id)
+    lessons = registry.list_lessons(course_id=course_id)
+    course_options = "".join(
+        f'<option value="{esc(item["course_id"])}" {"selected" if item["course_id"] == course_id else ""}>{esc(item["title"])}</option>'
+        for item in courses
+    )
+    module_options = "".join(
+        f'<option value="{esc(item["module_id"])}">{esc(item["title"])}</option>'
+        for item in modules
+    )
     notice_html = (
         f'<div data-testid="authoring-notice" style="background:#dcfce7;border-left:4px solid #16a34a;padding:12px;margin-bottom:16px;">{esc(notice)}</div>'
         if notice
@@ -346,10 +383,26 @@ def authoring_page(csrf_token=None, notice=None):
       <p class="muted">Local-only instructor workflow. No institutional course material or real learner data is used.</p>
     </section>
     <section>
+      <h2>Course and module management</h2>
+      <form method="GET" action="/authoring"><label>Course <select name="course_id">{course_options}</select></label> <button>Select course</button></form>
+      <form method="POST" action="/api/demo/courses/create">
+        <input type="hidden" name="csrf_token" value="{esc(csrf_token or "")}">
+        <label>Course ID <input name="course_id" required></label>
+        <label>Title <input name="title" required></label><button>Create course</button>
+      </form>
+      <form method="POST" action="/api/demo/modules/create">
+        <input type="hidden" name="csrf_token" value="{esc(csrf_token or "")}">
+        <input type="hidden" name="course_id" value="{esc(course_id)}">
+        <label>Module ID <input name="module_id" required></label>
+        <label>Title <input name="title" required></label><button>Create module</button>
+      </form>
+    </section>
+    <section>
       <h2>Upload instructor-authored lesson</h2>
       <form method="POST" enctype="multipart/form-data" action="/api/demo/lessons/upload">
         <input type="hidden" name="csrf_token" value="{esc(csrf_token or "")}">
-        <input type="hidden" name="course_id" value="intro-relational-databases">
+        <input type="hidden" name="course_id" value="{esc(course_id)}">
+        <label>Module <select name="module_id" required>{module_options}</select></label><br><br>
         <label>Source document ID <input name="source_document_id" value="lesson-sql-joins" required></label><br><br>
         <label>Lesson document <input data-testid="lesson-file" type="file" name="lesson_file" accept=".md,.txt" required></label><br><br>
         <button data-testid="upload-lesson" type="submit">Upload lesson</button>
@@ -388,6 +441,7 @@ def demo_graph_page(graph_id=None, csrf_token=None, notice=None):
           <input name="notes" value="Reviewed for the synthetic professor demonstration" aria-label="Review notes">
           <button name="decision" value="APPROVE" type="submit">Approve</button>
           <button name="decision" value="REJECT" type="submit" style="background:#b42318">Reject</button>
+          <button name="decision" value="NEEDS_REVISION" type="submit" style="background:#92400e">Needs revision</button>
         </form>'''
         edge_rows.append(
             [
@@ -402,10 +456,10 @@ def demo_graph_page(graph_id=None, csrf_token=None, notice=None):
     body = f"""
     {notice_html}
     <section data-testid="demo-kg-boundary">
-      <span class="badge">{esc(SCIENTIFIC_BOUNDARY)}</span>
+      <span class="badge">{esc(graph.get("scientific_boundary", SCIENTIFIC_BOUNDARY))}</span>
       <h2>Candidate concept graph</h2>
       <p>Graph <code>{esc(graph_id)}</code> · source <code>{esc(graph["source_document_id"])}</code> · pipeline <code>{esc(graph["pipeline_version"])}</code></p>
-      <p class="muted">The upstream InstructKG extractor is unavailable in this checkout. This honest fixture exercises the same evidence and instructor-review contract.</p>
+      <p class="muted">Mode: {esc(graph.get("extraction_mode", graph.get("extraction_method", "synthetic_fixture")))}. This local adapter is separate from original InstructKG. Review each evidence-backed directed relation before use.</p>
     </section>
     <section><h2>Extracted candidate concepts</h2><div class="grid">{nodes}</div></section>
     <section data-testid="kg-edges"><h2>Directed relations and source evidence</h2>{table(["Directed edge", "Evidence excerpt", "Confidence", "Review state", "Instructor decision"], edge_rows)}</section>
@@ -471,19 +525,33 @@ def assignments_page(auth, notice=None):
     )
     create = ""
     if auth.role == "instructor":
+        graphs = get_demo_kg().list_graphs()
+        graph_options = "".join(
+            f'<option value="{esc(item["graph_id"])}">{esc(item["source_document_id"])} · {esc(item["graph_id"])}</option>'
+            for item in graphs
+            if get_demo_kg().list_versions(item["graph_id"])
+        )
+        available_concepts = set()
+        for item in graphs:
+            versions = get_demo_kg().list_versions(item["graph_id"])
+            if versions:
+                saved = get_demo_kg().retrieve(item["graph_id"], versions[-1]["version"])
+                available_concepts.update(node["id"] for node in saved["nodes"])
+        concept_options = "".join(
+            f'<label><input type="checkbox" name="kg_node_id" value="{esc(concept)}" {"checked" if concept in {"LEFT_OUTER_JOIN", "NULL_SEMANTICS", "MISSING_MATCHING_ROWS"} else ""}> {esc(concept)}</label> '
+            for concept in sorted(available_concepts)
+        )
         create = f'''
         <section data-testid="assignment-authoring">
           <span class="badge">{esc(LOCAL_PUBLICATION_LABEL)}</span>
           <h2>Create assignment from reviewed concepts</h2>
           <form method="POST" action="/api/demo/assignments/create">
             <input type="hidden" name="csrf_token" value="{esc(auth.csrf_token or "")}">
-            <input type="hidden" name="course_id" value="intro-relational-databases">
+            <label>Reviewed source graph <select name="graph_id" required>{graph_options}</select></label><br><br>
             <label>Assignment ID <input name="assignment_id" value="assignment-left-join-demo" required></label><br><br>
             <label>SQL exercise <select name="question_id"><option value="sql_join_04">Department headcount with unstaffed units</option></select></label>
             <fieldset><legend>Reviewed target concepts</legend>
-              <label><input type="checkbox" name="kg_node_id" value="LEFT_OUTER_JOIN" checked> LEFT_OUTER_JOIN</label>
-              <label><input type="checkbox" name="kg_node_id" value="NULL_SEMANTICS" checked> NULL_SEMANTICS</label>
-              <label><input type="checkbox" name="kg_node_id" value="MISSING_MATCHING_ROWS" checked> MISSING_MATCHING_ROWS</label>
+              {concept_options}
             </fieldset><br>
             <button data-testid="create-assignment" type="submit">Create local assignment draft</button>
           </form>
@@ -498,6 +566,58 @@ def assignments_page(auth, notice=None):
 
 
 def overview(repo):
+    assignments = get_demo_authoring().list_assignments()
+    records = repo.records()
+    assignment_rows = []
+    for assignment in assignments:
+        attempts = [
+            record for record in records if record.get("assessment_id") == assignment.assignment_id
+        ]
+        assignment_rows.append(
+            [
+                esc(assignment.assignment_id),
+                esc(assignment.publication_status),
+                len(attempts),
+                sum(record["grading"].get("score", 0) for record in attempts),
+            ]
+        )
+    error_groups = {}
+    for record in records:
+        if record["grading"].get("score") == 0:
+            for concept in record.get("concepts", []):
+                error_groups.setdefault(concept, []).append(record)
+    ambiguity_rows = []
+    for concept, evidence in error_groups.items():
+        learners = {record["student_id"] for record in evidence}
+        if len(learners) >= 2:
+            ambiguity_rows.append(
+                [
+                    esc(concept),
+                    "CANDIDATE_INSTRUCTIONAL_AMBIGUITY",
+                    len(learners),
+                    "<br>".join(
+                        f'<a href="/students?id={esc(record["student_id"])}">{esc(record["attempt_id"])}</a>'
+                        for record in evidence
+                    ),
+                ]
+            )
+    authoring_summary = (
+        "<section><h2>Assignment activity and feedback status</h2>"
+        + table(["Assignment", "Publication", "Attempts", "Correct outcomes"], assignment_rows)
+        + f"<p>Durable feedback jobs: {esc(pretty(get_jobs_repo().stats()))}</p></section>"
+    )
+    ambiguity_summary = (
+        "<section><h2>Candidate curriculum ambiguities</h2><p>Shared error patterns are candidates for instructor review. They do not establish that instructional material is defective.</p>"
+        + (
+            table(
+                ["Concept", "Candidate", "Distinct learners", "Persisted attempt evidence"],
+                ambiguity_rows,
+            )
+            if ambiguity_rows
+            else "<p>No shared error pattern across two learners is currently supported.</p>"
+        )
+        + "</section>"
+    )
     data = repo.analytics()
     em_repo = get_em_repo()
     all_evidence = em_repo.list_all_evidence()
@@ -547,6 +667,8 @@ def overview(repo):
 
     body = f"""
     <div class="cards">{cards}</div>
+    {authoring_summary}
+    {ambiguity_summary}
     <section>
       <h2>Curricular Concept Bottlenecks &amp; Cohort Mastery</h2>
       <p class="muted">Continuous diagnostic tracking of concept gaps across synthetic cohort. Concepts with mean mastery below 0.60 trigger adaptive remediation recommendations.</p>
@@ -612,7 +734,7 @@ def instruments_page():
     body = f"""
     <section>
       <h2>Multi-Stakeholder Research Evaluation Instruments</h2>
-      <p class="muted">Validated measurement instruments covering Student Cognitive &amp; Affective Perceptions, Instructor Pedagogical Quality, and Triple-Blinded Comparative Review.</p>
+      <p class="muted">Draft evaluation instruments covering student perceptions, instructor feedback quality, and blinded comparisons. Psychometric validation and authorized human-subject evaluation remain future work.</p>
 
       <h3>1. Student Perception &amp; Affective Survey</h3>
       <p>Administered following completion of the assessment and optional reflection activity.</p>
@@ -841,6 +963,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token=None, learner_si
         # Pending approval notice for unapproved projects in learner view
         pending_notice = ""
         if is_learner and proj.instructor_approval_status != "APPROVED":
+            milestones_html = "<p>Scaffolded activities unlock after instructor approval.</p>"
             pending_notice = """
             <div style="background:#fef3c7;border-left:4px solid #d97706;padding:14px;border-radius:6px;margin-bottom:18px;color:#92400e;">
               <strong>Pending Instructor Approval:</strong> This personalized project has not yet been approved by course instructors. Reference solutions and official milestone submissions remain locked until approved.
@@ -920,6 +1043,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token=None, learner_si
           <form method="POST" action="/api/projects/generate">
             <input type="hidden" name="student_id" value="{esc(learner_sid)}">
             <input type="hidden" name="csrf_token" value="{esc(csrf)}">
+            <label>1. Choose your interest <select name="interest"><option value="healthcare">Healthcare</option><option value="public_transit">Public transit</option><option value="gaming">Gaming</option><option value="climate">Climate</option><option value="fintech">Digital payments</option></select></label><br><br>
             <button type="submit" style="padding:6px 12px;font-size:13px;">Generate My Project</button>
           </form>
         </div>
@@ -944,7 +1068,7 @@ def projects_page(project_id=None, is_learner=False, csrf_token=None, learner_si
     <section>
       <h2>Personalized Dynamic SQL Projects</h2>
       <p class="muted">Grounded, open-ended multi-table projects tailored to student domain interests and diagnosed concept gaps. All specifications include verified SQLite schemas and deterministic grading rubrics.</p>
-      <h3>Quick Project Generator</h3>
+      <h3>1. Interest collection → 2. Candidate construction → 3. Scaffolded ranking</h3>
       <div class="cards" style="margin-bottom:24px;">
         {gen_forms}
       </div>
@@ -1184,6 +1308,7 @@ def practice_page(
         <p class="muted"><strong>Schema:</strong> Employees(employee_id INTEGER, name TEXT, department_id INTEGER); Departments(department_id INTEGER, department_name TEXT).</p>
       </div>
       <form method="POST" action="/practice">
+        <input type="hidden" name="submission_key" value="{uuid.uuid4().hex}">
         <input type="hidden" name="csrf_token" value="{esc(csrf)}">
         {f'<input type="hidden" name="assignment_id" value="{esc(assignment_id)}">' if assignment_id else ""}
         <div style="margin-bottom:12px;">
@@ -1314,6 +1439,8 @@ def feedback_page(job_id, headers, params, csrf_token=None):
 
     if status == "completed" and learner_view.get("feedback"):
         fb = learner_view["feedback"]
+        if fb.get("grounding_provenance"):
+            body += f'<section data-testid="assignment-grounding"><h3>Uploaded lesson and reviewed graph used for feedback</h3><pre>{esc(pretty(fb["grounding_provenance"]))}</pre><p>Inference: {esc(fb.get("inference_status"))} · model digest: {esc(fb.get("model_digest") or "not applicable")}</p></section>'
         hist_note = ""
         if fb.get("personalized"):
             hist_note = f"<p><small class='badge' style='background:#e8f5e9;color:#1b5e20;'>Historical personalization: Active ({esc(fb.get('history_provenance', 'prior_submissions'))})</small></p>"
@@ -1492,7 +1619,12 @@ class Handler(BaseHTTPRequestHandler):
         auth = RequestAuth(self)
         try:
             if parsed.path == "/":
-                self.send(overview(repo))
+                if auth.is_valid and auth.role == "instructor":
+                    self.send(overview(repo))
+                elif auth.is_valid and auth.role == "student":
+                    self.send(assignments_page(auth))
+                else:
+                    self.send(login_page())
             elif parsed.path == "/authoring":
                 is_auth, code, err = auth.require_instructor()
                 if not is_auth:
@@ -1500,7 +1632,9 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 self.send(
                     authoring_page(
-                        csrf_token=auth.csrf_token, notice=params.get("notice", [None])[0]
+                        csrf_token=auth.csrf_token,
+                        notice=params.get("notice", [None])[0],
+                        course_id=params.get("course_id", [None])[0],
                     )
                 )
             elif parsed.path == "/materials":
@@ -1555,6 +1689,17 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 payload = [item.to_dict() for item in get_demo_authoring().list_lessons()]
                 self.send(json.dumps(payload), content="application/json")
+            elif parsed.path in {"/api/demo/courses", "/api/demo/modules"}:
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(json.dumps({"error": err}), code, content="application/json")
+                registry = get_demo_authoring()
+                payload = (
+                    registry.list_courses()
+                    if parsed.path.endswith("courses")
+                    else registry.list_modules(course_id=params.get("course_id", [None])[0])
+                )
+                self.send(json.dumps(payload), content="application/json")
             elif parsed.path == "/api/demo/graphs":
                 is_auth, code, err = auth.require_instructor()
                 if not is_auth:
@@ -1576,9 +1721,22 @@ class Handler(BaseHTTPRequestHandler):
                 records = get_demo_authoring().list_assignments(
                     published_only=auth.role == "student"
                 )
-                self.send(
-                    json.dumps([item.to_dict() for item in records]), content="application/json"
-                )
+                payload = [item.to_dict() for item in records]
+                if auth.role == "student":
+                    for item in payload:
+                        config = item.get("grading_config", {})
+                        item["grading_config"] = {
+                            key: config[key]
+                            for key in (
+                                "engine",
+                                "question_id",
+                                "graph_id",
+                                "graph_version",
+                                "score_independent_of_feedback",
+                            )
+                            if key in config
+                        }
+                self.send(json.dumps(payload), content="application/json")
             elif parsed.path == "/api/demo/events":
                 is_auth, code, err = auth.require_instructor()
                 if not is_auth:
@@ -1601,7 +1759,51 @@ class Handler(BaseHTTPRequestHandler):
                     source_type="actual_execution",
                 )
                 rendered = get_demo_observability().render_all()["timeline"]
-                self.send(rendered.read_text(encoding="utf-8"))
+                self.send(
+                    rendered.read_text(encoding="utf-8").replace(
+                        "<body>",
+                        '<body><p><a href="/lineage">Inspect explicit entity lineage and source-to-attempt identifiers</a></p>',
+                        1,
+                    )
+                )
+            elif parsed.path in {"/lineage", "/api/demo/lineage", "/api/demo/enriched-events"}:
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(err, code)
+                lineage = entity_lineage(repo)
+                if parsed.path == "/api/demo/enriched-events":
+                    payload = derive_enriched_events(
+                        [item.to_dict() for item in get_demo_observability().list_events()], lineage
+                    )
+                    return self.send(json.dumps(payload), content="application/json")
+                if parsed.path == "/api/demo/lineage":
+                    return self.send(json.dumps(lineage), content="application/json")
+                nodes = table(
+                    ["Entity", "Stable ID / version", "Course", "Assignment", "Evidence kind"],
+                    [
+                        [
+                            esc(node["entity_type"]),
+                            esc(node["id"]),
+                            esc(node.get("course_id") or "—"),
+                            esc(node.get("assignment_id") or "—"),
+                            "Persisted" if node["persisted"] else "Computed from history",
+                        ]
+                        for node in lineage["nodes"]
+                    ],
+                )
+                edges = table(
+                    ["Source", "Explicit relation", "Target"],
+                    [
+                        [esc(edge["source"]), esc(edge["relation"]), esc(edge["target"])]
+                        for edge in lineage["edges"]
+                    ],
+                )
+                self.send(
+                    shell(
+                        "Entity data lineage",
+                        f'<section><h2>Source → reviewed graph → assignment → attempt → grade → feedback → review</h2><p>Only persisted identifiers and explicit associations create links. Profiles and recommendations are computed views. <a href="/timeline">Event timeline</a> · <a href="/api/demo/lineage">Export lineage JSON</a></p>{nodes}</section><section><h2>Traceable entity relationships</h2>{edges}<p>Unresolved references: {esc(pretty(lineage["unresolved_references"]))}</p></section>',
+                    )
+                )
             elif parsed.path == "/login":
                 is_dev_mode = (
                     os.environ.get("SIIP_ENV", "development") == "development"
@@ -1762,20 +1964,11 @@ class Handler(BaseHTTPRequestHandler):
                                 content="application/json",
                             )
                             return
-                        proj_dict = proj.to_dict()
-                        for m in proj_dict.get("milestones", []):
-                            m.pop("reference_sql", None)
-                        if proj.instructor_approval_status != "APPROVED":
-                            proj_dict["learner_notice"] = (
-                                "Pending Instructor Approval: Reference solutions and final milestone submissions remain locked until approved."
-                            )
+                        proj_dict = learner_project_payload(proj)
                         self.send(json.dumps(proj_dict), 200, content="application/json")
                     else:
                         projs = project_repo.list_projects_for_student(auth.principal)
-                        proj_dicts = [p.to_dict() for p in projs]
-                        for pd in proj_dicts:
-                            for m in pd.get("milestones", []):
-                                m.pop("reference_sql", None)
+                        proj_dicts = [learner_project_payload(p) for p in projs]
                         self.send(
                             json.dumps(proj_dicts),
                             200,
@@ -2098,6 +2291,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/projects/generate",
             "/api/projects/review",
             "/api/demo/lessons/upload",
+            "/api/demo/courses/create",
+            "/api/demo/modules/create",
             "/api/demo/kg/generate",
             "/api/demo/kg/review",
             "/api/demo/kg/save",
@@ -2124,6 +2319,34 @@ class Handler(BaseHTTPRequestHandler):
             auth = RequestAuth(self)
 
             # Local-only professor demonstration upload and authoring lifecycle.
+            if self.path in {"/api/demo/courses/create", "/api/demo/modules/create"}:
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(err, code)
+                params = parse_qs(text, strict_parsing=True)
+                csrf_ok, csrf_code, csrf_err = auth.verify_csrf(params)
+                if not csrf_ok:
+                    return self.send(csrf_err, csrf_code)
+                course_id = params["course_id"][0]
+                if self.path.endswith("courses/create"):
+                    get_demo_authoring().create_course(
+                        course_id=course_id, title=params["title"][0]
+                    )
+                else:
+                    get_demo_authoring().create_module(
+                        course_id=course_id,
+                        module_id=params["module_id"][0],
+                        title=params["title"][0],
+                    )
+                self.send_response(303)
+                self.send_header(
+                    "Location",
+                    f"/authoring?course_id={course_id}&notice=Saved+course+configuration",
+                )
+                self.send_header("Connection", "close")
+                self.close_connection = True
+                self.end_headers()
+                return
             if self.path == "/api/demo/lessons/upload":
                 is_auth, code, err = auth.require_instructor()
                 if not is_auth:
@@ -2136,6 +2359,7 @@ class Handler(BaseHTTPRequestHandler):
                     upload["content"],
                     source_document_id=fields.get("source_document_id", ""),
                     course_id=fields.get("course_id", ""),
+                    module_id=fields.get("module_id") or None,
                     original_filename=upload["filename"],
                 )
                 record_demo_event(
@@ -2181,13 +2405,19 @@ class Handler(BaseHTTPRequestHandler):
                     source_type="actual_execution",
                 )
                 registry.set_lesson_processing_status(document_id, version, "PROCESSING")
-                graph = get_demo_kg().generate_candidates(
-                    {
-                        **lesson.to_dict(),
-                        "content_hash": lesson.sha256,
-                        "content": registry.read_lesson_bytes(document_id, version).decode("utf-8"),
-                    }
-                )
+                try:
+                    graph = get_demo_kg().generate_candidates(
+                        {
+                            **lesson.to_dict(),
+                            "content_hash": lesson.sha256,
+                            "content": registry.read_lesson_bytes(document_id, version).decode(
+                                "utf-8"
+                            ),
+                        }
+                    )
+                except Exception:
+                    registry.set_lesson_processing_status(document_id, version, "FAILED")
+                    raise
                 registry.set_lesson_processing_status(document_id, version, "PROCESSED")
                 record_demo_event(
                     actor_type="system",
@@ -2196,7 +2426,9 @@ class Handler(BaseHTTPRequestHandler):
                     event_type="kg_extraction_completed",
                     entity_id=graph["graph_id"],
                     artifact_path="outputs/knowledge_graph/02_extracted_kg.json",
-                    source_type="synthetic_fixture",
+                    source_type="actual_execution"
+                    if graph.get("extraction_mode") == "LOCAL_LLM_ASSISTED_EXTRACTION"
+                    else "synthetic_fixture",
                 )
                 self.send_response(303)
                 self.send_header(
@@ -2279,13 +2511,18 @@ class Handler(BaseHTTPRequestHandler):
                 graphs = get_demo_kg().list_graphs()
                 if not graphs:
                     return self.send("Generate and review a knowledge graph first", 409)
-                graph_id = graphs[-1]["graph_id"]
+                graph_id = params.get("graph_id", [graphs[-1]["graph_id"]])[0]
                 versions = get_demo_kg().list_versions(graph_id)
                 if not versions:
                     return self.send(
                         "Save a reviewed graph version before assignment creation", 409
                     )
                 graph = get_demo_kg().retrieve(graph_id, versions[-1]["version"])
+                lesson = get_demo_authoring().get_lesson(
+                    graph["source_document_id"], graph.get("source_version")
+                )
+                if lesson is None:
+                    return self.send("Graph source not found", 409)
                 available_nodes = {node["id"] for node in graph["nodes"]}
                 if not set(node_ids).issubset(available_nodes) or not any(
                     edge["review_state"] == "APPROVED" for edge in graph["edges"]
@@ -2295,7 +2532,12 @@ class Handler(BaseHTTPRequestHandler):
                     )
                 record = get_demo_authoring().create_assignment(
                     assignment_id=params["assignment_id"][0],
-                    course_id=params["course_id"][0],
+                    course_id=lesson.course_id,
+                    module_id=lesson.module_id,
+                    source_document_id=lesson.source_document_id,
+                    source_version=lesson.version,
+                    graph_id=graph_id,
+                    graph_version=graph["version"],
                     question_ids=[question_id],
                     kg_node_ids=node_ids,
                     grading_config={
@@ -2435,6 +2677,17 @@ class Handler(BaseHTTPRequestHandler):
                         "grading_configuration": assignment.grading_config,
                         "publication_status": assignment.publication_status,
                         "native_prairielearn_publication": assignment.native_prairielearn_publication,
+                        "feedback_grounding": {
+                            "assignment_id": assignment.assignment_id,
+                            "course_id": assignment.course_id,
+                            "graph_id": assignment.graph_id,
+                            "graph_version": assignment.graph_version,
+                            "source_document_id": assignment.source_document_id,
+                            "source_version": assignment.source_version,
+                            "source_sha256": get_demo_authoring()
+                            .get_lesson(assignment.source_document_id, assignment.source_version)
+                            .sha256,
+                        },
                     }
                     journey = DemoStudentJourney(
                         submission_store=repo,
@@ -2446,7 +2699,7 @@ class Handler(BaseHTTPRequestHandler):
                             adapter_assignment,
                             auth.principal,
                             sql,
-                            submission_key=uuid.uuid4().hex,
+                            submission_key=params.get("submission_key", [uuid.uuid4().hex])[0],
                         )
                     job_id = result["feedback_job"]["job_id"]
                     ticket = create_signed_ticket(auth.principal, job_id)
@@ -3122,8 +3375,18 @@ class Handler(BaseHTTPRequestHandler):
 
                 repo = self.server.repository
                 st_profile = repo.profile(sid)
+                project_graph = None
+                for attempt in reversed(repo.records(sid)):
+                    if not attempt.get("assessment_id"):
+                        continue
+                    assignment = get_demo_authoring().get_assignment(attempt["assessment_id"])
+                    if assignment and assignment.graph_id and assignment.graph_version:
+                        project_graph = get_demo_kg().retrieve(
+                            assignment.graph_id, assignment.graph_version
+                        )
+                        break
                 project = generate_personalized_project(
-                    student_id=sid, interest=domain, profile=st_profile
+                    student_id=sid, interest=domain, profile=st_profile, graph_context=project_graph
                 )
                 project_repo.save_project(project)
                 record_demo_event(
@@ -3138,7 +3401,11 @@ class Handler(BaseHTTPRequestHandler):
 
                 if is_json:
                     self.send(
-                        json.dumps(project.to_dict()),
+                        json.dumps(
+                            learner_project_payload(project)
+                            if auth.role == "student"
+                            else project.to_dict()
+                        ),
                         201,
                         content="application/json",
                     )

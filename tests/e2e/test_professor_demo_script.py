@@ -7,8 +7,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock
 from pathlib import Path
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/record_professor_demo.py"
@@ -71,17 +71,24 @@ class ProfessorDemoScriptContractTests(unittest.TestCase):
 
     def test_nested_learner_payload_rejects_hidden_answer_keys(self) -> None:
         with self.assertRaisesRegex(AssertionError, "reference_sql"):
-            MODULE.assert_learner_payload({"project": {"milestones": [{"reference_sql": "SELECT 1"}]}})
+            MODULE.assert_learner_payload(
+                {"project": {"milestones": [{"reference_sql": "SELECT 1"}]}}
+            )
         MODULE.assert_learner_payload({"submitted_sql": "SELECT 1", "grading": {"score": 0}})
 
     def test_profile_verification_requires_new_exact_persisted_attempt(self) -> None:
         store = Mock()
-        record = {"question_id": "sql_join_04", "submitted_sql": MODULE.INCORRECT_SQL,
-                  "grading": {"score": 0}}
+        record = {
+            "question_id": "sql_join_04",
+            "submitted_sql": MODULE.INCORRECT_SQL,
+            "grading": {"score": 0},
+        }
         store.attempt_for_student.return_value = record
         store.profile.return_value = {"concepts": {"LEFT_OUTER_JOIN": {"attempt_count": 1}}}
         store.records.return_value = [record]
-        self.assertEqual(MODULE.assert_persisted_attempt(store, "attempt-a", 0)["attempt_count_after"], 1)
+        self.assertEqual(
+            MODULE.assert_persisted_attempt(store, "attempt-a", 0)["attempt_count_after"], 1
+        )
         with self.assertRaisesRegex(AssertionError, "exactly one"):
             MODULE.assert_persisted_attempt(store, "attempt-a", 1)
 
