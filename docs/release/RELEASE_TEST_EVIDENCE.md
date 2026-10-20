@@ -4,12 +4,12 @@ Release validation is separated from historical claims. Local interpreter: Pytho
 
 | Gate | Current evidence |
 |---|---|
-| G0 source integrity | Existing dirty checkout preserved; isolated candidate; publication/history audit required on final content |
-| G1 static/build | Ruff, format, scoped mypy (3 configured files), pip check, config validation, Bandit, code-only wheel and vulnerability audit are run; final outcomes below |
-| G2 tests | Initial current-plus-release run: 324 passed in 93.618s. Final suite must reconcile later added regressions; 313 is historical baseline, not current total |
-| G3 browser/service | Initial 7-test run: 6 passed, 1 failed after a test provider change disabled async enqueue. Corrected test retains queue routing and deterministic worker. Subsequent 2-test rerun passed in 54.983s, including full upload/graph/assignment/student/EM/project/lineage and restart |
-| G4 scientific integrity | Known stored COUNT and grouping response replays fall back; valid LEFT JOIN COUNT grades correct. Model guidance unreviewed; original InstructKG/learning outcomes NOT_RUN |
-| G5 GitHub | Historical PR workflows green; consolidation exact-head workflows must pass separately before merge |
+| G0 source integrity | PASS for runtime candidate: clean worktree, complete-history Security scan; original dirty checkout preserved |
+| G1 static/build | PASS: Ruff, formatting, scoped mypy (3 files), pip check/config, Bandit, code-only wheel, dependency and publication/security scans |
+| G2 tests | PASS: runtime candidate 5c72693 has 330 tests passing in 83.621s; baseline 313 + 16 release regressions + 1 source-version regression |
+| G3 browser/service | PASS locally: all 7 browser tests in 68.618s, including full upload/graph/assignment/student/EM/project/lineage and restart. Native PL must also pass final-head GitHub integration |
+| G4 scientific integrity | PASS within sandbox scope: COUNT/grouping replays fall back, valid COUNT grades correctly, no answer leakage. Original InstructKG and learning outcomes NOT_RUN |
+| G5 GitHub | Runtime-head CI/Security PASS; final consolidation head must have all three successful workflows, unchanged base, clear reviews/rules before merge |
 | G6 fresh main | NOT_RUN before merge; independent fresh-main clone/install/health/browser/restart required before tag |
 
 The dedicated release regression file initially passes 13 tests, covering auth configuration matrix/HTTP role negatives, binary-key roundtrip, COUNT/grouping replay fallback, model-unreviewed state, concurrent graph versions, prior-only current/later attempts, ownership reconciliation, durable project review history and safe JSON escaping. Source-version substitution has a separate grounding regression.
@@ -31,3 +31,7 @@ Independent final read-only reviews identified a separate feedback-session verif
 [Consolidation PR #4](https://github.com/IanJ332/insructkg_sandbox/pull/4) targets main and preserves history. Earlier candidate [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/39449467116) and [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/39449467185) passed; successor head must receive its own successful checks before merge. Final exact head/workflow URLs and G6 fresh-main results are recorded in the annotated release tag and external final handoff after completion (`git show siip-sandbox-v1.0` when created).
 
 Candidate `5c6a71a`: CI and Security passed; all seven browser tests passed locally in 68.523s. The 330-test local run had one Windows `ConnectionAbortedError` in the existing hostile-origin negative test; it is retained as a failed run, not called PASS. Five bounded isolated reruns of that exact negative test passed with no timeout/expectation changes. A complete successor suite is required. Final provenance reconciliation also records effective/attempted provider and requested model in feedback and retains every graph review decision in the saved graph history. The 16 focused release tests pass after these additions.
+
+## Accepted runtime source snapshot
+
+Runtime source `5c726930894b24104b38f7205c9573f5aab06cf1` passes 330 unit/integration tests (83.621s) and 7 distinct browser tests (68.618s). Repeated full-browser executions are reported separately and are not additional distinct tests. [CI](https://github.com/IanJ332/insructkg_sandbox/actions/runs/39450613891) and [Security](https://github.com/IanJ332/insructkg_sandbox/actions/runs/39450613902) pass; [native integration](https://github.com/IanJ332/insructkg_sandbox/actions/runs/39450613916) is a separate required gate. This evidence-only documentation update does not alter runtime code. Its final exact head receives new GitHub checks and local discovery before merge. Final main/tag/G6 outcomes live in the annotated tag and completed external handoff, avoiding a self-referential future commit SHA in committed reports.

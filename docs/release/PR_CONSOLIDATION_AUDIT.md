@@ -9,3 +9,5 @@ Mandatory pre-merge checks: fetch again; verify main/head SHA and zero unexpecte
 Only after successful integration and G6 fresh-main verification may PR #1, #2 and #3 be closed as superseded, linking the merged consolidation and confirming each source head is an ancestor. Preserve discussions and all branches/worktrees. Release tag creation follows successful fresh-clone validation and uses an annotated synthetic-sandbox label.
 
 This committed audit specifies the gate protocol. The final main SHA, PR URL, workflow URLs, tag and clean-room outcome are recorded in the final release handoff/annotated tag, after those operations actually complete. See `FINAL_PR_AUDIT.md` for individual findings and `RELEASE_TEST_EVIDENCE.md` for measured local evidence.
+
+Consolidation URL: https://github.com/IanJ332/insructkg_sandbox/pull/4. Runtime snapshot 5c72693 passes 330 unit/integration and 7 browser tests. Final documentation-head checks, resulting main SHA, fresh-main validation and old-PR dispositions are recorded only after completion in the annotated tag/final handoff.
