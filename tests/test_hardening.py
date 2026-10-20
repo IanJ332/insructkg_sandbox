@@ -434,7 +434,15 @@ class HTTPHardeningTests(unittest.TestCase):
         return status, value, response_headers
 
     def test_health_and_empty_analytics_schema(self):
-        status, body, headers = self.request()
+        from siip.identity import create_signed_session_token
+
+        self.assertEqual(self.request()[0], 401)
+        status, body, headers = self.request(
+            headers={
+                "Authorization": "Bearer "
+                + create_signed_session_token("instructor-admin", role="instructor")
+            }
+        )
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["attempt_count"], 0)
         self.assertIn("X-Request-ID", headers)
@@ -490,6 +498,12 @@ class HTTPHardeningTests(unittest.TestCase):
         )
 
     def test_successful_idempotent_request_updates_store(self):
+        from siip.identity import create_signed_session_token
+
+        instructor_headers = {
+            "Authorization": "Bearer "
+            + create_signed_session_token("instructor-admin", role="instructor")
+        }
         body = json.dumps(
             {
                 "student_id": "S003",
@@ -498,18 +512,26 @@ class HTTPHardeningTests(unittest.TestCase):
             }
         )
         headers = {"Content-Type": "application/json", "Idempotency-Key": "test-repeat"}
+        headers.update(instructor_headers)
         for _ in range(2):
             self.assertEqual(self.request("POST", "/api/attempts", body, headers)[0], 201)
         self.assertEqual(len(self.repo.records()), 1)
-        self.assertEqual(json.loads(self.request()[1])["correct"], 1)
+        self.assertEqual(json.loads(self.request(headers=instructor_headers)[1])["correct"], 1)
 
     def test_storage_failure_safe_503(self):
+        from siip.identity import create_signed_session_token
+
         with patch.object(
             self.repo,
             "analytics",
             side_effect=sqlite3.OperationalError("do not expose this internal detail"),
         ):
-            status, body, _ = self.request()
+            status, body, _ = self.request(
+                headers={
+                    "Authorization": "Bearer "
+                    + create_signed_session_token("instructor-admin", role="instructor")
+                }
+            )
         self.assertEqual(status, 503)
         self.assertNotIn(b"internal detail", body)
 

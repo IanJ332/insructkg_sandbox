@@ -19,6 +19,7 @@ from playwright.sync_api import expect, sync_playwright
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
 from siip.grader import QUESTIONS
+from siip.identity import create_signed_session_token
 from siip.ingestion import import_local_csv
 from siip.store import SubmissionRepository
 
@@ -138,7 +139,14 @@ def main():
             after = repo.analytics()["attempt_count"]
             assert len(added) >= 5 and after == before + len(added)
             with urllib.request.urlopen(
-                "http://127.0.0.1:8080/api/analytics", timeout=15
+                urllib.request.Request(
+                    "http://127.0.0.1:8080/api/analytics",
+                    headers={
+                        "Authorization": "Bearer "
+                        + create_signed_session_token("instructor-admin", role="instructor")
+                    },
+                ),
+                timeout=15,
             ) as response:  # nosec B310: fixed loopback.
                 analytics = json.load(response)
             assert analytics["attempt_count"] == after

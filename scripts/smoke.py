@@ -3,6 +3,7 @@
 import http.client
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -10,6 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
+from siip.identity import create_signed_session_token
+
+instructor_headers = {
+    "Authorization": "Bearer " + create_signed_session_token("instructor-admin", role="instructor")
+}
 checks = []
 
 
@@ -31,7 +38,7 @@ def get(url, headers=None):
 assert "PrairieLearn" in get("http://localhost:3000/pl")
 checks.append("Actual PrairieLearn HTTP server responds")
 assert json.loads(get("http://127.0.0.1:8080/health"))["synthetic"]
-analytics = json.loads(get("http://127.0.0.1:8080/api/analytics"))
+analytics = json.loads(get("http://127.0.0.1:8080/api/analytics", headers=instructor_headers))
 assert analytics["student_count"] == 5 and analytics["attempt_count"] >= 21
 checks.append("Analytics reads persistent five-student store")
 
@@ -76,7 +83,7 @@ try:
 except urllib.error.HTTPError as cross_err:
     assert cross_err.code == 403
 checks.append("Cross-student access rejected (403)")
-graph = get("http://127.0.0.1:8080/graph")
+graph = get("http://127.0.0.1:8080/graph", headers=instructor_headers)
 data = Path(
     os.environ.get("SIIP_DATA_DIR") or ROOT / "prairielearn-course/serverFilesCourse/siip/data"
 )
@@ -89,7 +96,7 @@ checks.append(
     if synthetic
     else "Original graph inventory, direction and review state render"
 )
-comparison = get("http://127.0.0.1:8080/compare")
+comparison = get("http://127.0.0.1:8080/compare", headers=instructor_headers)
 assert all(mode in comparison for mode in ["BASELINE", "RAG", "KG", "deterministic_fallback"])
 checks.append("Three fallback comparison contexts render with explicit inference status")
 report = {

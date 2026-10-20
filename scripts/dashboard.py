@@ -1852,6 +1852,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self.send("Forbidden", 403)
             elif parsed.path == "/graph":
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(err, code)
                 self.send(graph_page())
             elif parsed.path == "/em-review":
                 is_auth, code, err = auth.require_instructor()
@@ -2155,6 +2158,9 @@ class Handler(BaseHTTPRequestHandler):
                     )
                 )
             elif parsed.path == "/compare":
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(err, code)
                 self.send(compare(params))
             elif parsed.path == "/feedback":
                 job_id = params.get("job_id", [None])[0]
@@ -2231,6 +2237,9 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 self.send(json.dumps(job.to_learner_dict()), 200, content="application/json")
             elif parsed.path == "/api/analytics":
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(json.dumps({"error": err}), code, content="application/json")
                 self.send(json.dumps(repo.analytics()), content="application/json")
             elif parsed.path == "/health":
                 with closing(repo.connect()) as db:
@@ -3502,6 +3511,16 @@ class Handler(BaseHTTPRequestHandler):
                 ):
                     raise ValueError("Invalid form")
                 payload = {key: value[0] for key, value in params.items()}
+            if (
+                payload.get("student_id") not in STUDENTS
+                or payload.get("question_id") not in QUESTIONS
+                or not isinstance(payload.get("sql"), str)
+                or not payload["sql"].strip()
+            ):
+                raise ValueError("Invalid attempt fields")
+            allowed, code, error = auth.require_student_or_instructor(payload["student_id"])
+            if not allowed:
+                return self.send(error, code)
             key = self.headers.get("Idempotency-Key")
             if key is not None and (
                 not 1 <= len(key) <= 100 or not all(c.isalnum() or c in "-_" for c in key)

@@ -176,6 +176,49 @@ class DemoHTTPAuthorizationTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path, token=self.student)[0], 403)
 
+    def test_legacy_feedback_lab_and_cohort_exports_are_instructor_only(self):
+        for path in ("/compare", "/graph", "/api/analytics"):
+            with self.subTest(path=path):
+                self.assertEqual(self.request("GET", path)[0], 401)
+                self.assertEqual(self.request("GET", path, token=self.student)[0], 403)
+                self.assertEqual(self.request("GET", path, token=self.instructor)[0], 200)
+
+    def test_legacy_attempt_ingestion_enforces_signed_ownership(self):
+        fields = {"student_id": "S002", "question_id": "sql_join_04", "sql": "SELECT 1"}
+        self.assertEqual(self.request("POST", "/attempt", fields=fields)[0], 401)
+        self.assertEqual(
+            self.request("POST", "/attempt", token=self.student, fields=fields)[0], 403
+        )
+        self.assertEqual(self.repo.records(), [])
+
+    def test_extraction_failure_persists_failed_source_state(self):
+        lesson = self.registry.upload_lesson(
+            (ROOT / "demo_materials/SYNTHETIC_SQL_JOINS_LESSON.md").read_bytes(),
+            source_document_id="failed-source",
+            course_id="sql-demo",
+            original_filename="failed.md",
+        )
+        with patch.object(
+            dashboard.get_demo_kg(),
+            "generate_candidates",
+            side_effect=RuntimeError("injected unavailable extractor"),
+        ):
+            status, _ = self.request(
+                "POST",
+                "/api/demo/kg/generate",
+                token=self.instructor,
+                fields={
+                    "source_document_id": lesson.source_document_id,
+                    "version": lesson.version,
+                    "csrf_token": generate_csrf_token(self.instructor),
+                },
+            )
+        self.assertEqual(status, 503)
+        self.assertEqual(
+            self.registry.get_lesson(lesson.source_document_id, lesson.version).processing_status,
+            "FAILED",
+        )
+
     def test_cross_origin_publication_rejected_before_mutation(self):
         status, _ = self.request(
             "POST",
