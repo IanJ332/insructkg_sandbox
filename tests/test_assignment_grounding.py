@@ -101,6 +101,23 @@ class AssignmentGroundingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve_grounding({**self.ids, "source_document_id": "../secret"})
 
+    def test_grounding_rejects_question_outside_assignment(self):
+        with self.assertRaisesRegex(ValueError, "Question does not belong"):
+            resolve_grounding(self.ids, question_id="sql_join_01")
+
+    def test_grounding_rejects_incompatible_concept_mapping(self):
+        registry = DemoAuthoringRegistry(self.root / "authoring")
+        registry.create_assignment(
+            assignment_id="wrong-tags",
+            course_id=self.ids["course_id"],
+            question_ids=["sql_join_04"],
+            kg_node_ids=["INNER_JOIN"],
+            grading_config={"graph_id": self.ids["graph_id"], "graph_version": 1},
+        )
+        registry.publish_assignment("wrong-tags")
+        with self.assertRaisesRegex(ValueError, "concept tags"):
+            resolve_grounding({**self.ids, "assignment_id": "wrong-tags"})
+
     def test_replay_cannot_replace_grounding(self):
         queue = FeedbackJobRepository(self.root / "jobs.sqlite3")
         result = {"status": "semantic_error", "score": 0, "observation": "wrong_rows"}

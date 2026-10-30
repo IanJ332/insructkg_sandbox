@@ -33,7 +33,9 @@ def validate_grounding(value):
     return dict(value)
 
 
-def resolve_grounding(value):
+def resolve_grounding(value, question_id=None):
+    from .grader import QUESTIONS
+
     ids = validate_grounding(value)
     root = Path(
         os.environ.get("SIIP_DEMO_STATE_DIR")
@@ -43,6 +45,12 @@ def resolve_grounding(value):
     assignment = registry.get_assignment(ids["assignment_id"])
     if assignment is None or assignment.publication_status != "PUBLISHED_LOCAL_DEMO":
         raise ValueError("Grounding assignment is unavailable")
+    if question_id is not None and question_id not in assignment.question_ids:
+        raise ValueError("Question does not belong to grounding assignment")
+    selected = set(assignment.kg_node_ids)
+    question_tags = [set(QUESTIONS[qid]["concepts"]) for qid in assignment.question_ids]
+    if not selected or not all(selected & tags for tags in question_tags):
+        raise ValueError("Assignment KG nodes do not match the question concept tags")
     config = assignment.grading_config
     for key in ("source_document_id", "source_version", "graph_id", "graph_version"):
         binding = getattr(assignment, key, None)
@@ -64,6 +72,8 @@ def resolve_grounding(value):
     graph = DemoKGRepository(root / "knowledge_graph").retrieve(
         ids["graph_id"], ids["graph_version"]
     )
+    if not selected.issubset({node["id"] for node in graph["nodes"]}):
+        raise ValueError("Assignment concepts are missing from saved graph version")
     if (
         graph["source_document_id"] != ids["source_document_id"]
         or graph.get("source_version") != ids["source_version"]

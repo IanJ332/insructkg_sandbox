@@ -2,12 +2,12 @@ ast_serialize==0.13.0
 bandit==1.9.4
 boolean.py==5.0
 CacheControl==0.14.4
-certifi==2026.7.22
+certifi==2026.10.18
 charset-normalizer==3.5.2
 cyclonedx-python-lib==11.12.0
 defusedxml==0.7.1
 detect-secrets==1.5.0
-filelock==4.1.2
+filelock==4.2.1
 greenlet==3.5.6
 idna==3.20
 librt==0.16.0
@@ -29,7 +29,7 @@ py-serializable==2.1.0
 pyee==13.0.1
 Pygments==2.21.0
 pyparsing==3.3.3
-pypdf==6.20.1
+pypdf==6.21.2
 PyYAML==6.0.3
 requests==2.34.2
 rich==15.0.0

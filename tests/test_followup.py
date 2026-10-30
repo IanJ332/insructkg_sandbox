@@ -70,6 +70,15 @@ class RepoCase(unittest.TestCase):
 
 
 class PersonalizationTests(RepoCase):
+    def test_replay_history_stays_within_current_course(self):
+        self.repo.process(
+            {**attempt("other", timestamp="2026-01-01T00:00:00Z"), "course_id": "other"}
+        )
+        self.repo.process({**attempt("current"), "course_id": "current"})
+        result = self.feedback("current")
+        self.assertEqual(result["evidence_receipt"]["prior_attempt_count"], 0)
+        self.assertEqual(result["feedback"]["historical_personalization"]["status"], "none")
+
     def feedback(self, aid, sid="S001", **kwargs):
         return feedback_for_attempt(
             self.repo, aid, synthetic_principal(sid, authorized=True), **kwargs

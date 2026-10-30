@@ -77,6 +77,8 @@ def _load_assignment(value: Mapping[str, Any] | str | Path) -> dict[str, Any]:
         raise ValueError("Published assignment requires relevant KG nodes")
     for node in nodes:
         _validate_id(node, "relevant_kg_node_ids")
+    if not set(nodes).intersection(QUESTIONS[assignment["question_id"]]["concepts"]):
+        raise ValueError("Assignment KG nodes must match the supported question concept tags")
     if not isinstance(assignment["grading_configuration"], Mapping):
         raise ValueError("Published assignment requires a grading configuration")
     try:
@@ -188,6 +190,7 @@ class DemoStudentJourney:
             if (
                 saved["assessment_id"] != assignment["assignment_id"]
                 or saved["question_id"] != question_id
+                or saved.get("course_id") not in {None, assignment["course_id"]}
             ):
                 raise ValueError("submission_key was replayed for a conflicting assignment")
         except PermissionError:
@@ -200,6 +203,7 @@ class DemoStudentJourney:
                     "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
                     "source": "synthetic_fixture",
                     "assessment_id": assignment["assignment_id"],
+                    "course_id": assignment["course_id"],
                 },
                 # Repository persistence requires a feedback mode.  With no
                 # provider this is bounded local deterministic work, never LLM

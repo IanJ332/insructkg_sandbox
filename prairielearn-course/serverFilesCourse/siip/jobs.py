@@ -261,6 +261,7 @@ class FeedbackJobRepository:
                     if (
                         existing.student_id != student_id
                         or existing.question_id != question_id
+                        or existing.feedback_mode != mode
                         or existing.submitted_sql != submitted_sql
                         or existing.grading.get("status") != minimized_grading.get("status")
                         or existing.grading.get("score") != minimized_grading.get("score")
@@ -729,11 +730,19 @@ class FeedbackWorker:
             if student_mastery is None and self.submission_repo is not None:
                 try:
                     cutoff = job.created_at
+                    course_id = (job.grading.get("_grounding") or {}).get("course_id")
                     try:
                         current = self.submission_repo.attempt_for_student(
                             job.attempt_id, job.student_id
                         )
                         cutoff = min(cutoff, current["timestamp"])
+                        if (
+                            course_id is not None
+                            and current.get("course_id") is not None
+                            and current["course_id"] != course_id
+                        ):
+                            raise ValueError("Attempt course differs from assignment grounding")
+                        course_id = course_id or current.get("course_id")
                     except PermissionError:
                         # Native provisional events can precede submission import.
                         if job.attempt_kind == "provisional":
@@ -741,7 +750,9 @@ class FeedbackWorker:
                                 "Prior history unavailable until attempt reconciliation"
                             )
                         pass
-                    prof = self.submission_repo.profile(job.student_id, as_of=cutoff, before=True)
+                    prof = self.submission_repo.profile(
+                        job.student_id, as_of=cutoff, before=True, course_id=course_id
+                    )
                     if prof and isinstance(prof, dict) and prof.get("concepts"):
                         student_mastery = prof["concepts"]
                         history_provenance = "prior_submissions"
@@ -763,14 +774,18 @@ class FeedbackWorker:
             if feedback_result.get("grounding_provenance"):
                 provenance = feedback_result["grounding_provenance"]
                 graph_sha = f"{provenance['graph_id']}:v{provenance['graph_version']}"
-            feedback_result["personalized"] = bool(student_mastery)
-            feedback_result["history_provenance"] = history_provenance
             if "historical_personalization" not in feedback_result:
                 feedback_result["historical_personalization"] = {
                     "status": "provided_concept_evidence" if student_mastery else "none",
                     "concept_count": len(student_mastery) if student_mastery else 0,
                     "evidence_kind": "descriptive_beta_heuristic" if student_mastery else None,
                 }
+            feedback_result["personalized"] = bool(
+                feedback_result["historical_personalization"]["concept_count"]
+            )
+            feedback_result["history_provenance"] = (
+                history_provenance if feedback_result["personalized"] else "none"
+            )
             if (
                 provider is not None
                 and feedback_result.get("inference_status") == "provider_error_fallback"

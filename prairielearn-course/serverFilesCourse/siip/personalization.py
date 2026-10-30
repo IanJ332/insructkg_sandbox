@@ -35,7 +35,12 @@ def feedback_for_attempt(repo, attempt_id, principal, *, provider=None):
     ):
         raise PermissionError("Feedback access denied")
     record = repo.attempt_for_student(attempt_id, principal.student_id)
-    profile = repo.profile(principal.student_id, as_of=record["timestamp"], before=True)
+    profile = repo.profile(
+        principal.student_id,
+        as_of=record["timestamp"],
+        before=True,
+        course_id=record.get("course_id"),
+    )
     feedback = generate_feedback(
         record["question_id"],
         record["submitted_sql"],
