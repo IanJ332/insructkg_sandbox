@@ -390,8 +390,8 @@ class SubmissionRepository:
             "model": "Beta(1,1) smoothing on latest result per linked question; unvalidated heuristic",
         }
 
-    def analytics(self):
-        records = self.records()
+    def analytics(self, *, course_id=_ALL_COURSES):
+        records = self.records(course_id=course_id)
         questions = {}
         for qid in QUESTIONS:
             rows = [a for a in records if a["question_id"] == qid]
@@ -407,9 +407,9 @@ class SubmissionRepository:
         )
         concept_profiles = defaultdict(list)
         for sid in STUDENTS:
-            for c, p in self.profile(sid)["concepts"].items():
+            for c, p in self.profile(sid, course_id=course_id)["concepts"].items():
                 concept_profiles[c].append(p["mastery_estimate"])
-        return {
+        result = {
             "synthetic": True,
             "student_count": len(STUDENTS),
             "attempt_count": len(records),
@@ -419,3 +419,27 @@ class SubmissionRepository:
             "mean_mastery": {c: sum(v) / len(v) for c, v in concept_profiles.items()},
             "sources": dict(Counter(a["source"] for a in records)),
         }
+        if course_id is not _ALL_COURSES:
+            result["course_id"] = course_id
+            result["student_count"] = len({a["student_id"] for a in records})
+            result["attempt_ids"] = [a["attempt_id"] for a in records]
+            error_evidence = defaultdict(list)
+            sequences = defaultdict(list)
+            for a in records:
+                if not a["grading"]["score"]:
+                    error_evidence[a["diagnosis"]["observed_error"]].append(a["attempt_id"])
+                sequences[(a["student_id"], a["assessment_id"], a["question_id"])].append(a)
+            result["observed_errors"] = dict(sorted(error_evidence.items()))
+            result["improvements"] = [
+                {
+                    "student_id": key[0],
+                    "assignment_id": key[1],
+                    "question_id": key[2],
+                    "from_attempt_id": previous["attempt_id"],
+                    "to_attempt_id": current["attempt_id"],
+                }
+                for key, attempts in sorted(sequences.items())
+                for previous, current in zip(attempts, attempts[1:])
+                if not previous["grading"]["score"] and current["grading"]["score"]
+            ]
+        return result

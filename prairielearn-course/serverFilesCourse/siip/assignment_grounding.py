@@ -7,6 +7,36 @@ from pathlib import Path
 
 from .demo_authoring import DemoAuthoringRegistry
 from .demo_kg import DemoKGRepository
+from .identity import is_instructor_principal
+
+
+def reviewed_concept_mapping(config, graph):
+    """Apply only explicit synthetic-instructor mappings; never infer equivalence."""
+    from .grader import QUESTIONS
+
+    entries = config.get("concept_mapping", {})
+    if not isinstance(entries, dict) or len(entries) > 12:
+        raise ValueError("Invalid reviewed concept mapping")
+    nodes = {node["id"] for node in graph["nodes"]}
+    canonical = {tag for question in QUESTIONS.values() for tag in question["concepts"]}
+    mapping = {}
+    for source, entry in entries.items():
+        if (
+            source not in nodes
+            or not isinstance(entry, dict)
+            or set(entry) != {"canonical_id", "reviewed_by", "notes"}
+            or not isinstance(entry["canonical_id"], str)
+            or entry["canonical_id"] not in canonical
+            or not is_instructor_principal(entry["reviewed_by"])
+            or not isinstance(entry["notes"], str)
+            or not 1 <= len(entry["notes"].strip()) <= 1000
+        ):
+            raise ValueError("Concept mapping requires source, canonical tag and instructor review")
+        mapping[source] = entry["canonical_id"]
+    resolved = [mapping.get(node, node) for node in nodes]
+    if len(resolved) != len(set(resolved)):
+        raise ValueError("Concept mapping would merge distinct graph nodes")
+    return mapping
 
 
 def validate_grounding(value):
@@ -83,6 +113,17 @@ def resolve_grounding(value, question_id=None):
     approved = [edge for edge in graph["edges"] if edge["review_state"] == "APPROVED"]
     if not approved:
         raise ValueError("Grounding requires reviewed graph evidence")
+    mapping = reviewed_concept_mapping(config, graph)
+    # Project graph IDs for this assignment only. Saved versions remain untouched.
+    approved = [
+        {
+            **edge,
+            "source": mapping.get(edge["source"], edge["source"]),
+            "target": mapping.get(edge["target"], edge["target"]),
+        }
+        for edge in approved
+    ]
+    graph = {**graph, "assignment_concept_mapping": config.get("concept_mapping", {})}
     text = registry.read_lesson_bytes(ids["source_document_id"], ids["source_version"]).decode(
         "utf-8"
     )

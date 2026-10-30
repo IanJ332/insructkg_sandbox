@@ -4,6 +4,12 @@ SIIP connects instructor lesson upload, source-grounded graph review, local SQL 
 
 This is a **synthetic research sandbox**. Local `PUBLISHED_LOCAL_DEMO` publication does not publish an assessment inside PrairieLearn. All demo identities and histories are artificial. Local Ollama extraction is labeled `LOCAL_LLM_ASSISTED_EXTRACTION`, separate from original InstructKG. Original upstream extraction, institutional authentication, native dynamic publication, authentic student-data delivery, faculty endorsement, and classroom outcomes are not established. Hosted dashboard startup is refused because trusted institutional authentication is not implemented.
 
+[Phase 3 live Qwen acceptance](docs/release/PHASE3_LIVE_QWEN_ACCEPTANCE.md): **Partial Local E2E**.
+Fresh extraction and eight actual Qwen feedback calls ran; four feedback responses
+passed validation and four fell back. Contrasting histories reached Qwen but did
+not produce adapted feedback in this sample. Backend release-candidate acceptance
+is withheld; deterministic regression success does not override that quality result.
+
 ## Install and run on Windows
 
 Use Git and Python 3.11 or 3.13 (CI versions). Python 3.14 is additionally checked locally. No GPU, model, Docker, or paid API is needed for the default SIIP demo.

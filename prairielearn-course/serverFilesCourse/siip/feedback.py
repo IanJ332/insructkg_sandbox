@@ -26,12 +26,12 @@ def safe_concept_label(concept):
     return SAFE_CONCEPT_LABELS.get(concept, concept.replace("_", " ").lower())
 
 
-def minimize_mastery(qid, mastery):
+def minimize_mastery(qid, mastery, prerequisite_concepts=()):
     """Only bounded, question-relevant aggregates may enter a model context."""
     if not isinstance(mastery, dict):
         return {}
     selected = {}
-    for concept in QUESTIONS[qid]["concepts"]:
+    for concept in dict.fromkeys([*QUESTIONS[qid]["concepts"], *prerequisite_concepts]):
         value = mastery.get(concept)
         if not isinstance(value, dict):
             continue
@@ -126,12 +126,23 @@ def build_context(qid, sql, result, mode, mastery=None, grounding=None):
 
         ids, graph, approved, chunks = resolve_grounding(grounding, question_id=qid)
         concepts = QUESTIONS[qid]["concepts"]
+        prerequisites = sorted(
+            {
+                edge["target"]
+                for edge in approved
+                if edge["relation"] == "depends_on" and edge["source"] in concepts
+            }
+        )
+        mapping = graph["assignment_concept_mapping"]
+        graph_tags = {
+            mapping.get(node["id"], {}).get("canonical_id", node["id"]) for node in graph["nodes"]
+        }
         context.update(
             {
                 "lecture_evidence": chunks,
                 "target_concepts": concepts,
                 "diagnosis": diagnosis(qid, result),
-                "student_mastery": minimize_mastery(qid, mastery),
+                "student_mastery": minimize_mastery(qid, mastery, prerequisites),
                 "reviewed_relationships": [
                     {
                         key: edge[key]
@@ -139,15 +150,12 @@ def build_context(qid, sql, result, mode, mastery=None, grounding=None):
                     }
                     for edge in approved[:12]
                 ],
-                "prerequisites": sorted(
-                    {
-                        edge["target"]
-                        for edge in approved
-                        if edge["relation"] == "depends_on" and edge["source"] in concepts
-                    }
-                ),
+                "prerequisites": prerequisites,
                 "grounding_provenance": {
                     **ids,
+                    "reviewed_concept_mapping": mapping,
+                    "graph_backed_target_concepts": sorted(set(concepts) & graph_tags),
+                    "question_tags_without_graph_nodes": sorted(set(concepts) - graph_tags),
                     "extraction_mode": graph.get(
                         "extraction_mode", graph.get("extraction_method", "synthetic_fixture")
                     ),
@@ -400,7 +408,13 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
             "prerequisites": [],
         }
     context["_question_id"] = qid
-    history = minimize_mastery(qid, mastery) if mode == "kg" else {}
+    history = (
+        context["student_mastery"]
+        if mode == "kg" and grounding is not None and context_error is None
+        else minimize_mastery(qid, mastery)
+        if mode == "kg"
+        else {}
+    )
     if history:
         context["student_mastery"] = history
     error, usage = context_error, None

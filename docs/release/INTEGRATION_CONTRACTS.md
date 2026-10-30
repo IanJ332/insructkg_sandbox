@@ -34,6 +34,24 @@ filter. It retains its existing bundled-graph boundary; assignment-grounded deli
 uses the durable worker. Neither route changes the trusted SQL grade. Queue replays
 must retain feedback mode as well as SQL, owner, grading and grounding identifiers.
 
+Assignments may record an explicit `concept_mapping` in grading configuration.
+Each source ID must exist in the saved graph and map to a known canonical question
+tag with a recognized synthetic instructor identity and rationale; mappings cannot
+merge distinct nodes. This records a reviewed decision, not automatic proof of
+semantic equivalence. Projection changes only assignment context, never the saved
+graph. Approved direct prerequisites may contribute bounded, relevant prior
+evidence even when they are outside the current question's own tags. Provenance
+separates graph-backed target IDs from canonical tags absent from that graph.
+
+The retained `personalized` boolean means relevant history was supplied to context.
+It does not certify that model text used that history. Phase 3 independently found
+identical text for contrasting contexts; its quality gate remains failed. Instructor
+`/api/instructor/feedback` reads the same minimized durable job as the learner,
+checks its course/assignment/owner/question/SQL bindings and never regenerates it.
+Instructor `/api/instructor/analytics` requires an explicit known course and scopes
+deterministic records/aggregates to it. These synthetic shared instructor roles do
+not establish institutional per-course authorization or authentic student delivery.
+
 ## Future original InstructKG adapter
 
 Input: authorized source bytes, raw hash, document/version/course/module IDs, configuration and explicit adapter identity. Output: upstream repository/revision, named stage outcomes, concepts/roles/order, directed relations, verbatim evidence with defined offset coordinates, raw/normalized hashes, provider/model/digest, prompt/pipeline version, measured elapsed time, rejection/fallback details and provisional review state.

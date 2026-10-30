@@ -543,6 +543,10 @@ def assignments_page(auth, notice=None):
             f'<label><input type="checkbox" name="kg_node_id" value="{esc(concept)}" {"checked" if concept in {"LEFT_OUTER_JOIN", "NULL_SEMANTICS", "MISSING_MATCHING_ROWS"} else ""}> {esc(concept)}</label> '
             for concept in sorted(available_concepts)
         )
+        question_options = "".join(
+            f'<option value="{qid}">{esc(QUESTIONS[qid]["title"])}</option>'
+            for qid in ["sql_join_04", *[q for q in QUESTIONS if q != "sql_join_04"]]
+        )
         create = f'''
         <section data-testid="assignment-authoring">
           <span class="badge">{esc(LOCAL_PUBLICATION_LABEL)}</span>
@@ -551,10 +555,16 @@ def assignments_page(auth, notice=None):
             <input type="hidden" name="csrf_token" value="{esc(auth.csrf_token or "")}">
             <label>Reviewed source graph <select name="graph_id" required>{graph_options}</select></label><br><br>
             <label>Assignment ID <input name="assignment_id" value="assignment-left-join-demo" required></label><br><br>
-            <label>SQL exercise <select name="question_id"><option value="sql_join_04">Department headcount with unstaffed units</option></select></label>
+            <label>SQL exercise <select name="question_id">{question_options}</select></label>
             <fieldset><legend>Reviewed target concepts</legend>
               {concept_options}
             </fieldset><br>
+            <details><summary>Optional instructor-reviewed concept mapping</summary>
+              <p>Use only when the source supports an equivalence for this assignment.</p>
+              <label>Graph concept ID <input name="mapping_source"></label>
+              <label>Question concept tag <input name="mapping_target"></label>
+              <label>Evidence and review notes <textarea name="mapping_notes"></textarea></label>
+            </details><br>
             <button data-testid="create-assignment" type="submit">Create local assignment draft</button>
           </form>
         </section>'''
@@ -1445,9 +1455,9 @@ def feedback_page(job_id, headers, params, csrf_token=None):
             body += f'<section data-testid="assignment-grounding"><h3>Uploaded lesson and reviewed graph used for feedback</h3>{pretty(fb["grounding_provenance"])}<p>Inference: {esc(fb.get("inference_status"))} · model digest: {esc(fb.get("model_digest") or "not applicable")}</p></section>'
         hist_note = ""
         if fb.get("personalized"):
-            hist_note = f"<p><small class='badge' style='background:#e8f5e9;color:#1b5e20;'>Historical personalization: Active ({esc(fb.get('history_provenance', 'prior_submissions'))})</small></p>"
+            hist_note = f"<p><small class='badge' style='background:#e8f5e9;color:#1b5e20;'>Prior learning evidence included in context ({esc(fb.get('history_provenance', 'prior_submissions'))}); feedback adaptation is not established.</small></p>"
         else:
-            hist_note = "<p><small class='badge' style='background:#f3f4f6;color:#374151;'>Historical personalization: None (first attempt or no prior history)</small></p>"
+            hist_note = "<p><small class='badge' style='background:#f3f4f6;color:#374151;'>No relevant prior learning evidence was included in context.</small></p>"
 
         body += f"""
         <section style="border-left:4px solid #087674;">
@@ -2235,6 +2245,67 @@ class Handler(BaseHTTPRequestHandler):
                     )
                     return
                 self.send(json.dumps(job.to_learner_dict()), 200, content="application/json")
+            elif parsed.path in {"/api/instructor/feedback", "/api/instructor/analytics"}:
+                is_auth, code, err = auth.require_instructor()
+                if not is_auth:
+                    return self.send(json.dumps({"error": err}), code, content="application/json")
+                course_id = params.get("course_id", [None])[0]
+                if not course_id:
+                    return self.send(
+                        json.dumps({"error": "Missing course_id"}), 400, content="application/json"
+                    )
+                registry = get_demo_authoring()
+                # Assignments may be created by the local demo without a course record.
+                assignments = registry.list_assignments(course_id=course_id)
+                known_course = any(
+                    c["course_id"] == course_id for c in registry.list_courses()
+                ) or bool(assignments)
+                if not known_course:
+                    return self.send(
+                        json.dumps({"error": "Course not found"}), 404, content="application/json"
+                    )
+                if parsed.path.endswith("analytics"):
+                    return self.send(
+                        json.dumps(repo.analytics(course_id=course_id)), content="application/json"
+                    )
+                attempt_id = params.get("attempt_id", [None])[0]
+                if not attempt_id:
+                    return self.send(
+                        json.dumps({"error": "Missing attempt_id"}), 400, content="application/json"
+                    )
+                matches = [
+                    a for a in repo.records(course_id=course_id) if a["attempt_id"] == attempt_id
+                ]
+                job = get_jobs_repo().get_by_attempt(attempt_id)
+                if not matches or not job:
+                    return self.send(
+                        json.dumps({"error": "Feedback not found"}), 404, content="application/json"
+                    )
+                attempt = matches[0]
+                assignment = registry.get_assignment(attempt["assessment_id"])
+                grounding = job.grading.get("_grounding") or {}
+                if (
+                    assignment is None
+                    or assignment.course_id != course_id
+                    or attempt["question_id"] not in assignment.question_ids
+                    or job.student_id != attempt["student_id"]
+                    or job.question_id != attempt["question_id"]
+                    or job.submitted_sql != attempt["submitted_sql"]
+                    or grounding.get("course_id") != course_id
+                    or grounding.get("assignment_id") != assignment.assignment_id
+                ):
+                    return self.send(
+                        json.dumps({"error": "Feedback not found"}), 404, content="application/json"
+                    )
+                payload = {
+                    "attempt_id": attempt_id,
+                    "course_id": course_id,
+                    "assignment_id": assignment.assignment_id,
+                    "student_id": attempt["student_id"],
+                    "question_id": attempt["question_id"],
+                    "job": job.to_learner_dict(),
+                }
+                return self.send(json.dumps(payload), content="application/json")
             elif parsed.path == "/api/analytics":
                 is_auth, code, err = auth.require_instructor()
                 if not is_auth:
@@ -2538,6 +2609,19 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(
                         "Assignment concepts require a saved graph with an approved relation", 409
                     )
+                mapping = {}
+                mapping_source = params.get("mapping_source", [""])[0]
+                if mapping_source or params.get("mapping_target") or params.get("mapping_notes"):
+                    from siip.assignment_grounding import reviewed_concept_mapping
+
+                    mapping = {
+                        mapping_source: {
+                            "canonical_id": params.get("mapping_target", [""])[0],
+                            "reviewed_by": auth.principal or "instructor-admin",
+                            "notes": params.get("mapping_notes", [""])[0],
+                        }
+                    }
+                    reviewed_concept_mapping({"concept_mapping": mapping}, graph)
                 record = get_demo_authoring().create_assignment(
                     assignment_id=params["assignment_id"][0],
                     course_id=lesson.course_id,
@@ -2554,6 +2638,7 @@ class Handler(BaseHTTPRequestHandler):
                         "graph_id": graph_id,
                         "graph_version": graph["version"],
                         "score_independent_of_feedback": True,
+                        **({"concept_mapping": mapping} if mapping else {}),
                     },
                 )
                 self.send_response(303)
