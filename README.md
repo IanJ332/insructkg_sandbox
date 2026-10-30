@@ -1,5 +1,7 @@
 # SIIP Integrated Synthetic Research Sandbox
 
+Phase 4's [research and live-model acceptance report](docs/release/PHASE4_ACCEPTANCE.md) withholds release-candidate status: **B6 FAIL**. The final run completed twelve persisted submission lifecycles with eight actual Qwen calls, six accepted outputs, two quality fallbacks, and four separate nonsemantic bypasses. [Research traceability](docs/release/PHASE4_RESEARCH_TRACEABILITY.md) and [representative legacy-stage execution](docs/release/PHASE4_LEGACY_STAGES.md) distinguish observed reuse from incomplete reproduction.
+
 SIIP connects instructor lesson upload, source-grounded graph review, local SQL assignment publication, deterministic grading, asynchronous feedback, prior-only learner profiles, entrepreneurial mindset (EM) reflections, personalized projects, and instructor analytics. Four native PrairieLearn SQL question hooks are also included.
 
 This is a **synthetic research sandbox**. Local `PUBLISHED_LOCAL_DEMO` publication does not publish an assessment inside PrairieLearn. All demo identities and histories are artificial. Local Ollama extraction is labeled `LOCAL_LLM_ASSISTED_EXTRACTION`, separate from original InstructKG. Original upstream extraction, institutional authentication, native dynamic publication, authentic student-data delivery, faculty endorsement, and classroom outcomes are not established. Hosted dashboard startup is refused because trusted institutional authentication is not implemented.

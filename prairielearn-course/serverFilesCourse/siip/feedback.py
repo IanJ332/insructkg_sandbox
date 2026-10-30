@@ -13,7 +13,7 @@ from .grader import DATA, QUESTIONS, public_grade
 from .graph import ConceptGraph
 from .observability import event
 
-PROMPT_VERSION = "siip-feedback-v4"
+PROMPT_VERSION = "siip-feedback-v9"
 MODES = {"baseline", "rag", "kg"}
 SAFE_CONCEPT_LABELS = {
     # Keep internal graph identifiers out of learner-facing prose. The leakage
@@ -272,7 +272,32 @@ def valid_output(obj, context, qid, *, check_quality=False):
         and (re.search(r"\b(group\s*by|grouping)\b", text, re.I) or "GROUP_BY" in concepts)
     ):
         raise FeedbackQualityError("unsupported_grouping_diagnosis")
+    if (
+        check_quality
+        and context.get("student_mastery")
+        and re.search(
+            r"\b(?:weaker understanding|stronger mastery|solid understanding|suggests? (?:they|the learner|the student) understand(?:s)?)\b",
+            text,
+            re.I,
+        )
+    ):
+        raise FeedbackQualityError("unsupported_historical_understanding_claim")
     return obj
+
+
+def model_context_projection(context):
+    """Rename descriptive history fields only in the provider's serialized input."""
+    projected = dict(context)
+    history = projected.pop("student_mastery", None)
+    if isinstance(history, dict):
+        projected["historical_concept_evidence"] = {
+            concept: {
+                ("descriptive_estimate" if key == "mastery_estimate" else key): value
+                for key, value in evidence.items()
+            }
+            for concept, evidence in history.items()
+        }
+    return projected
 
 
 class CompatibleProvider:
@@ -312,6 +337,62 @@ class CompatibleProvider:
             "and returns zero for unmatched departments; do not blame that count for omitted rows. "
             "If the root cause is uncertain, state uncertainty and ask the learner to inspect row preservation."
         )
+        prompt += (
+            " target_concepts are current question tags, not evidence that the learner lacks them; "
+            "diagnosis.candidate_concepts are possible causes, not established causes. "
+            "historical_concept_evidence contains historical estimates with question_count and evidence_count; "
+            "these are uncertain descriptive aggregates, not a trajectory or proof of improvement. "
+            "For a relevant prerequisite in reviewed_relationships, use its available historical estimate "
+            "and counts to give a concrete, prerequisite-specific next step: with weaker evidence suggest "
+            "a foundational check; with stronger evidence suggest applying that prerequisite to the current "
+            "mismatch. Qualify the evidence, especially when counts are small. If no relevant approved "
+            "prerequisite history exists, do not invent it. Do not infer approval from provisional or "
+            "unreviewed relationships. Never mention attempt IDs or claim improvement without trajectory data."
+        )
+        prompt += (
+            " Before answering, inspect reviewed_relationships, prerequisites and historical_concept_evidence. "
+            "When approved_prerequisite_history contains an entry, your feedback_text MUST include "
+            "one explicit sentence conditioned on that prior evidence and its counts, with uncertainty. "
+            "For a weaker estimate (below 0.5), recommend a foundational check of that specific "
+            "prerequisite using a small case; for a stronger estimate (0.5 or above), suggest applying "
+            "the prior positive evidence for that specific prerequisite to the current result mismatch. "
+            "Make the actions concrete and related to the observed mismatch. For example, a weaker "
+            "join-condition signal suggests checking matching keys on a small case; a stronger one "
+            "suggests applying that condition to inspect current row preservation. These are uncertain "
+            "estimates, not proof of mastery. If no approved prerequisite history is supplied, "
+            "make no claim about prior performance."
+        )
+        prompt += (
+            " RESPONSE PRIORITY: The current question determines which entity's rows must be "
+            "retained; lecture examples can use the reverse table orientation and must not override "
+            "the question."
+        )
+        prerequisite_history = context.get("approved_prerequisite_history", [])
+        if prerequisite_history:
+            prompt += (
+                " Start feedback_text with an uncertainty-qualified account of the learner's prior "
+                "prerequisite evidence below, including its attempt and question counts. Then give "
+                "a concrete next action conditioned on that evidence: weaker suggests first checking "
+                "the prerequisite on a small example; stronger suggests transferring that prerequisite "
+                "to the current mismatch. Do not merely restate the current error. "
+                "Prior approved prerequisite evidence for THIS response: "
+                + json.dumps(prerequisite_history)
+            )
+        else:
+            prompt += " No approved prerequisite history is supplied; make no claim about prior performance."
+        prompt += (
+            " QUALITY PRIORITY: Describe only the strength of limited historical evidence; never "
+            "infer that the learner understands, has weak or solid understanding, or has proven or "
+            "stronger mastery. Counts and descriptive estimates cannot establish those. When history "
+            "exists, use two concise sentences: first the uncertain evidence and counts; second one "
+            "concrete inspection question. For a weaker evidence signal, ask the learner to compare "
+            "matching key values on one small row pair before predicting current rows. For a stronger "
+            "evidence signal, ask them to transfer the prior key-matching evidence to trace a matched "
+            "employee versus one with no matching department. Distinguish a predicate (which pairs "
+            "match) from row preservation (which rows survive). Do not prescribe replacement join types, "
+            "a NULL filter, or the complete join-and-filter recipe. Guide reasoning about the student's "
+            "current query."
+        )
         payload = {
             "model": self.model,
             "temperature": 0.1,
@@ -319,7 +400,7 @@ class CompatibleProvider:
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": json.dumps(context)},
+                {"role": "user", "content": json.dumps(model_context_projection(context))},
             ],
         }
         if getattr(self, "native_ollama", False):
@@ -341,6 +422,7 @@ class CompatibleProvider:
                 },
                 "options": {"temperature": 0.1, "num_predict": self.max_tokens, "num_ctx": 8192},
             }
+        self.last_request_payload = payload
         headers = {"Content-Type": "application/json"}
         if self.key:
             headers["Authorization"] = "Bearer " + self.key
@@ -417,12 +499,26 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
     )
     if history:
         context["student_mastery"] = history
+    if mode == "kg" and grounding is not None and context_error is None:
+        context["approved_prerequisite_history"] = [
+            {
+                "concept": concept,
+                "descriptive_estimate": history[concept]["mastery_estimate"],
+                "question_count": history[concept]["question_count"],
+                "evidence_count": history[concept]["evidence_count"],
+                "evidence_level": "weaker"
+                if history[concept]["mastery_estimate"] < 0.5
+                else "stronger",
+            }
+            for concept in context.get("prerequisites", [])
+            if concept in history
+        ]
     error, usage = context_error, None
     status, model = (
         ("context_error_fallback" if context_error else "deterministic_fallback"),
         "deterministic-rules-v1",
     )
-    if result.get("score"):
+    if result.get("status") == "correct":
         text = "Your result matches all grading cases. Explain to yourself how the query treats unmatched rows before moving on."
     elif qid == "sql_join_04" and result.get("status") == "semantic_error":
         text = "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors."
@@ -463,12 +559,16 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
         )
         if related:
             text += (
-                " Development graph prerequisites to review: "
+                (
+                    " Reviewed prerequisites to review: "
+                    if grounding
+                    else " Development graph prerequisites to review: "
+                )
                 + ", ".join(safe_concept_label(item) for item in related)
                 + "."
             )
         obj["feedback_text"] = text
-    if history:
+    if history and result.get("status") == "semantic_error":
         concept, evidence = next(iter(history.items()))
         label = safe_concept_label(concept)
         if evidence["mastery_estimate"] < 0.5:
@@ -483,7 +583,12 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
                 + label
                 + "; apply that idea here. This estimate is an unvalidated heuristic."
             )
-    if provider is not None and context_error is None:
+    provider_attempted = (
+        provider is not None and context_error is None and result.get("status") == "semantic_error"
+    )
+    if provider is not None and context_error is None and not provider_attempted:
+        status = "provider_bypassed_nonsemantic"
+    if provider_attempted:
         try:
             generated, usage = provider.generate(context)
             obj = valid_output(generated, context, qid, check_quality=True)
@@ -513,9 +618,16 @@ def generate_feedback(qid, sql, result, mode="kg", mastery=None, provider=None, 
         "provider_identifier": type(provider).__name__
         if status == "live_success"
         else "deterministic",
-        "attempted_provider_identifier": type(provider).__name__
-        if provider is not None and context_error is None
-        else None,
+        "attempted_provider_identifier": type(provider).__name__ if provider_attempted else None,
+        "provider_routing": (
+            "not_configured"
+            if provider is None
+            else "bypassed_nonsemantic"
+            if result.get("status") != "semantic_error"
+            else "bypassed_context_error"
+            if context_error
+            else "attempted"
+        ),
         "requested_model_identifier": getattr(provider, "model", None),
         "prompt_version": PROMPT_VERSION,
         "non_revealing_validation": "passed_rule_filter",
