@@ -13,8 +13,9 @@ from siip.demo_student import (  # noqa: E402
     FIXTURE_HISTORY_LABEL,
     INNER_JOIN_HEADCOUNT_SQL,
     DemoStudentJourney,
+    _attempt_id,
 )
-from siip.jobs import FeedbackJobRepository  # noqa: E402
+from siip.jobs import AttemptConflictError, FeedbackJobRepository, FeedbackWorker  # noqa: E402
 from siip.recommender import recommend_next_activity  # noqa: E402
 from siip.store import SubmissionRepository  # noqa: E402
 
@@ -124,6 +125,72 @@ class TestDemoStudentJourney(unittest.TestCase):
 
         reopened = DemoStudentJourney(self.directory)
         self.assertEqual(reopened.submissions.profile("S002")["attempt_count"], 2)
+
+    def test_feedback_history_stays_within_course_across_assignments(self) -> None:
+        first = published_assignment()
+        self.journey.submit(
+            first, "S001", INNER_JOIN_HEADCOUNT_SQL, timestamp="2026-01-01T00:00:00Z"
+        )
+        # Neither unscoped legacy evidence nor another course establishes a gap here.
+        other = {**first, "assignment_id": "other-assignment", "course_id": "other-course"}
+        self.journey.submit(
+            other, "S001", INNER_JOIN_HEADCOUNT_SQL, timestamp="2026-01-02T00:00:00Z"
+        )
+        later = {**first, "assignment_id": "later-assignment"}
+        self.journey.submit(
+            later, "S001", INNER_JOIN_HEADCOUNT_SQL, timestamp="2026-01-03T00:00:00Z"
+        )
+        worker = FeedbackWorker(
+            self.journey.feedback_jobs, submission_repo=self.journey.submissions
+        )
+        completed = worker.drain()
+        self.assertEqual([job.status for job in completed], ["completed"] * 3)
+        self.assertEqual([job.result["personalized"] for job in completed], [False, False, True])
+        self.assertEqual(
+            self.journey.submissions.profile("S001", course_id=first["course_id"])["attempt_count"],
+            2,
+        )
+        self.assertEqual(self.journey.submissions.profile("S001")["attempt_count"], 3)
+
+    def test_replay_cannot_change_course_or_feedback_mode(self) -> None:
+        assignment = published_assignment()
+        self.journey.submit(assignment, "S001", INNER_JOIN_HEADCOUNT_SQL)
+        with self.assertRaisesRegex(ValueError, "conflicting assignment"):
+            self.journey.submit(
+                {**assignment, "course_id": "other-course"}, "S001", INNER_JOIN_HEADCOUNT_SQL
+            )
+        with self.assertRaises(AttemptConflictError):
+            self.journey.submit(
+                assignment, "S001", INNER_JOIN_HEADCOUNT_SQL, feedback_mode="baseline"
+            )
+        self.assertEqual(len(self.journey.submissions.records()), 1)
+
+    def test_legacy_submission_replay_preserves_unknown_course(self) -> None:
+        assignment = published_assignment()
+        aid = _attempt_id(assignment["assignment_id"], "S001", "sql_join_04", "legacy")
+        self.journey.submissions.process(
+            {
+                "attempt_id": aid,
+                "student_id": "S001",
+                "question_id": "sql_join_04",
+                "submitted_sql": INNER_JOIN_HEADCOUNT_SQL,
+                "timestamp": "2026-01-01T00:00:00Z",
+                "assessment_id": assignment["assignment_id"],
+            },
+            mode="baseline",
+        )
+        replay = self.journey.submit(
+            assignment, "S001", INNER_JOIN_HEADCOUNT_SQL, submission_key="legacy"
+        )
+        self.assertEqual(replay["attempt_id"], aid)
+        self.assertEqual(len(self.journey.submissions.records()), 1)
+        self.assertNotIn("course_id", self.journey.submissions.records()[0])
+
+    def test_incompatible_question_tags_do_not_persist(self) -> None:
+        assignment = {**published_assignment(), "relevant_kg_node_ids": ["INNER_JOIN"]}
+        with self.assertRaisesRegex(ValueError, "question concept tags"):
+            self.journey.submit(assignment, "S001", INNER_JOIN_HEADCOUNT_SQL)
+        self.assertEqual(self.journey.submissions.records(), [])
 
     def test_assignment_path_is_accepted_and_unpublished_assignment_is_rejected(self) -> None:
         assignment_path = self.directory / "03_published_assignment.json"

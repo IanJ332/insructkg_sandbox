@@ -124,7 +124,7 @@ def build_context(qid, sql, result, mode, mastery=None, grounding=None):
     if mode == "kg" and grounding is not None:
         from .assignment_grounding import resolve_grounding
 
-        ids, graph, approved, chunks = resolve_grounding(grounding)
+        ids, graph, approved, chunks = resolve_grounding(grounding, question_id=qid)
         concepts = QUESTIONS[qid]["concepts"]
         context.update(
             {

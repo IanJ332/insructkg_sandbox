@@ -11,6 +11,7 @@ from .feedback import diagnosis, generate_feedback, load_graphs
 from .grader import QUESTIONS, grade
 
 STUDENTS = ["S001", "S002", "S003", "S004", "S005"]
+_ALL_COURSES = object()
 
 
 def utc_timestamp(value):
@@ -59,6 +60,7 @@ class SubmissionRepository:
             "assessment_id",
             "external_links",
             "external_score",
+            "course_id",
         }
         required = {"attempt_id", "student_id", "question_id", "timestamp", "submitted_sql"}
         if set(record) - allowed or not required <= set(record):
@@ -87,7 +89,13 @@ class SubmissionRepository:
         assessment = record.get("assessment_id", "sql-sandbox")
         if not isinstance(assessment, str) or not 1 <= len(assessment) <= 160:
             raise ValueError("Invalid assessment ID")
+        if "course_id" in record:
+            from .demo_authoring import _validate_id
+
+            _validate_id(record["course_id"], "course_id")
         output = {key: record[key] for key in required}
+        if "course_id" in record:
+            output["course_id"] = record["course_id"]
         output.update(timestamp=timestamp, source=source, assessment_id=assessment)
         if "external_score" in record:
             score = record["external_score"]
@@ -127,6 +135,7 @@ class SubmissionRepository:
             "assessment_id",
             "external_links",
             "external_score",
+            "course_id",
         ]:
             if saved.get(key) != record.get(key):
                 raise ValueError("Attempt ID collision")
@@ -149,9 +158,17 @@ class SubmissionRepository:
                 or not isinstance(sync_checkpoint["state"], dict)
             ):
                 raise ValueError("Invalid synchronization checkpoint")
-        prepared = []
-        for record in normalized:
+        prepared = {}
+        prepared_by_id = {}
+        for index, record in sorted(
+            enumerate(normalized), key=lambda item: (item[1]["timestamp"], item[0])
+        ):
             aid, sid, qid = record["attempt_id"], record["student_id"], record["question_id"]
+            prior_duplicate = prepared_by_id.get(aid)
+            if prior_duplicate is not None:
+                self.check_same(prior_duplicate, record)
+                prepared[index] = prior_duplicate
+                continue
             with closing(self.connect()) as db:
                 existing = db.execute(
                     "SELECT record FROM attempts WHERE attempt_id=?", (aid,)
@@ -159,7 +176,8 @@ class SubmissionRepository:
             if existing:
                 saved = json.loads(existing[0])
                 self.check_same(saved, record)
-                prepared.append(saved)
+                prepared[index] = saved
+                prepared_by_id[aid] = saved
                 continue
             started = monotonic()
             result = grade(qid, record["submitted_sql"])
@@ -174,24 +192,38 @@ class SubmissionRepository:
                 score=result["score"],
                 latency_ms=grading_latency_ms,
             )
-            history = self.profile(sid, as_of=record["timestamp"], before=True)
+            course_id = record.get("course_id")
+            history_records = self.records(
+                sid, record["timestamp"], before=True, course_id=course_id
+            )
+            known_ids = {row["attempt_id"] for row in history_records}
+            history_records.extend(
+                row
+                for row in prepared_by_id.values()
+                if row["attempt_id"] not in known_ids
+                and row["student_id"] == sid
+                and row.get("course_id") == course_id
+                and row["timestamp"] < record["timestamp"]
+            )
+            history_records.sort(key=lambda row: (row["timestamp"], row["attempt_id"]))
+            history = self._profile_from_records(sid, history_records)
             feedback = generate_feedback(
                 qid, record["submitted_sql"], result, mode, history["concepts"], provider
             )
-            prepared.append(
-                {
-                    **record,
-                    "grading": result,
-                    "diagnosis": diagnosis(qid, result),
-                    "concepts": QUESTIONS[qid]["concepts"],
-                    "feedback_mode": mode,
-                    "feedback": feedback,
-                    "feedback_origin": "local_analytics_recomputed",
-                    "dataset_version": "employees-departments-v1",
-                    "profile_version": "beta-heuristic-v1",
-                    "grading_latency_ms": grading_latency_ms,
-                }
-            )
+            output = {
+                **record,
+                "grading": result,
+                "diagnosis": diagnosis(qid, result),
+                "concepts": QUESTIONS[qid]["concepts"],
+                "feedback_mode": mode,
+                "feedback": feedback,
+                "feedback_origin": "local_analytics_recomputed",
+                "dataset_version": "employees-departments-v1",
+                "profile_version": "beta-heuristic-v1",
+                "grading_latency_ms": grading_latency_ms,
+            }
+            prepared[index] = output
+            prepared_by_id[aid] = output
         saved_records = []
         inserted_count = 0
         with closing(self.connect()) as db:
@@ -205,7 +237,7 @@ class SubmissionRepository:
                     previous = json.loads(saved[0]) if saved else None
                     if previous != sync_checkpoint["previous"]:
                         raise ValueError("Synchronization checkpoint changed; retry poll")
-                for output in prepared:
+                for output in (prepared[index] for index in range(len(normalized))):
                     existing = db.execute(
                         "SELECT record FROM attempts WHERE attempt_id=?", (output["attempt_id"],)
                     ).fetchone()
@@ -266,7 +298,9 @@ class SubmissionRepository:
             raise PermissionError("Feedback access denied")
         return json.loads(row[0])
 
-    def records(self, student_id=None, as_of=None, *, before=False):
+    def records(self, student_id=None, as_of=None, *, before=False, course_id=_ALL_COURSES):
+        if as_of is not None:
+            as_of = utc_timestamp(as_of)
         with closing(self.connect()) as db:
             if student_id is None:
                 rows = db.execute(
@@ -281,13 +315,17 @@ class SubmissionRepository:
         return [
             r
             for r in records
-            if as_of is None or (r["timestamp"] < as_of if before else r["timestamp"] <= as_of)
+            if (course_id is _ALL_COURSES or r.get("course_id") == course_id)
+            and (as_of is None or (r["timestamp"] < as_of if before else r["timestamp"] <= as_of))
         ]
 
-    def profile(self, student_id, as_of=None, *, before=False):
+    def profile(self, student_id, as_of=None, *, before=False, course_id=_ALL_COURSES):
         if student_id not in STUDENTS:
             raise ValueError("Unknown student")
-        records = self.records(student_id, as_of, before=before)
+        records = self.records(student_id, as_of, before=before, course_id=course_id)
+        return self._profile_from_records(student_id, records)
+
+    def _profile_from_records(self, student_id, records):
         grouped = defaultdict(list)
         for record in records:
             for concept in record["concepts"]:

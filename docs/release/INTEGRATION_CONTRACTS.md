@@ -6,6 +6,34 @@ The loopback dashboard owns role checks and authoring. Uploaded UTF-8 lesson byt
 
 Mutable drafts/authoring are intended for one dashboard process, not distributed editing. Published versions additionally use exclusive filesystem publication across processes. Research and demo runs require separate database/output roots. No authentic learner records are shipped or authorized by demo login.
 
+### Submission history and question tags
+
+The four supported SQL questions retain their canonical `QUESTIONS` concept tags;
+choosing additional graph nodes does not establish new grading diagnoses. A published
+assignment must select at least one matching question tag. Grounded feedback checks
+that every selected node exists in the saved graph and that the current question
+belongs to the assignment. Additional selected prerequisite/context nodes are allowed.
+Arbitrary upstream concept IDs require an instructor-reviewed mapping before they can
+replace these fixed question tags; no automatic semantic equivalence is claimed.
+
+New local assignment attempts retain the assignment's course ID in the existing JSON
+record. Feedback uses strictly earlier evidence from the same student and course.
+Batch imports prepare attempts chronologically, including earlier records in the same
+batch once each, then commit atomically and return the caller's original order.
+Equivalent ISO8601 cutoff spellings are normalized to UTC before comparison.
+
+Existing records without a course remain unscoped; their course is never guessed.
+Legacy submission events remain replayable, but unscoped history cannot personalize
+a course-bound attempt. Omitted `course_id` on repository profile/record reads retains
+the existing aggregate view; explicit `course_id=None` selects only unscoped records.
+Dashboard aggregate analytics remain synthetic descriptive views, not institutional
+course authorization. Hosted multi-course access control remains deferred.
+
+The authorized post-submission replay service applies the same course/time history
+filter. It retains its existing bundled-graph boundary; assignment-grounded delivery
+uses the durable worker. Neither route changes the trusted SQL grade. Queue replays
+must retain feedback mode as well as SQL, owner, grading and grounding identifiers.
+
 ## Future original InstructKG adapter
 
 Input: authorized source bytes, raw hash, document/version/course/module IDs, configuration and explicit adapter identity. Output: upstream repository/revision, named stage outcomes, concepts/roles/order, directed relations, verbatim evidence with defined offset coordinates, raw/normalized hashes, provider/model/digest, prompt/pipeline version, measured elapsed time, rejection/fallback details and provisional review state.
