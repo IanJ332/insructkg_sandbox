@@ -1,0 +1,11 @@
+{
+  "service_started_utc": "2026-10-31T08:14:08.9398111Z",
+  "profiles_equal": true,
+  "immutable_graph_version": 1,
+  "approved_edges": 4,
+  "persisted_jobs": 10,
+  "learner_readbacks_equal": true,
+  "instructor_readbacks_equal": true,
+  "analytics_equal": true,
+  "browser_student_feedback_visible": true
+}

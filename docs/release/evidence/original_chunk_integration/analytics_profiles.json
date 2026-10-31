@@ -1,0 +1,2590 @@
+{
+  "analytics": {
+    "synthetic": true,
+    "student_count": 2,
+    "attempt_count": 10,
+    "correct": 1,
+    "questions": {
+      "sql_join_01": {
+        "attempts": 2,
+        "correct": 0
+      },
+      "sql_join_02": {
+        "attempts": 1,
+        "correct": 0
+      },
+      "sql_join_03": {
+        "attempts": 1,
+        "correct": 0
+      },
+      "sql_join_04": {
+        "attempts": 6,
+        "correct": 1
+      }
+    },
+    "associated_error_concepts": {
+      "LEFT_OUTER_JOIN": 6,
+      "NULL_SEMANTICS": 5,
+      "COUNT_AGGREGATION": 4,
+      "GROUP_BY": 4,
+      "INNER_JOIN": 2,
+      "JOIN_CONDITION": 2,
+      "JOIN_OPERATION": 2,
+      "UNMATCHED_ROWS": 1,
+      "IS_NULL": 1,
+      "FILTERING_AFTER_JOIN": 1
+    },
+    "mean_mastery": {
+      "COUNT_AGGREGATION": 0.5,
+      "FILTERING_AFTER_JOIN": 0.3333333333333333,
+      "GROUP_BY": 0.5,
+      "INNER_JOIN": 0.3333333333333333,
+      "IS_NULL": 0.3333333333333333,
+      "JOIN_CONDITION": 0.3333333333333333,
+      "JOIN_OPERATION": 0.3333333333333333,
+      "LEFT_OUTER_JOIN": 0.3666666666666667,
+      "NULL_SEMANTICS": 0.41666666666666663,
+      "UNMATCHED_ROWS": 0.3333333333333333
+    },
+    "sources": {
+      "synthetic_fixture": 10
+    },
+    "course_id": "intro-relational-databases",
+    "attempt_ids": [
+      "demo-e5fcb12a24ae2450bb8f5edc",
+      "demo-5919162d50d279961279a02d",
+      "demo-5441bdbc451e56efaf667dd8",
+      "demo-699f4849973340357b05bb12",
+      "demo-8f0a8950620ec74f88cb1394",
+      "demo-7df97f31b4dd86f4ed38bf5f",
+      "demo-5c444db2fcf410ea6c36a993",
+      "demo-05d0b2757b33aaec28b63954",
+      "demo-38f9f995658f77f07b79e748",
+      "demo-7341759f553b02ae64bfdc92"
+    ],
+    "observed_errors": {
+      "missing_nonnull_unmatched_reference": [
+        "demo-699f4849973340357b05bb12"
+      ],
+      "result_mismatch": [
+        "demo-e5fcb12a24ae2450bb8f5edc",
+        "demo-5919162d50d279961279a02d",
+        "demo-5441bdbc451e56efaf667dd8",
+        "demo-8f0a8950620ec74f88cb1394",
+        "demo-7df97f31b4dd86f4ed38bf5f",
+        "demo-5c444db2fcf410ea6c36a993",
+        "demo-7341759f553b02ae64bfdc92"
+      ],
+      "unsupported_query": [
+        "demo-38f9f995658f77f07b79e748"
+      ]
+    },
+    "improvements": [
+      {
+        "student_id": "S001",
+        "assignment_id": "original-e2e-q4",
+        "question_id": "sql_join_04",
+        "from_attempt_id": "demo-5c444db2fcf410ea6c36a993",
+        "to_attempt_id": "demo-05d0b2757b33aaec28b63954"
+      }
+    ]
+  },
+  "profiles": {
+    "S001": {
+      "student_id": "S001",
+      "synthetic": true,
+      "graph_status": "available",
+      "attempt_count": 9,
+      "concepts": {
+        "COUNT_AGGREGATION": {
+          "attempt_count": 5,
+          "correct_count": 1,
+          "incorrect_count": 4,
+          "last_attempt": "2026-10-31T08:07:23.569913+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 3,
+            "unsupported_query": 1
+          },
+          "mastery_estimate": 0.6666666666666666,
+          "denominator": 1,
+          "prerequisites": [],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:15.367908+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:17.991325+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:20.253120+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.111992+00:00",
+              "question_id": "sql_join_04",
+              "score": 1
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.569913+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": []
+        },
+        "FILTERING_AFTER_JOIN": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:13.197564+00:00",
+          "questions": [
+            "sql_join_03"
+          ],
+          "observed_errors": {
+            "missing_nonnull_unmatched_reference": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "IS_NULL",
+            "NULL_SEMANTICS"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:13.197564+00:00",
+              "question_id": "sql_join_03",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "IS_NULL",
+              "mastery_estimate": 0.3333333333333333,
+              "status": "possible_gap"
+            },
+            {
+              "concept": "NULL_SEMANTICS",
+              "mastery_estimate": 0.5,
+              "status": "observed"
+            }
+          ]
+        },
+        "GROUP_BY": {
+          "attempt_count": 5,
+          "correct_count": 1,
+          "incorrect_count": 4,
+          "last_attempt": "2026-10-31T08:07:23.569913+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 3,
+            "unsupported_query": 1
+          },
+          "mastery_estimate": 0.6666666666666666,
+          "denominator": 1,
+          "prerequisites": [],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:15.367908+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:17.991325+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:20.253120+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.111992+00:00",
+              "question_id": "sql_join_04",
+              "score": 1
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.569913+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": []
+        },
+        "INNER_JOIN": {
+          "attempt_count": 2,
+          "correct_count": 0,
+          "incorrect_count": 2,
+          "last_attempt": "2026-10-31T08:07:07.275940+00:00",
+          "questions": [
+            "sql_join_01"
+          ],
+          "observed_errors": {
+            "result_mismatch": 2
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "JOIN_CONDITION",
+            "RELATIONAL_TABLES"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:06.783741+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:07.275940+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "JOIN_CONDITION",
+              "mastery_estimate": 0.3333333333333333,
+              "status": "possible_gap"
+            },
+            {
+              "concept": "RELATIONAL_TABLES",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "IS_NULL": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:13.197564+00:00",
+          "questions": [
+            "sql_join_03"
+          ],
+          "observed_errors": {
+            "missing_nonnull_unmatched_reference": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "NULL_SEMANTICS",
+            "SQL_SELECT"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:13.197564+00:00",
+              "question_id": "sql_join_03",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "NULL_SEMANTICS",
+              "mastery_estimate": 0.5,
+              "status": "observed"
+            },
+            {
+              "concept": "SQL_SELECT",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "JOIN_CONDITION": {
+          "attempt_count": 2,
+          "correct_count": 0,
+          "incorrect_count": 2,
+          "last_attempt": "2026-10-31T08:07:07.275940+00:00",
+          "questions": [
+            "sql_join_01"
+          ],
+          "observed_errors": {
+            "result_mismatch": 2
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "RELATIONAL_TABLES"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:06.783741+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:07.275940+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "RELATIONAL_TABLES",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "JOIN_OPERATION": {
+          "attempt_count": 2,
+          "correct_count": 0,
+          "incorrect_count": 2,
+          "last_attempt": "2026-10-31T08:07:07.275940+00:00",
+          "questions": [
+            "sql_join_01"
+          ],
+          "observed_errors": {
+            "result_mismatch": 2
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "RELATIONAL_TABLES"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:06.783741+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:07.275940+00:00",
+              "question_id": "sql_join_01",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "RELATIONAL_TABLES",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "LEFT_OUTER_JOIN": {
+          "attempt_count": 7,
+          "correct_count": 1,
+          "incorrect_count": 6,
+          "last_attempt": "2026-10-31T08:07:23.569913+00:00",
+          "questions": [
+            "sql_join_02",
+            "sql_join_03",
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 4,
+            "missing_nonnull_unmatched_reference": 1,
+            "unsupported_query": 1
+          },
+          "mastery_estimate": 0.4,
+          "denominator": 3,
+          "prerequisites": [
+            "JOIN_CONDITION",
+            "RELATIONAL_TABLES"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:07.749185+00:00",
+              "question_id": "sql_join_02",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:13.197564+00:00",
+              "question_id": "sql_join_03",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:15.367908+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:17.991325+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:20.253120+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.111992+00:00",
+              "question_id": "sql_join_04",
+              "score": 1
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.569913+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "JOIN_CONDITION",
+              "mastery_estimate": 0.3333333333333333,
+              "status": "possible_gap"
+            },
+            {
+              "concept": "RELATIONAL_TABLES",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "NULL_SEMANTICS": {
+          "attempt_count": 6,
+          "correct_count": 1,
+          "incorrect_count": 5,
+          "last_attempt": "2026-10-31T08:07:23.569913+00:00",
+          "questions": [
+            "sql_join_02",
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 4,
+            "unsupported_query": 1
+          },
+          "mastery_estimate": 0.5,
+          "denominator": 2,
+          "prerequisites": [
+            "SQL_SELECT"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:07.749185+00:00",
+              "question_id": "sql_join_02",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:15.367908+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:17.991325+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:20.253120+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.111992+00:00",
+              "question_id": "sql_join_04",
+              "score": 1
+            },
+            {
+              "timestamp": "2026-10-31T08:07:23.569913+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "SQL_SELECT",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "UNMATCHED_ROWS": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:07.749185+00:00",
+          "questions": [
+            "sql_join_02"
+          ],
+          "observed_errors": {
+            "result_mismatch": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "JOIN_CONDITION",
+            "LEFT_OUTER_JOIN"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:07.749185+00:00",
+              "question_id": "sql_join_02",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "JOIN_CONDITION",
+              "mastery_estimate": 0.3333333333333333,
+              "status": "possible_gap"
+            },
+            {
+              "concept": "LEFT_OUTER_JOIN",
+              "mastery_estimate": 0.4,
+              "status": "possible_gap"
+            }
+          ]
+        }
+      },
+      "history": [
+        {
+          "timestamp": "2026-10-31T08:07:06.783741+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT 1",
+          "question_id": "sql_join_01",
+          "attempt_id": "demo-e5fcb12a24ae2450bb8f5edc",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q1",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q1",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ],
+                    [
+                      "Erin",
+                      "Research"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ],
+                  [
+                    "Erin",
+                    "Research"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_01",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "INNER_JOIN",
+              "JOIN_CONDITION",
+              "JOIN_OPERATION"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "INNER_JOIN",
+            "JOIN_CONDITION",
+            "JOIN_OPERATION"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the task. Check which rows should match, which should remain unmatched, the join condition, and the requested columns.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.596,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 247.958
+        },
+        {
+          "timestamp": "2026-10-31T08:07:07.275940+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT 2",
+          "question_id": "sql_join_01",
+          "attempt_id": "demo-5919162d50d279961279a02d",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q1",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q1",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "2"
+                  ],
+                  "rows": [
+                    [
+                      2
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    2
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "2"
+                  ],
+                  "rows": [
+                    [
+                      2
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ],
+                    [
+                      "Erin",
+                      "Research"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ],
+                  [
+                    "Erin",
+                    "Research"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    2
+                  ]
+                ]
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_01",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "INNER_JOIN",
+              "JOIN_CONDITION",
+              "JOIN_OPERATION"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "INNER_JOIN",
+            "JOIN_CONDITION",
+            "JOIN_OPERATION"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the task. Check which rows should match, which should remain unmatched, the join condition, and the requested columns.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.395,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 253.181
+        },
+        {
+          "timestamp": "2026-10-31T08:07:07.749185+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT 1",
+          "question_id": "sql_join_02",
+          "attempt_id": "demo-5441bdbc451e56efaf667dd8",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q2",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q2",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "Carol",
+                      null
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "Carol",
+                    null
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name",
+                    "department_name"
+                  ],
+                  "rows": [
+                    [
+                      "Alice",
+                      "Engineering"
+                    ],
+                    [
+                      "Bob",
+                      "Sales"
+                    ],
+                    [
+                      "Carol",
+                      null
+                    ],
+                    [
+                      "David",
+                      "Engineering"
+                    ],
+                    [
+                      "Erin",
+                      "Research"
+                    ],
+                    [
+                      "Frank",
+                      null
+                    ],
+                    [
+                      "Gina",
+                      null
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Alice",
+                    "Engineering"
+                  ],
+                  [
+                    "Bob",
+                    "Sales"
+                  ],
+                  [
+                    "Carol",
+                    null
+                  ],
+                  [
+                    "David",
+                    "Engineering"
+                  ],
+                  [
+                    "Erin",
+                    "Research"
+                  ],
+                  [
+                    "Frank",
+                    null
+                  ],
+                  [
+                    "Gina",
+                    null
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_02",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "UNMATCHED_ROWS",
+              "NULL_SEMANTICS"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "UNMATCHED_ROWS",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the task. Check which rows should match, which should remain unmatched, the join condition, and the requested columns.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.429,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 250.497
+        },
+        {
+          "timestamp": "2026-10-31T08:07:13.197564+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT 1",
+          "question_id": "sql_join_03",
+          "attempt_id": "demo-699f4849973340357b05bb12",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q3",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q3",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name"
+                  ],
+                  "rows": [
+                    [
+                      "Carol"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Carol"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "1"
+                  ],
+                  "rows": [
+                    [
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "name"
+                  ],
+                  "rows": [
+                    [
+                      "Carol"
+                    ],
+                    [
+                      "Frank"
+                    ],
+                    [
+                      "Gina"
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Carol"
+                  ],
+                  [
+                    "Frank"
+                  ],
+                  [
+                    "Gina"
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    1
+                  ]
+                ]
+              }
+            ],
+            "observation": "missing_nonnull_unmatched_reference"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_03",
+            "grading_status": "semantic_error",
+            "observed_error": "missing_nonnull_unmatched_reference",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "IS_NULL",
+              "FILTERING_AFTER_JOIN"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "missing_nonnull_unmatched_reference"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "IS_NULL",
+            "FILTERING_AFTER_JOIN"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "Your result misses an employee with a nonempty department reference that has no matching row. A missing reference and a missing match are different cases. Which joined side reveals the absence of a match?",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.219,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 226.712
+        },
+        {
+          "timestamp": "2026-10-31T08:07:15.367908+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count FROM Departments d INNER JOIN Employees e ON d.department_id=e.department_id GROUP BY d.department_id,d.department_name ORDER BY d.department_name;",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-8f0a8950620ec74f88cb1394",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Research",
+                    0
+                  ]
+                ],
+                "unexpected_rows": []
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Operations",
+                    0
+                  ]
+                ],
+                "unexpected_rows": []
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "COUNT_AGGREGATION",
+              "GROUP_BY",
+              "NULL_SEMANTICS"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.49,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 245.961
+        },
+        {
+          "timestamp": "2026-10-31T08:07:17.991325+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT d.department_name, COUNT(*) AS employee_count FROM Departments d LEFT JOIN Employees e ON d.department_id=e.department_id GROUP BY d.department_id,d.department_name ORDER BY d.department_name;",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-7df97f31b4dd86f4ed38bf5f",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Research",
+                    0
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    "Research",
+                    1
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      1
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Operations",
+                    0
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    "Operations",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "COUNT_AGGREGATION",
+              "GROUP_BY",
+              "NULL_SEMANTICS"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.722,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 227.213
+        },
+        {
+          "timestamp": "2026-10-31T08:07:20.253120+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count FROM Departments d LEFT JOIN Employees e ON d.department_id=e.department_id ORDER BY d.department_name;",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-5c444db2fcf410ea6c36a993",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      3
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Engineering",
+                    2
+                  ],
+                  [
+                    "Research",
+                    0
+                  ],
+                  [
+                    "Sales",
+                    1
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    "Engineering",
+                    3
+                  ]
+                ]
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      4
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Engineering",
+                    2
+                  ],
+                  [
+                    "Operations",
+                    0
+                  ],
+                  [
+                    "Research",
+                    1
+                  ],
+                  [
+                    "Sales",
+                    1
+                  ]
+                ],
+                "unexpected_rows": [
+                  [
+                    "Engineering",
+                    4
+                  ]
+                ]
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "COUNT_AGGREGATION",
+              "GROUP_BY",
+              "NULL_SEMANTICS"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.351,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 231.51
+        },
+        {
+          "timestamp": "2026-10-31T08:07:23.111992+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count FROM Departments d LEFT JOIN Employees e ON d.department_id=e.department_id GROUP BY d.department_id, d.department_name ORDER BY d.department_name;",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-05d0b2757b33aaec28b63954",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "correct",
+            "score": 1,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": true,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [],
+                "unexpected_rows": []
+              },
+              {
+                "dataset": "B",
+                "correct": true,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [],
+                "unexpected_rows": []
+              }
+            ],
+            "observation": "correct"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "correct",
+            "observed_error": "correct",
+            "candidate_concepts": [],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "correct"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "Your result matches all grading cases. Explain to yourself how the query treats unmatched rows before moving on.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.342,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 227.838
+        },
+        {
+          "timestamp": "2026-10-31T08:07:23.569913+00:00",
+          "student_id": "S001",
+          "submitted_sql": "SELEC nonsense",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-38f9f995658f77f07b79e748",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "unsupported_query",
+            "score": 0,
+            "datasets": [],
+            "error": "Only one read-only SELECT is supported.",
+            "observation": "unsupported_query"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "unsupported_query",
+            "observed_error": "unsupported_query",
+            "candidate_concepts": [],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "unsupported_query"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "This sandbox accepts one read-only query using the exercise tables and supported SQL functions. Remove additional statements or unsupported operations.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.425,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 57.193
+        }
+      ],
+      "model": "Beta(1,1) smoothing on latest result per linked question; unvalidated heuristic"
+    },
+    "S002": {
+      "student_id": "S002",
+      "synthetic": true,
+      "graph_status": "available",
+      "attempt_count": 1,
+      "concepts": {
+        "COUNT_AGGREGATION": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:23.877947+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:23.877947+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": []
+        },
+        "GROUP_BY": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:23.877947+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:23.877947+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": []
+        },
+        "LEFT_OUTER_JOIN": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:23.877947+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "JOIN_CONDITION",
+            "RELATIONAL_TABLES"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:23.877947+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "JOIN_CONDITION",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            },
+            {
+              "concept": "RELATIONAL_TABLES",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        },
+        "NULL_SEMANTICS": {
+          "attempt_count": 1,
+          "correct_count": 0,
+          "incorrect_count": 1,
+          "last_attempt": "2026-10-31T08:07:23.877947+00:00",
+          "questions": [
+            "sql_join_04"
+          ],
+          "observed_errors": {
+            "result_mismatch": 1
+          },
+          "mastery_estimate": 0.3333333333333333,
+          "denominator": 1,
+          "prerequisites": [
+            "SQL_SELECT"
+          ],
+          "trajectory": [
+            {
+              "timestamp": "2026-10-31T08:07:23.877947+00:00",
+              "question_id": "sql_join_04",
+              "score": 0
+            }
+          ],
+          "prerequisite_context": [
+            {
+              "concept": "SQL_SELECT",
+              "mastery_estimate": null,
+              "status": "unobserved"
+            }
+          ]
+        }
+      },
+      "history": [
+        {
+          "timestamp": "2026-10-31T08:07:23.877947+00:00",
+          "student_id": "S002",
+          "submitted_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count FROM Departments d INNER JOIN Employees e ON d.department_id=e.department_id GROUP BY d.department_id,d.department_name ORDER BY d.department_name;",
+          "question_id": "sql_join_04",
+          "attempt_id": "demo-7341759f553b02ae64bfdc92",
+          "course_id": "intro-relational-databases",
+          "source": "synthetic_fixture",
+          "assessment_id": "original-e2e-q4",
+          "feedback_grounding": {
+            "assignment_id": "original-e2e-q4",
+            "course_id": "intro-relational-databases",
+            "graph_id": "kg-6b9ac34972ee3e35",
+            "graph_version": 1,
+            "source_document_id": "original-synthetic-sql",
+            "source_version": 1,
+            "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de"
+          },
+          "grading": {
+            "status": "semantic_error",
+            "score": 0,
+            "datasets": [
+              {
+                "dataset": "A",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      0
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Research",
+                    0
+                  ]
+                ],
+                "unexpected_rows": []
+              },
+              {
+                "dataset": "B",
+                "correct": false,
+                "actual": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "expected": {
+                  "status": "ok",
+                  "columns": [
+                    "department_name",
+                    "employee_count"
+                  ],
+                  "rows": [
+                    [
+                      "Engineering",
+                      2
+                    ],
+                    [
+                      "Operations",
+                      0
+                    ],
+                    [
+                      "Research",
+                      1
+                    ],
+                    [
+                      "Sales",
+                      1
+                    ]
+                  ]
+                },
+                "missing_rows": [
+                  [
+                    "Operations",
+                    0
+                  ]
+                ],
+                "unexpected_rows": []
+              }
+            ],
+            "observation": "result_mismatch"
+          },
+          "diagnosis": {
+            "question_id": "sql_join_04",
+            "grading_status": "semantic_error",
+            "observed_error": "result_mismatch",
+            "candidate_concepts": [
+              "LEFT_OUTER_JOIN",
+              "COUNT_AGGREGATION",
+              "GROUP_BY",
+              "NULL_SEMANTICS"
+            ],
+            "diagnosis_confidence": null,
+            "evidence": [
+              {
+                "source": "deterministic_execution",
+                "observation": "result_mismatch"
+              }
+            ],
+            "diagnosis_source": "deterministic_rule",
+            "interpretation": "Possible gaps; not a definitive diagnosis."
+          },
+          "concepts": [
+            "LEFT_OUTER_JOIN",
+            "COUNT_AGGREGATION",
+            "GROUP_BY",
+            "NULL_SEMANTICS"
+          ],
+          "feedback_mode": "baseline",
+          "feedback": {
+            "feedback_text": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors.",
+            "candidate_concepts": [],
+            "evidence_references": [],
+            "feedback_mode": "baseline",
+            "model_identifier": "deterministic-rules-v1",
+            "provider_identifier": "deterministic",
+            "attempted_provider_identifier": null,
+            "provider_routing": "not_configured",
+            "requested_model_identifier": null,
+            "prompt_version": "siip-feedback-v11",
+            "non_revealing_validation": "passed_rule_filter",
+            "inference_status": "deterministic_fallback",
+            "feedback_quality": "deterministic_guidance",
+            "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
+            "error_details": null,
+            "latency_ms": 0.285,
+            "token_usage": null,
+            "estimated_cost": null,
+            "historical_personalization": {
+              "status": "none",
+              "concept_count": 0,
+              "evidence_kind": null
+            },
+            "prior_observation_provenance": {
+              "attempt_ids": [],
+              "count": 0
+            },
+            "context_status": "available",
+            "grounding_provenance": null,
+            "model_digest": null,
+            "graph_status": null
+          },
+          "feedback_origin": "local_analytics_recomputed",
+          "dataset_version": "employees-departments-v1",
+          "profile_version": "beta-heuristic-v1",
+          "grading_latency_ms": 224.489
+        }
+      ],
+      "model": "Beta(1,1) smoothing on latest result per linked question; unvalidated heuristic"
+    }
+  },
+  "cross_course_status": 404,
+  "provider_calls": 6
+}

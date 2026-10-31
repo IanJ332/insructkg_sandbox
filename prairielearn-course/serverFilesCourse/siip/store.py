@@ -61,6 +61,7 @@ class SubmissionRepository:
             "external_links",
             "external_score",
             "course_id",
+            "feedback_grounding",
         }
         required = {"attempt_id", "student_id", "question_id", "timestamp", "submitted_sql"}
         if set(record) - allowed or not required <= set(record):
@@ -97,6 +98,15 @@ class SubmissionRepository:
         if "course_id" in record:
             output["course_id"] = record["course_id"]
         output.update(timestamp=timestamp, source=source, assessment_id=assessment)
+        if "feedback_grounding" in record:
+            from .assignment_grounding import validate_grounding
+
+            grounding = validate_grounding(record["feedback_grounding"])
+            if grounding["assignment_id"] != assessment or grounding["course_id"] != record.get(
+                "course_id"
+            ):
+                raise ValueError("Attempt grounding does not match assignment and course")
+            output["feedback_grounding"] = grounding
         if "external_score" in record:
             score = record["external_score"]
             if (
@@ -136,6 +146,7 @@ class SubmissionRepository:
             "external_links",
             "external_score",
             "course_id",
+            "feedback_grounding",
         ]:
             if saved.get(key) != record.get(key):
                 raise ValueError("Attempt ID collision")

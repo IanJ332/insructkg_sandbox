@@ -1,0 +1,84 @@
+{
+  "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de",
+  "status": "completed",
+  "upstream_repository": "https://github.com/code-royce/instructkg",
+  "upstream_commit": "c34a7786528e78766f15d918ab17aca2a9f7dc0b",
+  "source_file_sha256": {
+    "adapters.py": "53073f42d0e628d96e04e6759a940bd1b2798829bad39f9014641780321010ae",
+    "clustering.py": "0b7d18f2a5bf8a7b2914abfdcf903cd360f3a3c2ca4032b587ee622eee47d4d0",
+    "config.py": "01414bcf6137b1c2c93999562b317202a63b83073759960ec1d01ea57f5afd59",
+    "ingest.py": "04c176fd35e9882aff47f139df2d13780cde13aedd69dbd94f45678577b770fa",
+    "llm.py": "37fa755ab33d9c43f352c28c67b9c02925512b4f1c887b37ca7dd974134aaf6f",
+    "main.py": "7ea3d3b7747fc126fec239067685abb82cc40ab9d3d97c2522ae9c6add828e54",
+    "pairpackets.py": "b6152dfe5d6f30bbebdfb5c42e51458d1f6ee8e287079821c1259850f645da0b",
+    "prompts.py": "ff6583f153a0e247c8b8bb892480d7d64400b6525ace50446a1acccf5aa1f47d",
+    "relation_judger.py": "12ded1c1587ea8042e89a0c8d3c588260fddf286a5a3295e9451994882be0500",
+    "response_parsing.py": "a47e6017b42c7f4195e64ad10c22ffa603d50cd6dcd17031b45795017b2dbf5b"
+  },
+  "requested_model": "qwen3:8b",
+  "actual_models": [
+    "qwen3:8b"
+  ],
+  "functions": [
+    "ingest.ingest_pdfs",
+    "ingest.pdf_to_chunks",
+    "main.run_llm_and_cards",
+    "llm.extract_concepts_llm_batch",
+    "llm.classify_concept_role_llm_batch_texts",
+    "llm.concept_to_id",
+    "llm.build_concept_cards",
+    "pairpackets.build_pairpackets",
+    "relation_judger.judge_pairpackets_file",
+    "relation_judger.judge_pairpacket_batch"
+  ],
+  "artifacts": {
+    "chunks.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\chunks.jsonl",
+      "sha256": "1516f9ca8ebef51f4339e9c835e59c32422723827f5249410d85148f361c5b8f"
+    },
+    "mentions.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\mentions.jsonl",
+      "sha256": "609b19110af34a15d7a0b1828f42d6e6c4114ba25192b33a8674ffc946246353"
+    },
+    "concept_cards.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\concept_cards.jsonl",
+      "sha256": "ae3bde87387ef07a162bedff1e0ad73a8054f6aad7e65e4dd5935df74fd5f6c3"
+    },
+    "clusters.json": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\clusters.json",
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    "pairpackets.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\pairpackets.jsonl",
+      "sha256": "b1624f27604b4764160f7db2e1eefa33362d76d449641683782d5184b539b14c"
+    },
+    "relations.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\relations.jsonl",
+      "sha256": "096c6a85aa31fea1f840124633d192ea4e3295d4d9609b5b87ad4facc063bc4a"
+    },
+    "model_calls.jsonl": {
+      "path": "C:\\Users\\ian\\.codex\\worktrees\\original-instructkg-integration\\insructkg_sandbox\\artifacts\\original-integration\\live\\runtime\\demo-state\\knowledge_graph\\kg-6b9ac34972ee3e35\\original_artifacts\\run-zblqo_5y\\model_calls.jsonl",
+      "sha256": "a45ec1a74955ae937379d88b4159a7a075646e34d5f6117614cbb62116969692"
+    }
+  },
+  "counts": {
+    "chunks": 6,
+    "mentions": 30,
+    "concepts": 28,
+    "candidate_pairs": 61,
+    "judged_relationships": 61
+  },
+  "clustering": "DEFERRED",
+  "fallback": false,
+  "adapter_configuration": {
+    "ocr": "disabled (native PDF text)",
+    "formula_enrichment": false,
+    "code_enrichment": false,
+    "model_transport": "Ollama native chat; think=false",
+    "temperature": 0,
+    "max_tokens": 2400,
+    "context": 8192,
+    "request_timeout_seconds": 120,
+    "concurrency": 2
+  }
+}

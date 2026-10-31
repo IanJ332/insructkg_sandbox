@@ -1,0 +1,109 @@
+{
+  "gate": "P16",
+  "b6_status": "FAIL",
+  "scope": "Independent evaluation of six recorded Qwen3:8b model calls under fixed feedback prompt v11 and their delivered outcomes; no new inference or prompt changes.",
+  "reason": "History and reviewed KG context reached the model, but the experienced/sparse comparison did not demonstrate a useful history-conditioned model response, four quality fallbacks and one provider-error fallback prevented model delivery, and delivered COUNT(*) and missing-grouping fallbacks did not precisely identify the distinct current error.",
+  "recorded_outcomes": {
+    "actual_model_calls": 6,
+    "live_model_accepted": 1,
+    "quality_fallback": 4,
+    "provider_error_fallback": 1,
+    "nonsemantic_bypasses": 2,
+    "deterministic_prior_cases": 2
+  },
+  "comparison": {
+    "same_question": "sql_join_04",
+    "same_submitted_sql": true,
+    "experienced": "S001: request includes two relevant prior observations from two questions and NULL_SEMANTICS reviewed prerequisite; model response was withheld. Four total earlier same-course records are reported in verification; only two relevant observations were included in the model context.",
+    "sparse": "S002: request contains no prior observations and includes the same reviewed prerequisite; model response was withheld.",
+    "delivered_difference": "Experienced fallback appends a descriptive revisit sentence; sparse fallback omits it. This is a deterministic history cue, not proof that Qwen used history or generated improved personalized feedback.",
+    "isolation": "Verification records current/future and cross-course exclusion, cross-student denial, and learner/instructor job equality for this run. This is bounded evidence, not exhaustive authorization or privacy proof."
+  },
+  "non_revealing": "The recorded delivered feedback does not include a complete SQL solution. Fallbacks name a reviewed concept, including left outer join, as a review topic; this review does not establish that every possible answer-leakage pattern is blocked. Existing validators were not weakened.",
+  "provider_error_limitation": "Call 0 contains a captured Qwen response but the job reports provider_error_fallback. The exact error after raw return is not shown in these artifacts, so its failure cause remains unverified.",
+  "current_error_distinction": "The INNER JOIN case has an otherwise suitable COUNT(employee_id); the raw response casts doubt on COUNT. COUNT(*) and missing GROUP BY are different errors; their delivered fallbacks remain too generic to demonstrate precise diagnostic quality.",
+  "case_reviews": [
+    {
+      "call_index": 0,
+      "case": "prior-q2",
+      "student_id": "S001",
+      "question_id": "sql_join_02",
+      "raw_model_feedback": "Your SQL does not retrieve the required columns or rows. You need to use a LEFT OUTER JOIN to include employees without matching departments and ensure the correct columns are selected. What is the correct way to structure the SELECT clause to include employee names and department names?",
+      "delivered_feedback": "The result differs from the task. Check which rows should match, which should remain unmatched, the join condition, and the requested columns. Revisit left outer join, unmatched rows. Reviewed prerequisites to review: null semantics.",
+      "delivery_status": "provider_error_fallback",
+      "independent_assessment": "PARTIAL",
+      "reason": "Raw text explicitly gives a replacement join type and SELECT-clause direction, contrary to the stated non-revealing contract. The recorded learner job used provider_error_fallback; raw response exists but the precise post-return provider error is not evidenced here. Delivered fallback is generic and does not include full SQL."
+    },
+    {
+      "call_index": 1,
+      "case": "prior-q3",
+      "student_id": "S001",
+      "question_id": "sql_join_03",
+      "raw_model_feedback": "Your query is missing the non-null references for unmatched employees. You need to identify rows where there is no matching department. Consider how to filter for unmatched rows after a join.",
+      "delivered_feedback": "Your query is missing the non-null references for unmatched employees. You need to identify rows where there is no matching department. Consider how to filter for unmatched rows after a join.",
+      "delivery_status": "live_success",
+      "independent_assessment": "PARTIAL",
+      "reason": "Accepted feedback identifies the observed missing non-null unmatched references and asks the learner to consider filtering; it supplies no complete SQL. It does not demonstrate a concrete adaptation based on the supplied prior observation. Candidate concepts are possible associations rather than confirmed misconceptions."
+    },
+    {
+      "call_index": 2,
+      "case": "inner-count-id",
+      "student_id": "S001",
+      "question_id": "sql_join_04",
+      "raw_model_feedback": "Your query uses INNER JOIN, which excludes departments with no employees. To include such departments, you need a LEFT OUTER JOIN. However, the COUNT function may not correctly reflect zero employees if not applied properly. Investigate how COUNT behaves with NULL values in the context of a LEFT OUTER JOIN.",
+      "delivered_feedback": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors. Revisit left outer join. Reviewed prerequisites to review: null semantics. Earlier attempts suggest revisiting left outer join; this is a descriptive history signal, not a mastery diagnosis.",
+      "delivery_status": "feedback_quality_fallback",
+      "independent_assessment": "FAIL",
+      "reason": "Raw response correctly identifies row retention but directly gives a replacement join type and suggests COUNT may be wrong despite the matched non-null identifier being an appropriate count component. Quality guard withheld it. Delivered fallback avoids claiming a count error, but history language is a generic revisit cue rather than specific actionable use of the observed prior outcomes."
+    },
+    {
+      "call_index": 3,
+      "case": "left-count-star",
+      "student_id": "S001",
+      "question_id": "sql_join_04",
+      "raw_model_feedback": "Your query uses LEFT JOIN and GROUP BY, but the COUNT(*) may not correctly represent zero employees for unmatched departments. Investigate how COUNT(*) behaves with unmatched rows and how NULL semantics affect the count.",
+      "delivered_feedback": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors. Revisit left outer join, count aggregation. Reviewed prerequisites to review: null semantics. Earlier attempts suggest revisiting left outer join; this is a descriptive history signal, not a mastery diagnosis.",
+      "delivery_status": "feedback_quality_fallback",
+      "independent_assessment": "PARTIAL",
+      "reason": "Raw response correctly calls attention to COUNT(*) on retained unmatched rows; no complete SQL. Guard withheld it, and delivered fallback mentions retained departments and count aggregation but does not clearly distinguish the actual COUNT(*) issue from row preservation."
+    },
+    {
+      "call_index": 4,
+      "case": "missing-group-by",
+      "student_id": "S001",
+      "question_id": "sql_join_04",
+      "raw_model_feedback": "Your query uses a LEFT OUTER JOIN, which is correct for including unmatched departments. However, the COUNT function is applied without a GROUP BY clause, which is needed to aggregate the employee counts per department. The COUNT function will count non-NULL values, but without grouping, it will return a single count for all rows. Ask: Why is a GROUP BY clause necessary to ensure each department's count is calculated correctly?",
+      "delivered_feedback": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors. Revisit left outer join, count aggregation. Reviewed prerequisites to review: null semantics. Earlier attempts suggest revisiting left outer join; this is a descriptive history signal, not a mastery diagnosis.",
+      "delivery_status": "feedback_quality_fallback",
+      "independent_assessment": "PARTIAL",
+      "reason": "Raw response identifies missing grouping, but states a GROUP BY remedy explicitly; guard withheld it. Delivered fallback does not clearly identify the grouping issue and mainly asks about retained departments. SQL-engine-specific behavior is not generalized beyond this recorded execution."
+    },
+    {
+      "call_index": 5,
+      "case": "sparse-inner-count-id",
+      "student_id": "S002",
+      "question_id": "sql_join_04",
+      "raw_model_feedback": "Your query uses INNER JOIN, which excludes departments with no employees. To include all departments, you need a LEFT OUTER JOIN. Investigate how LEFT OUTER JOIN affects row retention and NULL semantics in COUNT.",
+      "delivered_feedback": "The result differs from the required department headcounts. Check whether every department remains represented, including departments without employees. The grade alone does not establish additional conceptual errors. Revisit left outer join. Reviewed prerequisites to review: null semantics.",
+      "delivery_status": "feedback_quality_fallback",
+      "independent_assessment": "FAIL",
+      "reason": "Raw response identifies the row-retention issue but explicitly prescribes a replacement join type. The quality guard withheld it. Its delivered fallback matches the experienced case except for the latter's generic historical sentence."
+    }
+  ],
+  "verification_record": {
+    "target_attempt_id": "demo-8f0a8950620ec74f88cb1394",
+    "prior_count": 4,
+    "later_count": 4,
+    "current_excluded": true,
+    "later_excluded": true,
+    "cross_course_excluded": true,
+    "other_student_history_count": 1,
+    "learner_instructor_jobs_equal": true,
+    "cross_student_denied": true,
+    "canonical_lineage_present": true,
+    "model_call_count": 6,
+    "reviewed_prerequisites": [
+      "NULL_SEMANTICS"
+    ]
+  }
+}

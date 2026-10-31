@@ -1,0 +1,450 @@
+{
+  "reviewer": "independent source-grounded review; synthetic review recommendations only",
+  "source_pdf": "synthetic-sql-lesson.pdf",
+  "source_pdf_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de",
+  "source_page_count": 1,
+  "generated_counts": {
+    "relations": 61,
+    "non_null_edges": 33,
+    "null_relations": 28
+  },
+  "raw_validation": "All 61 captured relation responses were checked using the pinned upstream JSON extraction/parser and the new explicit-label contract; all passed, including 28 explicit JSON nulls.",
+  "recommendation_counts": {
+    "REJECT": 19,
+    "NEEDS_REVISION": 10,
+    "APPROVE": 4
+  },
+  "assessment": "Quality FAIL for unreviewed prerequisite use: source-grounded candidates exist, but most proposed edges are reversed, unsupported or metadata noise. Human review is essential; these are recommendations, not instructor approvals.",
+  "coverage": "The lesson explicitly supports LEFT_OUTER_JOIN depends_on JOIN_PREDICATE but generated JOIN_PREDICATE depends_on LEFT_OUTER_JOIN reverses it. Alphabetically ordered pair selection cannot judge the opposite orientation. Generic metadata concepts (CC0, fixture, integration validation) and PREREQUISITE_KNOWLEDGE pollute extraction; sparse chunk-only co-occurrence and no semantic clusters further limit coverage. A few source-grounded relations are supported, not evidence of complete curriculum coverage.",
+  "edges": [
+    {
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "depends_on",
+      "target": "INNER_JOIN",
+      "recommendation": "REJECT",
+      "rationale": "The lesson contrasts a Cartesian product with an inner join; it does not make inner join a prerequisite for Cartesian product. The explanation reverses its claimed direction.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The lesson connects omitting the predicate with a Cartesian product, but does not establish the predicate as prerequisite for understanding the general Cartesian product.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "depends_on",
+      "target": "ROW_MATCHING",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Row matching is contrasted with a Cartesian product; the lesson does not establish this prerequisite.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "source": "CC0_1_0",
+      "relation": "part_of",
+      "target": "INTEGRATION_VALIDATION",
+      "recommendation": "REJECT",
+      "rationale": "CC0 is licensing metadata, not a component of integration validation or a SQL course concept.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0000"
+      ]
+    },
+    {
+      "source": "CC0_1_0",
+      "relation": "part_of",
+      "target": "PUBLIC_DOMAIN",
+      "recommendation": "REJECT",
+      "rationale": "CC0 is fixture licensing metadata, not a course concept; the text does not establish a pedagogical component relationship.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0000"
+      ]
+    },
+    {
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The lesson explicitly links COUNT behavior to NULL semantics generally; it does not say equality-with-NULL behavior is a prerequisite of COUNT.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The lesson supports NULL semantics as prerequisite of COUNT behavior, but does not explicitly establish this narrower missing-value formulation as prerequisite.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_JOINS",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The lesson connects COUNT to NULL semantics, but NULL semantics in joins is a narrower and different concept; this direction is not established.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_TO_CHECK_FOR_MISSING",
+      "recommendation": "REJECT",
+      "rationale": "Using IS NULL is a way to test for missing values; the lesson does not require it before understanding COUNT behavior.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "COUNT_VS_COUNT_COLUMN",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTS",
+      "recommendation": "APPROVE",
+      "rationale": "The page states COUNT(column) excludes NULL and explicitly makes NULL semantics prerequisite to interpreting grouped counts.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "source": "EQUALITY_PREDICATE",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "An equality predicate is used as a join predicate, but the lesson does not say join predicate is a prerequisite for equality predicates in general.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "EQUALITY_PREDICATE",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "Prerequisite knowledge is a generic phrase, not a SQL concept on which equality predicates depend; the explanation changes the claimed relation.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Both NULL statements are taught together, but the page does not explicitly assert this narrower prerequisite direction.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_JOINS",
+      "recommendation": "REJECT",
+      "rationale": "The page makes NULL semantics prerequisite for explaining join behavior; it does not make join-specific NULL semantics prerequisite to understanding NULL equality.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_TO_CHECK_FOR_MISSING",
+      "recommendation": "REJECT",
+      "rationale": "The explanation argues the opposite direction: understanding NULL equality precedes using IS NULL. It does not support this emitted edge.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "FIXTURE",
+      "relation": "part_of",
+      "target": "INTEGRATION_VALIDATION",
+      "recommendation": "REJECT",
+      "rationale": "Fixture and integration validation are provenance metadata, not SQL learning concepts; purpose is not a demonstrated part-of relation.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0000"
+      ]
+    },
+    {
+      "source": "GROUP_BY_PARTITIONS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTS",
+      "recommendation": "REJECT",
+      "rationale": "The lesson makes grouping and NULL semantics prerequisites of interpreting grouped counts, not NULL semantics a prerequisite for GROUP BY partitioning.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "source": "HAVING_CLAUSE_USAGE",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTS",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "HAVING is described as an aggregate condition; the lesson does not say NULL semantics is prerequisite for using HAVING generally.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "source": "INNER_JOIN",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "APPROVE",
+      "rationale": "The page explicitly says interpreting an inner join depends on understanding join predicates.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "LEFT_OUTER_JOIN",
+      "recommendation": "REJECT",
+      "rationale": "The page and model explanation say the opposite: left outer join depends on join predicate.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "MATCHING_ROW",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The text defines matching using the predicate, but does not explicitly require matching-row knowledge first; the explanation asserts the opposite direction.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "NONMATCHING_ROW",
+      "recommendation": "REJECT",
+      "rationale": "The lesson defines a nonmatching row using the predicate; the explanation describes the predicate as prerequisite and reverses the emitted edge.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS",
+      "recommendation": "REJECT",
+      "rationale": "The lesson says left outer joins depend on both concepts, not join predicates on NULL semantics; the explanation reverses its own relation.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "Prerequisite knowledge is a generic pedagogical phrase, not a prerequisite concept for join predicates.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "ROW_MATCHING",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The page describes row matching via join predicates but does not explicitly establish that row matching is an earlier prerequisite for understanding predicates.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "source": "LEFT_OUTER_JOIN",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS",
+      "recommendation": "APPROVE",
+      "rationale": "The page explicitly states that interpreting a left outer join depends on understanding NULL semantics.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "source": "LEFT_OUTER_JOIN",
+      "relation": "part_of",
+      "target": "RETAINS_LEFT_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "Retaining left rows is a property of left outer joins, not a broader concept of which a left outer join is a component; the explanation reverses the component relation.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "source": "LEFT_OUTER_JOIN_COUNTS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTS",
+      "recommendation": "APPROVE",
+      "rationale": "The page explicitly explains left-join count behavior in terms of NULL values and says interpreting grouped counts depends on NULL semantics.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "source": "MATCHING_ROW",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "Prerequisite knowledge is a generic phrase, not a course concept required for understanding matching rows.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "NONMATCHING_ROW",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "Prerequisite knowledge is a generic phrase, not a course concept required for understanding nonmatching rows.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_JOINS",
+      "recommendation": "REJECT",
+      "rationale": "The lesson does not require join-specific NULL semantics to understand NULL as missing; the explanation asserts the reverse.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_TO_CHECK_FOR_MISSING",
+      "recommendation": "REJECT",
+      "rationale": "The lesson does not require use of IS NULL before understanding NULL as missing; the explanation asserts the opposite direction.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "source": "NULL_SEMANTICS_IN_JOINS",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_TO_CHECK_FOR_MISSING",
+      "recommendation": "REJECT",
+      "rationale": "The explanation says NULL semantics precedes use of IS NULL, opposite the emitted edge.",
+      "source_pages": [
+        1
+      ],
+      "cited_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    }
+  ]
+}

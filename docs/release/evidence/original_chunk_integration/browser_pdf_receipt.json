@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:8831/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Candidate+graph+generated",
+  "actual_pdf_upload": true,
+  "generate_button_clicked": true,
+  "graph_id": "kg-6b9ac34972ee3e35",
+  "extraction_mode": "ORIGINAL_INSTRUCTKG_CHUNK_ONLY"
+}

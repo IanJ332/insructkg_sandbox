@@ -77,7 +77,24 @@ def _load_assignment(value: Mapping[str, Any] | str | Path) -> dict[str, Any]:
         raise ValueError("Published assignment requires relevant KG nodes")
     for node in nodes:
         _validate_id(node, "relevant_kg_node_ids")
-    if not set(nodes).intersection(QUESTIONS[assignment["question_id"]]["concepts"]):
+    grounding = assignment.get("feedback_grounding")
+    if grounding is not None:
+        from .assignment_grounding import resolve_grounding, reviewed_concept_mapping
+
+        ids, graph, _, _ = resolve_grounding(grounding, question_id=assignment["question_id"])
+        if (
+            ids["assignment_id"] != assignment["assignment_id"]
+            or ids["course_id"] != assignment["course_id"]
+            or set(nodes) != set(graph["assignment_kg_node_ids"])
+        ):
+            raise ValueError("Published assignment does not match its trusted grounding")
+        mapping = reviewed_concept_mapping(
+            {"concept_mapping": graph["assignment_concept_mapping"]}, graph
+        )
+        resolved_nodes = {mapping.get(node, node) for node in nodes}
+    else:
+        resolved_nodes = set(nodes)
+    if not resolved_nodes.intersection(QUESTIONS[assignment["question_id"]]["concepts"]):
         raise ValueError("Assignment KG nodes must match the supported question concept tags")
     if not isinstance(assignment["grading_configuration"], Mapping):
         raise ValueError("Published assignment requires a grading configuration")
@@ -187,6 +204,8 @@ class DemoStudentJourney:
             saved = self.submissions.attempt_for_student(attempt_id, student_id)
             if saved["submitted_sql"] != submitted_sql:
                 raise ValueError("submission_key was replayed with a conflicting SQL payload")
+            if saved.get("feedback_grounding") != assignment.get("feedback_grounding"):
+                raise ValueError("submission_key was replayed with conflicting grounding")
             if (
                 saved["assessment_id"] != assignment["assignment_id"]
                 or saved["question_id"] != question_id
@@ -204,6 +223,11 @@ class DemoStudentJourney:
                     "source": "synthetic_fixture",
                     "assessment_id": assignment["assignment_id"],
                     "course_id": assignment["course_id"],
+                    **(
+                        {"feedback_grounding": assignment["feedback_grounding"]}
+                        if assignment.get("feedback_grounding") is not None
+                        else {}
+                    ),
                 },
                 # Repository persistence requires a feedback mode.  With no
                 # provider this is bounded local deterministic work, never LLM

@@ -1,0 +1,81 @@
+{
+  "scope": "Explicitly synthetic lesson and synthetic local execution. Binary PDF stays local under repository publication policy; generator, original-byte hash and trusted manifest are committed. No private PDFs, upstream code or original prompt logs.",
+  "files": {
+    "analytics_profiles.json": {
+      "sha256": "7411cd156a38bc4291e68ed46bdeaaab8a9d0570888b29a29d4f246034dfd389",
+      "bytes": 86217
+    },
+    "browser_pdf_receipt.json": {
+      "sha256": "39ca98171e9903990801f4ab972752252437b660ef56a37cabcf3c473bc38c7d",
+      "bytes": 271
+    },
+    "chunks.jsonl": {
+      "sha256": "1516f9ca8ebef51f4339e9c835e59c32422723827f5249410d85148f361c5b8f",
+      "bytes": 4701
+    },
+    "clusters.json": {
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "bytes": 4
+    },
+    "concept_cards.jsonl": {
+      "sha256": "ae3bde87387ef07a162bedff1e0ad73a8054f6aad7e65e4dd5935df74fd5f6c3",
+      "bytes": 43340
+    },
+    "feedback_quality_review.json": {
+      "sha256": "03b094ae7024b5b76bb0446dc0dab0109e23dae16683c539a736fcd60b0a6058",
+      "bytes": 10502
+    },
+    "kg_quality_review.json": {
+      "sha256": "c6526fef4c22eede6417459a6f05a7d5c6d6f38b5a003c388a04fab1a5aeb720",
+      "bytes": 15845
+    },
+    "manifest.json": {
+      "sha256": "f59d4097d24c3dffcbef1865b94600bd8db664906267c6b56fc488a43dcb9004",
+      "bytes": 4785
+    },
+    "mentions.jsonl": {
+      "sha256": "609b19110af34a15d7a0b1828f42d6e6c4114ba25192b33a8674ffc946246353",
+      "bytes": 19408
+    },
+    "pairpackets.jsonl": {
+      "sha256": "b1624f27604b4764160f7db2e1eefa33362d76d449641683782d5184b539b14c",
+      "bytes": 95945
+    },
+    "provider_calls.json": {
+      "sha256": "3dabc26e6808b380b4a7145dd4c5c0664b7ef9d2149f07b5cf8b4f3b3ab6572d",
+      "bytes": 102270
+    },
+    "receipts.json": {
+      "sha256": "d73fa7181a0f0a5ac1f87ae356940bf92814b27c5d593487deaa4a68f4aa6e98",
+      "bytes": 158929
+    },
+    "relations.jsonl": {
+      "sha256": "096c6a85aa31fea1f840124633d192ea4e3295d4d9609b5b87ad4facc063bc4a",
+      "bytes": 85290
+    },
+    "restart_verification.json": {
+      "sha256": "cc9e85d2e57ccb65e19db9e79b9c969f0bc0c56d212666038b26af4f39f3c182",
+      "bytes": 318
+    },
+    "reviewed_graph_v1.json": {
+      "sha256": "ba1b96880def195da0619c8d5c655084131b1b4726db79f4ea87f6227f85fd10",
+      "bytes": 239301
+    },
+    "review_and_assignments.json": {
+      "sha256": "ef0ab80a72c77c350b3a3508e24840a3163aaa5dd675f5765a18072a7efa0556",
+      "bytes": 11162
+    },
+    "synthetic_pdf_manifest.json": {
+      "sha256": "1dd36821660edff71eb15649c11ea8d83089847e279eba99550340a01421c6fc",
+      "bytes": 259
+    },
+    "validation_receipt.json": {
+      "sha256": "04c5ed2ce98de0f6b838a39381a45a4c7056171fe1eee5cff80f844a1b18e221",
+      "bytes": 2368
+    },
+    "verification.json": {
+      "sha256": "fd08c66fa7c79db363639050f5768424ffc9c61839645b1fdbe82f528cc2c9a3",
+      "bytes": 427
+    }
+  }
+}

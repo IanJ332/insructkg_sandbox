@@ -228,6 +228,214 @@ class AssignmentGroundingTests(unittest.TestCase):
                 {**self.ids, "source_version": lesson.version, "source_sha256": lesson.sha256}
             )
 
+    def test_nonidentity_selected_mapping_and_student_submission_persist_lineage(self):
+        from siip.demo_student import DemoStudentJourney
+
+        kg = DemoKGRepository(self.root / "knowledge_graph")
+        draft = kg.retrieve(self.ids["graph_id"])
+        for node in draft["nodes"]:
+            if node["id"] == "LEFT_OUTER_JOIN":
+                node["id"] = "RESEARCH_LEFT_JOIN"
+        for edge in draft["edges"]:
+            for key in ("source", "target"):
+                if edge[key] == "LEFT_OUTER_JOIN":
+                    edge[key] = "RESEARCH_LEFT_JOIN"
+                    edge["review_state"] = "APPROVED"
+        import json
+
+        (kg._graph_directory(draft["graph_id"]) / "draft.json").write_text(json.dumps(draft))
+        saved = kg.save_version(draft["graph_id"])
+        registry = DemoAuthoringRegistry(self.root / "authoring")
+        mapping = {
+            "RESEARCH_LEFT_JOIN": {
+                "canonical_id": "LEFT_OUTER_JOIN",
+                "reviewed_by": "instructor_alawini",
+                "notes": "Reviewed match.",
+            }
+        }
+        config = {
+            "graph_id": draft["graph_id"],
+            "graph_version": saved["version"],
+            "concept_mapping": mapping,
+        }
+        registry.create_assignment(
+            assignment_id="nonidentity",
+            course_id=self.ids["course_id"],
+            question_ids=["sql_join_04"],
+            kg_node_ids=["RESEARCH_LEFT_JOIN"],
+            grading_config=config,
+        )
+        assignment = registry.publish_assignment("nonidentity")
+        ids = {**self.ids, "assignment_id": "nonidentity", "graph_version": saved["version"]}
+        _, graph, approved, _ = resolve_grounding(ids, question_id="sql_join_04")
+        self.assertIn("RESEARCH_LEFT_JOIN", {n["id"] for n in graph["nodes"]})
+        self.assertTrue(any("LEFT_OUTER_JOIN" in (e["source"], e["target"]) for e in approved))
+        adapter = {
+            "assignment_id": "nonidentity",
+            "course_id": ids["course_id"],
+            "question_id": "sql_join_04",
+            "relevant_kg_node_ids": ["RESEARCH_LEFT_JOIN"],
+            "publication_timestamp": assignment.publication_timestamp_utc,
+            "grading_configuration": config,
+            "publication_status": assignment.publication_status,
+            "native_prairielearn_publication": False,
+            "feedback_grounding": ids,
+        }
+        journey = DemoStudentJourney(self.root / "journey")
+        result = journey.submit(adapter, "S001", "SELECT 1", timestamp="2026-01-01T00:00:00Z")
+        restart = SubmissionRepository(self.root / "journey" / "submissions.sqlite3")
+        self.assertEqual(
+            restart.attempt_for_student(result["attempt_id"], "S001")["feedback_grounding"], ids
+        )
+        self.assertEqual(
+            restart.profile(
+                "S001", before=True, as_of="2026-01-01T00:00:00Z", course_id=ids["course_id"]
+            )["attempt_count"],
+            0,
+        )
+        with self.assertRaises(ValueError):
+            journey.submit(
+                {**adapter, "feedback_grounding": {**ids, "source_sha256": "0" * 64}},
+                "S001",
+                "SELECT 1",
+            )
+        with self.assertRaises(ValueError):
+            journey.submit(
+                {**adapter, "relevant_kg_node_ids": ["LEFT_OUTER_JOIN"]}, "S001", "SELECT 1"
+            )
+
+    def test_nonidentity_without_review_and_wrong_course_fail(self):
+        registry = DemoAuthoringRegistry(self.root / "authoring")
+        registry.create_assignment(
+            assignment_id="unmapped",
+            course_id=self.ids["course_id"],
+            question_ids=["sql_join_04"],
+            kg_node_ids=["INNER_JOIN"],
+            grading_config={"graph_id": self.ids["graph_id"], "graph_version": 1},
+        )
+        registry.publish_assignment("unmapped")
+        with self.assertRaisesRegex(ValueError, "concept tags"):
+            resolve_grounding({**self.ids, "assignment_id": "unmapped"})
+        with self.assertRaises(ValueError):
+            resolve_grounding({**self.ids, "course_id": "wrong-course"})
+
+    def test_attempt_grounding_validation_and_replay_conflict(self):
+        store = SubmissionRepository(self.root / "durable.sqlite3")
+        record = {
+            "attempt_id": "with-grounding",
+            "student_id": "S001",
+            "question_id": "sql_join_04",
+            "submitted_sql": "SELECT 1",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "assessment_id": self.ids["assignment_id"],
+            "course_id": self.ids["course_id"],
+            "feedback_grounding": self.ids,
+        }
+        store.process(record, mode="baseline")
+        with self.assertRaisesRegex(ValueError, "collision"):
+            store.process(
+                {**record, "feedback_grounding": {**self.ids, "graph_version": 2}}, mode="baseline"
+            )
+        with self.assertRaises(ValueError):
+            store.process(
+                {
+                    **record,
+                    "attempt_id": "bad",
+                    "feedback_grounding": {**self.ids, "course_id": "other"},
+                },
+                mode="baseline",
+            )
+
+    def test_pdf_grounding_uses_original_chunks_and_both_hashes(self):
+        import hashlib
+        import io
+
+        from pypdf import PdfWriter
+        from siip import original_instructkg
+
+        writer = PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        output = io.BytesIO()
+        writer.write(output)
+        raw = output.getvalue()
+        digest = hashlib.sha256(raw).hexdigest()
+        registry = DemoAuthoringRegistry(
+            self.root / "authoring",
+            trusted_pdf_manifest={digest: {"provenance": "synthetic fixture", "license": "CC0"}},
+        )
+        lesson = registry.upload_lesson(
+            raw,
+            source_document_id="pdf-source",
+            course_id=self.ids["course_id"],
+            original_filename="lesson.pdf",
+        )
+        text = "A left outer join preserves unmatched rows."
+        chunks = [
+            {
+                "chunk_id": "lecture__0000",
+                "page_numbers": [1],
+                "text": text,
+                "prev_chunk_id": None,
+                "next_chunk_id": None,
+            }
+        ]
+        registry.set_extracted_view("pdf-source", 1, source_sha256=digest, text=text, chunks=chunks)
+        result = {
+            "nodes": [
+                {"id": "LEFT_OUTER_JOIN", "label": "Left join"},
+                {"id": "JOIN_PREDICATE", "label": "Predicate"},
+            ],
+            "edges": [
+                {
+                    "source": "LEFT_OUTER_JOIN",
+                    "target": "JOIN_PREDICATE",
+                    "relation": "depends_on",
+                    "evidence_excerpt": text,
+                }
+            ],
+            "extracted_text": text,
+            "extracted_chunks": chunks,
+            "extraction_metadata": {},
+            "rejected_candidates": [],
+        }
+        kg = DemoKGRepository(self.root / "knowledge_graph")
+        with patch.object(original_instructkg, "generate", return_value=result):
+            graph = kg.generate_candidates(
+                {
+                    **lesson.to_dict(),
+                    "content_hash": digest,
+                    "source_path": "unused",
+                    "requested_extraction_mode": original_instructkg.MODE,
+                }
+            )
+        kg.review_edge(
+            graph["graph_id"], graph["edges"][0]["edge_id"], "APPROVE", "instructor-admin"
+        )
+        saved = kg.save_version(graph["graph_id"])
+        registry.create_assignment(
+            assignment_id="pdf-assignment",
+            course_id=self.ids["course_id"],
+            question_ids=["sql_join_04"],
+            kg_node_ids=["LEFT_OUTER_JOIN"],
+            grading_config={"graph_id": graph["graph_id"], "graph_version": saved["version"]},
+        )
+        registry.publish_assignment("pdf-assignment")
+        ids = {
+            "assignment_id": "pdf-assignment",
+            "course_id": self.ids["course_id"],
+            "graph_id": graph["graph_id"],
+            "graph_version": saved["version"],
+            "source_document_id": "pdf-source",
+            "source_version": 1,
+            "source_sha256": digest,
+        }
+        _, _, _, evidence = resolve_grounding(ids, question_id="sql_join_04")
+        self.assertEqual(evidence[0]["id"], "lecture__0000")
+        self.assertEqual(evidence[0]["page_numbers"], [1])
+        self.assertNotEqual(graph["source_content_sha256"], digest)
+        with self.assertRaises(ValueError):
+            resolve_grounding({**ids, "source_sha256": "0" * 64})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,6 +20,73 @@ from siip.demo_authoring import (  # noqa: E402
 )
 
 
+class TrustedPdfBoundaryTests(unittest.TestCase):
+    def test_pdf_manifest_integrity_and_extracted_view_survive_restart(self):
+        import io
+
+        from pypdf import PdfWriter
+
+        writer = PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        output = io.BytesIO()
+        writer.write(output)
+        raw = output.getvalue()
+        digest = hashlib.sha256(raw).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = {digest: {"provenance": "synthetic educational fixture", "license": "CC0"}}
+            registry = DemoAuthoringRegistry(directory, trusted_pdf_manifest=manifest)
+            record = registry.upload_lesson(
+                raw, source_document_id="pdf", course_id="course", original_filename="lesson.pdf"
+            )
+            self.assertEqual(registry.read_lesson_bytes("pdf", 1), raw)
+            self.assertEqual(record.sha256, digest)
+            with self.assertRaises(ValueError):
+                registry.set_extracted_view(
+                    "pdf", 1, source_sha256="0" * 64, text="text", chunks=[]
+                )
+            view = registry.set_extracted_view(
+                "pdf", 1, source_sha256=digest, text="extracted text", chunks=[{"id": "chunk-1"}]
+            )
+            self.assertEqual(len(Path(view.extracted_text_path).name), 68)
+            self.assertEqual(view.extracted_source_sha256, digest)
+            self.assertEqual(
+                view.extracted_text_sha256, hashlib.sha256(b"extracted text").hexdigest()
+            )
+            restarted = DemoAuthoringRegistry(directory, trusted_pdf_manifest=manifest)
+            self.assertEqual(restarted.read_lesson_text("pdf", 1), "extracted text")
+            self.assertEqual(restarted.get_lesson("pdf", 1).extracted_chunks[0]["id"], "chunk-1")
+            with self.assertRaises(ValueError):
+                registry.upload_lesson(
+                    raw, source_document_id="pdf", course_id="other", original_filename="lesson.pdf"
+                )
+            with self.assertRaises(ValueError):
+                DemoAuthoringRegistry(directory).upload_lesson(
+                    raw,
+                    source_document_id="other",
+                    course_id="course",
+                    original_filename="lesson.pdf",
+                )
+            with self.assertRaises(ValueError):
+                DemoAuthoringRegistry(
+                    directory, max_lesson_bytes=2, trusted_pdf_manifest=manifest
+                ).upload_lesson(
+                    raw, source_document_id="x", course_id="course", original_filename="lesson.pdf"
+                )
+            bad = b"%PDF-invalid"
+            with self.assertRaises(ValueError):
+                DemoAuthoringRegistry(
+                    directory,
+                    trusted_pdf_manifest={
+                        hashlib.sha256(bad).hexdigest(): {
+                            "provenance": "synthetic",
+                            "license": "CC0",
+                        }
+                    },
+                ).upload_lesson(
+                    bad, source_document_id="bad", course_id="course", original_filename="bad.pdf"
+                )
+
+
 class DemoAuthoringRegistryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
