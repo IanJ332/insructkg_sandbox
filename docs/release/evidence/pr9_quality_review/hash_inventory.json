@@ -1,0 +1,37 @@
+{
+  "scope": "Published synthetic review reports use LF; raw stage artifacts and prior records remain local. Original stage hashes in comparison_receipt describe original local bytes.",
+  "files": {
+    "after_quality_review.json": {
+      "sha256": "06539aba2ecf40674b8bc270430f7ab5dd49d4cc15db159f157c5ed90f5166d1",
+      "bytes": 34231
+    },
+    "comparison_receipt.json": {
+      "sha256": "68f3955085b1d431fc39511a1e12d880182215188f447976fafd235da106e82e",
+      "bytes": 3659
+    },
+    "content_exclusions.json": {
+      "sha256": "30616bd96a4aa5e71b7bf182ed7f3a2c660a5253fa6dd8ecd1fd4ec56ee0ba58",
+      "bytes": 836
+    },
+    "controlled_feedback_outputs.json": {
+      "sha256": "adb72d54f92b82f98dde9ea0fe2b0bdb9807794dbe830514dd43ef314829603e",
+      "bytes": 2063
+    },
+    "controlled_feedback_review.json": {
+      "sha256": "3b2184b0b31fd861ad97ffbc7a5de6fbb5ae70fe773fe981e567a0b91d80a6e3",
+      "bytes": 2191
+    },
+    "directional_and_repro_checks.json": {
+      "sha256": "9439de008f995eac3f113cf278aec22a38c40f14f519d0f70a666cdea89d1c6c",
+      "bytes": 3244
+    },
+    "runtime_versions.json": {
+      "sha256": "477057fb0bc90e9d2330d10578f4180b6c0191ac1c3b775603ad631f012a8ac3",
+      "bytes": 3663
+    },
+    "validation_receipt.json": {
+      "sha256": "14d7556a39e1fd4662080fe760db68e3d90cdb0b550754f5dfad2215063cdf15",
+      "bytes": 1310
+    }
+  }
+}

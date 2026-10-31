@@ -1,5 +1,78 @@
 # Original InstructKG chunk-based integration acceptance
 
+## Post-implementation quality review
+
+This review starts from accepted PR #9 head `7a5a01dadcc24ff63c7ac21763c02a17edfd77b6`. It preserves the historical milestone and all prior artifacts below. The new changes are limited to direction coverage, reviewed metadata selection, precise failure provenance and reproducibility instructions. No upstream file, algorithm, grading database, feedback prompt, model setting or validator rule was replaced.
+
+| Result area | Status | Independent conclusion |
+|---|---|---|
+| PDF-to-KG engineering | PASS, bounded local execution | Same original PDF; six original chunks preserved, five selected for extraction; original concepts/roles, PairPackets and judger executed. Source hash and page/ID/neighbor metadata match the baseline. |
+| Concept and relationship quality | PARTIAL improvement; automatic-use quality FAIL | Fixture metadata nodes disappear and the missing supported prerequisite is recovered. Generic concept noise, reversed/unsupported judgments and contradictory directions remain. Five of 78 edges have direct-source support under Terra's conservative review. |
+| Student Profile and Question Mapping | PASS, existing bounded scope preserved | Regression/E2E pass. New reviewed prerequisite mapping resolves JOIN_PREDICATE to JOIN_CONDITION. Controlled replay reuses canonical prior records without changing any attempts or historical jobs. |
+| History-aware Qwen feedback | FAIL (B6) | Improved prerequisite context reaches the model, but useful evidence-grounded history adaptation is not demonstrated; a raw response still casts doubt on a correct counting component. |
+| Independent model-output review | COMPLETED; quality FAIL | Terra inspected all 78 new edges and both controlled feedback outputs against actual source/context. An automated accepted sparse-history response still prescribed a replacement join, failing independent non-revealing review. |
+| Clean-room reproducibility | BLOCKED for unprovisioned environment | Local execution using the supplied external source/runtime/caches works. A source-only checkout does not supply authorized upstream code, heavy runtime/assets, existing Qwen weights or optional fixture-authoring reportlab; no new model downloads/installations were attempted. |
+| External research dependencies | PARTIAL/DEFERRED | Original source redistribution permission, full MiniLM/UMAP/HDBSCAN execution, Year 1 backend/model artifacts and real-course access remain separate README backlog items. No source audit was repeated. |
+
+### Direction error: precise origin and correction
+
+The baseline packet is ordered `[JOIN_PREDICATE, LEFT_OUTER_JOIN]`. Original `pairpackets._cooc_counts()` emits alphabetically ordered pairs. The unchanged judgment prompt explicitly requires **A → B** and defines `A depends_on B` as B being a prerequisite of A. The raw baseline response says `depends_on` for that ordered pair while its justification argues that left outer join requires the predicate. Original parsing preserves that label and the adapter projects `A.name → B.name` without swapping. Thus the observed wrong edge is a **model semantic-direction failure**, while alphabetical candidate order plus unordered judger dedup also prevents assessing the supported opposite direction. Parsing/adapter reversal is not the cause.
+
+Version `original-instructkg-jeffry-chunk-only-v2` calls the original builder twice. In the second worker-scoped call, a wrapper exposes the original co-occurrence counts with reversed keys; the original builder recomputes temporal, role, negative and confidence evidence for that orientation. The original helper is restored in `finally`. No saved packet is relabeled after calculation. Forward/reverse files are judged separately because the original file judger deduplicates an unordered pair within one file. Both decisions, including nulls and conflicts, are retained. Direction-specific edge IDs remain unreviewed until instructor action; there is no score-based choice, automatic reversal or automatic approval.
+
+The actual same-PDF run tested **both orientations** for two explicit source prerequisites:
+
+| Pair | Supported output recovered | Opposite output |
+|---|---|---|
+| Left outer join / join predicate | LEFT_OUTER_JOIN depends_on JOIN_PREDICATE | JOIN_PREDICATE depends_on LEFT_OUTER_JOIN still generated; its own justification argues the supported direction. Rejected by independent review. |
+| Inner join result / join predicate | INNER_JOIN_RESULT depends_on JOIN_PREDICATE | JOIN_PREDICATE depends_on INNER_JOIN_RESULT also generated with reversed semantics. Rejected by independent review. |
+
+The correction expands **coverage**, not demonstrated precision. A two-direction pass approximately doubles relation calls; source review remains essential. Synthetic instructor simulation approved the five supported edges and rejected the other 73 for the controlled context replay, in a separate immutable graph; the earlier four-edge graph/version and assignments were not modified.
+
+### Same-PDF concept contamination comparison
+
+The original byte hash remains `a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de`. Actual Docling conversion marks the title/banner as body `section_header` and the provenance/license paragraph `#/texts/2` as body `text`; only the footer is furniture. Therefore a generic header/footer or label filter cannot justify dropping that paragraph.
+
+The trusted synthetic-PDF manifest can now include explicit non-instructional item reviews, bound to each item reference, exact text SHA-256, synthetic instructor principal and reason. Original Docling/HybridChunker still produces all chunks. The adapter records item provenance before upstream serialization drops it and excludes a whole chunk only if **every** contributing item has that review. Mixed chunks and unreviewed material are retained; stale item/hash or unauthorized reviews fail. No SQL vocabulary or metadata keywords decide which concepts disappear. The policy is part of graph identity, preventing cache reuse across different reviews.
+
+For this fixture, the synthetic review excludes only `lecture_text__0000` (license paragraph) from extraction; `chunks_original.jsonl` and `docling_document.json` retain it. All five teaching chunks keep their exact original text, IDs, pages, indices and neighbor pointers, including pointers into the retained original corpus. No source PDF bytes are edited.
+
+| Measure | Accepted baseline | Targeted same-PDF run |
+|---|---|---|
+| Original / selected chunks | 6 / 6 | 6 / 5 |
+| Mentions / concepts | 30 / 28 | 27 / 25 |
+| Unordered pairs / directional judgments | 61 / 61 | 61 / 122 |
+| Non-null candidate edges | 33 | 78 |
+| Terra: approve / revise / reject | 4 / 10 / 19 | 5 / 25 / 48 |
+
+CC0, fixture, integration-validation and public-domain concept nodes are absent afterward. `PREREQUISITE_KNOWLEDGE` remains generic pedagogical noise, and concept labels vary. Changed candidate sets and two orientations prevent treating 4/33 versus 5/78 as a controlled precision trend. Independent unreviewed-graph quality remains FAIL. [All 78 independent decisions](evidence/pr9_quality_review/after_quality_review.json) include page/chunk evidence and rationale.
+
+### Provider-error fallback: exact boundary
+
+Historical call 0 returned a parsed dictionary and token usage from `CompatibleProvider.generate()`. Its three-field schema and citation shape were available, but `feedback_text` contained `SELECT`. Replaying that exact saved return through unchanged validation triggers **Potential SQL solution leakage**. The broad `except Exception` labeled the rejection `provider_error_fallback` with `ValueError`, obscuring the output-validation boundary. The historical durable job was completed with safe fallback and matching learner/instructor readbacks: no generation, parsing, queue or persistence failure caused this event.
+
+Validation rules/messages are unchanged. A `FeedbackOutputError` (still a `ValueError`) now carries a safe reason code; new results/events record `failure_stage=output_validation` and `error_details=potential_sql_solution_leakage`. The legacy fallback status remains for compatibility, and the raw response remains rejected. Quality and provider-generation failures have separate stage provenance. The focused test replays the **actual captured response**, verifies rejection and confirms it is not delivered as feedback. No historical record is rewritten or reclassified as successful.
+
+### Better prerequisites do not establish better feedback
+
+The new approved `LEFT_OUTER_JOIN → JOIN_PREDICATE` edge, assignment-mapped to `JOIN_CONDITION`, adds a source-supported prerequisite alongside `NULL_SEMANTICS`. Two fixed-v11 Qwen context replays reused the historical same-SQL Q4 cases and trusted prior-only records. The experienced request now includes four relevant observations rather than the baseline two; sparse history remains empty. Canonical records were checked unchanged afterward. These are **controlled diagnostic replays, not new student deliveries/jobs**.
+
+The experienced raw output again questions valid `COUNT(employee_id)` and prescribes a replacement join; the existing counting-quality guard rejects it. The sparse raw output passes automated rules (`live_success`) but explicitly prescribes `LEFT OUTER JOIN`, violating the non-revealing instruction under independent review. This exposes a validator coverage limit; automated acceptance is not pedagogical or non-revealing acceptance. No prompt tuning, extra guard weakening or repeated optimization was performed. The generic deterministic history sentence is not evidence of useful Qwen adaptation. **B6 remains FAIL.** The six historical outcomes remain **1 accepted, 4 quality fallbacks, 1 provider-error fallback**.
+
+[Controlled outputs without copied prior records](evidence/pr9_quality_review/controlled_feedback_outputs.json) and [Terra's independent feedback review](evidence/pr9_quality_review/controlled_feedback_review.json) retain the distinction. Model/digest, feedback temperature 0.1, 500 output tokens, 8192 context, thinking disabled and 60-second timeout are unchanged; original extraction settings also remain unchanged.
+
+### Reproducibility and validation
+
+The root README now supplies source revision/hash checks, external runtime paths, observed dependency versions, cached asset revisions, existing Ollama model/digest checks, optional reportlab requirement, fresh fixture/manifest generation, configurable browser replay and independent-review procedure. Fixture generation refuses overwrites; browser replay accepts a fresh output root/port. A demonstrated standalone Windows failure (`UnicodeEncodeError` printing upstream emoji under cp1252) is fixed by setting `PYTHONUTF8=1` in the subprocess environment, without editing upstream code.
+
+The same-PDF local full run succeeds using existing authorized resources. Fresh fixture generation was also exercised and rendered/inspected; new PDF metadata produces a new source hash, which its generated manifest records. This fresh fixture is not substituted for the unchanged before/after PDF. The full heavy environment is inventoried in [runtime_versions.json](evidence/pr9_quality_review/runtime_versions.json); it is not a tested portable install lock. A clean source-only/unprovisioned run is blocked at the explicit external-source/runtime/cache/model prerequisites, and a fresh-machine model/dependency installation was not attempted. No unavailable weights were downloaded, and upstream code remains external/read-only.
+
+Fresh local verification: **366 unit/integration tests PASS**, **14 end-to-end test-suite cases PASS** (including the seven previously exercised browser cases), Ruff lint/format, configured mypy and Bandit pass. Initial two pypdf test errors were sandbox access denials to the existing patched dependency; the properly authorized rerun passes. Temporary synthetic package fixtures were hash-checked before cleanup/restoration. Tests cover actual-response rejection provenance, reviewed metadata/stale hashes/mixed-content retention, directional parity/helper restoration and contradictory unreviewed candidates. Exact-head CI/security/native results are recorded in PR #9 after push. No merge or unrelated architecture/database change is authorized.
+
+Local complete diagnostics: `artifacts/pr9-quality/`. Historical source, raw requests/responses, six-feedback outcome evidence, accepted graph, student profile and assignment artifacts remain preserved. New published evidence contains synthetic source/hash comparisons and reviews; full upstream prompt logs and raw prior-record contexts stay local.
+
+## Accepted engineering milestone at 7a5a01d (historical evidence)
+
 Date: 2026-10-31. **Original InstructKG Chunk-Based Integration Verified.**
 Mode: `ORIGINAL_INSTRUCTKG_CHUNK_ONLY`. This is a bounded synthetic local engineering result. **B6 remains FAIL; Local Backend Integration Release Candidate is withheld.** Full original research reproduction, real-course deployment and student-data collection remain pending.
 

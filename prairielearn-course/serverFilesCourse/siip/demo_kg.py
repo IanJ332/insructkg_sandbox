@@ -218,6 +218,10 @@ class DemoKGRepository:
             from . import original_instructkg
 
             identity += f"|{original_instructkg.PIPELINE_VERSION}|{model}"
+            identity += json.dumps(
+                (source_record.get("pdf_provenance") or {}).get("content_exclusions", []),
+                sort_keys=True,
+            )
         if local_requested:
             from . import local_kg_extractor
 

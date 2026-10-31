@@ -10,6 +10,8 @@ This is a **synthetic research sandbox**. Local `PUBLISHED_LOCAL_DEMO` publicati
 
 [Original InstructKG integration acceptance](docs/release/ORIGINAL_INSTRUCTKG_INTEGRATION.md): **Original InstructKG Chunk-Based Integration Verified**. The real synthetic PDF produced 6 chunks, 28 concepts and 61 judged pairs. Independent review supported 4 of 33 edges, which were saved after synthetic instructor review. Four local assignments, reviewed nonidentity question mapping, ten submissions across two students, shared instructor/student delivery and actual restart persistence were verified. **B6 remains FAIL**: 1 of 6 actual Qwen feedback outputs was accepted, 4 triggered quality fallbacks and 1 triggered a provider-error fallback. Local Backend Integration Release Candidate is withheld.
 
+The [post-implementation quality review](docs/release/ORIGINAL_INSTRUCTKG_INTEGRATION.md#post-implementation-quality-review) preserves that milestone and its six historical feedback outcomes. Version 2 separately judges both original pair orientations and permits only hash-bound, explicitly reviewed whole-chunk metadata exclusions. On the identical PDF it extracted 25 concepts and judged 122 directions; Terra supported 5 of 78 edges, so unreviewed KG quality still fails. Two additional controlled feedback replays also failed independent pedagogical/non-revealing review; they were not new student deliveries. The historical provider fallback is now traced to output leakage validation, with explicit failure-stage provenance in new records. **B6 remains FAIL.**
+
 [Phase 3 live Qwen acceptance](docs/release/PHASE3_LIVE_QWEN_ACCEPTANCE.md): **Partial Local E2E**.
 Fresh extraction and eight actual Qwen feedback calls ran; four feedback responses
 passed validation and four fell back. Contrasting histories reached Qwen but did
@@ -88,6 +90,46 @@ API index: `GET /health`; development-only `POST /api/auth/synthetic-session`; i
 [Release audit](docs/release/FINAL_PR_AUDIT.md) · [Release report](docs/release/MAIN_RELEASE_REPORT.md) · [Cleanup](docs/release/REPOSITORY_CLEANUP_REPORT.md) · [Next phase](docs/release/NEXT_PHASE_BLOCKERS.md) · [Documentation index](docs/README.md)
 
 Earlier Phase 2–5 reports remain historical evidence. Current release documents take precedence for counts, authentication, extraction and completion status. External professor recordings preserve original failures and model-quality limitations outside Git.
+## Reproduce original chunk-based integration
+
+The default install above reproduces the deterministic sandbox. The original mode additionally needs an authorized **external** Jeffry checkout/snapshot at `c34a7786528e78766f15d918ab17aca2a9f7dc0b`, a Docling-capable Python, cached Docling/tokenizer assets and an existing Ollama `qwen3:8b`. No upstream source or weights are bundled. Exact SHA-256 values for all ten imported source modules are enforced by `siip/original_instructkg.py`; a changed/missing module fails before execution. Redistribution permission remains unverified. Obtain source/access from the resource owners below rather than copying it into this repository.
+
+Observed working runtime: Python 3.14.3, Docling 2.109.0, docling-core 2.103.1, docling-ibm-models 3.15.0, Torch 2.14.1, Transformers 5.20.2 and tokenizers 0.23.3. Original `main.py` imports its clustering module even though clustering is not executed: installed sentence-transformers 6.2.0, UMAP 0.5.12 and HDBSCAN 0.8.44 are therefore still import dependencies. [The full observed environment](docs/release/evidence/pr9_quality_review/runtime_versions.json) is an inventory, not a validated portable installation lock. Upstream's unpinned requirements include cluster-specific vLLM; this Ollama adapter does not initialize or require that backend. A newly provisioned heavy environment has not been installed/tested here.
+
+The local test used existing Hugging Face caches for `docling-project/docling-layout-heron` revision `8f39ad3c0b4c58e9c2d2c84a38465abf757272d8` and `docling-project/docling-models` revision `fc0f2d45e2218ea24bce5045f58a389aed16dc23`. HybridChunker also needs the existing MiniLM tokenizer/config cache at revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`; the full MiniLM weights remain absent and are not needed for chunk-only execution. Set `HF_HOME`/`HF_HUB_CACHE` to the corresponding **existing authorized cache**. Worker execution sets offline mode; missing resources are an explicit failure. Do not download or replace weights as part of this procedure without separate authorization.
+
+From the repository root, after the normal development install:
+
+```powershell
+# Substitute existing authorized local paths; this does not fetch source/models.
+$env:SIIP_INSTRUCTKG_SOURCE_DIR = 'C:\authorized-reference\instructkg-jeffry'
+$env:SIIP_INSTRUCTKG_PYTHON = 'C:\authorized-runtime\Scripts\python.exe'
+$env:HF_HOME = 'D:\existing-cache\HuggingFace'
+$env:HF_HUB_CACHE = Join-Path $env:HF_HOME 'hub'
+$env:PYTHONPATH = Join-Path $PWD 'prairielearn-course\serverFilesCourse'
+.\.venv\Scripts\python.exe -c "from siip.original_instructkg import verified_source; print(verified_source())"
+
+# Confirm the existing model; do not run ollama pull.
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+# Expected qwen3:8b digest:
+# 500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41
+
+# Fixture authoring alone additionally requires reportlab (tested 4.4.9).
+# Install that Python package separately if needed; it is not a model weight.
+.\.venv\Scripts\python.exe -m pip install reportlab==4.4.9
+$run = Join-Path $PWD ('artifacts\original-replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+.\.venv\Scripts\python.exe scripts/create_original_integration_fixture.py --output-dir $run --content-exclusions docs/release/evidence/pr9_quality_review/content_exclusions.json
+$env:SIIP_SYNTHETIC_PDF_MANIFEST = Join-Path $run 'synthetic_pdf_manifest.json'
+.\scripts\start_full_sandbox.ps1 -LocalModel -OutputRoot (Join-Path $run 'live') -Port 8831 -Python "$PWD\.venv\Scripts\python.exe"
+.\.venv\Scripts\python.exe scripts/validate_original_pdf_browser.py --base-url http://127.0.0.1:8831 --output-dir $run
+```
+
+Choose a free port and use it in both commands. The browser logs in as an explicitly synthetic instructor, creates the course/module, uploads actual PDF bytes and clicks **Original InstructKG (chunk only)** Generate. Fixture generation refuses to overwrite an existing PDF. The supplied exclusions are reviewed only for this fixture's exact Docling item references/text hashes; they are not a general metadata detector or faculty approval. Omit `--content-exclusions` to retain all text. For other documents, inspect Docling items and obtain a new explicit metadata review. Mixed chunks remain intact.
+
+Inspect the candidate graph and its manifest: `chunks_original.jsonl` preserves all ingestion output, `chunks.jsonl` is the selected extraction view, and `content_selection.json` records every exclusion. `pairpackets_forward/reverse.jsonl` and `relations_forward/reverse.jsonl` retain both original judgments. Do not automatically reverse edges or choose between conflicting directions. Verify source bytes, original module hashes, pages, item hashes, counts and `fallback=false`. Have an independent reviewer (Terra High in this study) read the PDF and all generated relationships, then a synthetic instructor explicitly approves/rejects candidates and saves an immutable version. Mapping and publication follow the existing assignments UI. Runtime artifacts and full upstream prompt logs stay local.
+
+**Clean-room status: BLOCKED for an unprovisioned checkout.** The repository alone lacks the authorized external source/runtime, cached Docling assets and Qwen weights; fixture authoring also needs the optional reportlab package. Local execution with the already provisioned resources succeeded. Clean source/fixture checks are separate from a fresh-machine dependency installation and from independent pedagogical review. [Detailed results and exact dependencies](docs/release/ORIGINAL_INSTRUCTKG_INTEGRATION.md#post-implementation-quality-review) preserve these boundaries.
+
 ## Research Resources, External Dependencies, and Follow-up Tasks
 
 This checklist is for the next graduate research assistant. Statuses reflect evidence available in this checkout; a meeting mention is not delivery or approval. In each final table cell, request only the access/approval listed for that resource, then complete the stated verification. No requests have been sent to either contact. Do not commit private course PDFs, identifiable student records, raw sensitive research text, model weights, or secrets.

@@ -231,28 +231,32 @@ def valid_output(obj, context, qid, *, check_quality=False):
         "candidate_concepts",
         "evidence_references",
     }:
-        raise ValueError("Feedback schema requires exactly three fields")
+        raise FeedbackOutputError("invalid_schema", "Feedback schema requires exactly three fields")
     text = obj["feedback_text"]
     if not isinstance(text, str) or not 10 <= len(text) <= 900:
-        raise ValueError("Invalid feedback length")
+        raise FeedbackOutputError("invalid_feedback_length", "Invalid feedback length")
     if re.search(r"\bselect\b|\bfrom\s+employees\b|```|\bon\s+\w+\.", text, re.I):
-        raise ValueError("Potential SQL solution leakage")
+        raise FeedbackOutputError(
+            "potential_sql_solution_leakage", "Potential SQL solution leakage"
+        )
     if re.search(
         r"https?://|instructor.approved|definitely|guaranteed|confidence\s*[:=]|ignore.*instructions",
         text,
         re.I,
     ):
-        raise ValueError("Unsupported claim, URL or instruction")
+        raise FeedbackOutputError("unsupported_claim", "Unsupported claim, URL or instruction")
     concepts, refs = obj["candidate_concepts"], obj["evidence_references"]
     if concepts and (context["mode"] != "kg" or context["grade"]["status"] != "semantic_error"):
-        raise ValueError("Concept-gap claims are unsupported by this context/result")
+        raise FeedbackOutputError(
+            "unsupported_concept_claim", "Concept-gap claims are unsupported by this context/result"
+        )
     if not isinstance(concepts, list) or not all(
         isinstance(c, str) and c in QUESTIONS[qid]["concepts"] for c in concepts
     ):
-        raise ValueError("Unsupported concept reference")
+        raise FeedbackOutputError("unsupported_concept_reference", "Unsupported concept reference")
     available = {p["id"] for p in context.get("lecture_evidence", [])}
     if not isinstance(refs, list) or not all(isinstance(r, str) and r in available for r in refs):
-        raise ValueError("Fabricated citation")
+        raise FeedbackOutputError("fabricated_citation", "Fabricated citation")
     # Conservative guard for a reproduced teaching error. This is not a SQL
     # equivalence checker and does not certify other model explanations.
     sql = context.get("student_sql", "")
@@ -589,6 +593,7 @@ def generate_feedback(
         else None
     )
     error, usage = context_error, None
+    failure_stage = "context_resolution" if context_error else None
     status, model = (
         ("context_error_fallback" if context_error else "deterministic_fallback"),
         "deterministic-rules-v1",
@@ -671,11 +676,17 @@ def generate_feedback(
             status = "live_success"
         except FeedbackQualityError as exc:
             error = str(exc)
+            failure_stage = "quality_validation"
             status = "feedback_quality_fallback"
+        except FeedbackOutputError as exc:
+            error = exc.code
+            failure_stage = "output_validation"
+            status = "provider_error_fallback"
         except Exception as exc:
             error = (
                 exc.code if isinstance(exc, ProviderError) else type(exc).__name__
             )  # never persist API tokens or provider response bodies
+            failure_stage = "provider_generation"
             status = "provider_error_fallback"
     valid_output(obj, context, qid)
     event(
@@ -683,6 +694,7 @@ def generate_feedback(
         question_id=qid,
         status=status,
         error_type=error,
+        failure_stage=failure_stage,
         kg_status="unavailable" if context_error else "available",
         latency_ms=round((time.monotonic() - started) * 1000, 3),
     )
@@ -716,6 +728,7 @@ def generate_feedback(
         ),
         "quality_validation_scope": "schema, citations, leakage and bounded known-error guard; semantic correctness is not guaranteed",
         "error_details": error,
+        "failure_stage": failure_stage,
         "latency_ms": round((time.monotonic() - started) * 1000, 3),
         "token_usage": usage,
         "estimated_cost": None,
@@ -750,6 +763,14 @@ class ProviderError(RuntimeError):
 
 class FeedbackQualityError(ValueError):
     """A model explanation makes a known unsupported pedagogical claim."""
+
+
+class FeedbackOutputError(ValueError):
+    """Safe machine-readable output rejection; never includes model response text."""
+
+    def __init__(self, code, message):
+        self.code = code
+        super().__init__(message)
 
 
 class OllamaProvider(CompatibleProvider):

@@ -1,13 +1,18 @@
 """Opt-in live original PDF pipeline proof through instructor browser controls."""
 
+import argparse
 import json
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "artifacts/original-integration"
-BASE = "http://127.0.0.1:8831"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/original-integration")
+parser.add_argument("--base-url", default="http://127.0.0.1:8831")
+args = parser.parse_args()
+OUT = args.output_dir.resolve()
+BASE = args.base_url.rstrip("/")
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True)
     page = browser.new_page(viewport={"width": 1440, "height": 1000})

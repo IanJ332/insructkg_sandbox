@@ -16,10 +16,11 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .configuration import LOCAL_HOSTS
+from .identity import is_instructor_principal
 
 COMMIT = "c34a7786528e78766f15d918ab17aca2a9f7dc0b"
 MODE = "ORIGINAL_INSTRUCTKG_CHUNK_ONLY"
-PIPELINE_VERSION = "original-instructkg-jeffry-chunk-only-v1"
+PIPELINE_VERSION = "original-instructkg-jeffry-chunk-only-v2"
 EXTRACTION_METHOD = "original_instructkg_chunk_only"
 BOUNDARY = "Original InstructKG chunk-based integration; embedding and clustering deferred."
 HASHES = {
@@ -71,6 +72,65 @@ def write_jsonl(path, rows):
     )
 
 
+def instructional_chunks(chunks, chunk_items, document_items, exclusions):
+    """Drop only whole chunks whose every item has an explicit hash-bound review."""
+    if not isinstance(exclusions, list) or len(exclusions) > 64:
+        raise OriginalPipelineError("Invalid reviewed document exclusions")
+    reviewed = set()
+    for entry in exclusions:
+        ref = entry.get("item_ref") if isinstance(entry, dict) else None
+        item = document_items.get(ref) if isinstance(ref, str) else None
+        if (
+            not item
+            or not isinstance(item.get("text"), str)
+            or entry.get("text_sha256") != hashlib.sha256(item["text"].encode()).hexdigest()
+            or not is_instructor_principal(entry.get("reviewed_by"))
+            or not isinstance(entry.get("reason"), str)
+            or not entry["reason"].strip()
+        ):
+            raise OriginalPipelineError(
+                "Document exclusion requires matching item and instructor review"
+            )
+        reviewed.add(ref)
+    selected, excluded, mixed = [], [], []
+    for chunk, refs in zip(chunks, chunk_items, strict=True):
+        refs = set(refs)
+        if refs and refs.issubset(reviewed):
+            excluded.append(
+                {
+                    "chunk_id": chunk["chunk_id"],
+                    "item_refs": sorted(refs),
+                    "page_numbers": chunk.get("page_numbers", []),
+                }
+            )
+        else:
+            selected.append(chunk)
+            if refs & reviewed:
+                mixed.append(chunk["chunk_id"])
+    if not selected:
+        raise OriginalPipelineError("No instructional chunks remain")
+    return selected, {
+        "reviewed_exclusions": exclusions,
+        "excluded_chunks": excluded,
+        "mixed_chunks_retained": mixed,
+        "policy": "No vocabulary filtering; mixed or unreviewed content is retained.",
+    }
+
+
+def directional_pairpackets(module, chunks, mentions):
+    """Let upstream recompute directional evidence in two independent orientations."""
+    forward = module.build_pairpackets(chunks=chunks, mentions=mentions, clusters=[])
+    original = module._cooc_counts
+    try:
+        module._cooc_counts = lambda index: {(b, a): n for (a, b), n in original(index).items()}
+        reverse = module.build_pairpackets(chunks=chunks, mentions=mentions, clusters=[])
+    finally:
+        module._cooc_counts = original
+    if {tuple(p["pair"]) for p in reverse} != {tuple(reversed(p["pair"])) for p in forward}:
+        raise OriginalPipelineError("Directional PairPacket parity mismatch")
+    return forward, reverse
+
+
 def validate_relation_responses(responses, parser):
     """Reject malformed decisions before the upstream normalizer can turn them into null."""
     for response in responses:
@@ -104,6 +164,17 @@ def generate(source_record, artifact_dir):
     base = Path(artifact_dir).resolve()
     base.mkdir(parents=True, exist_ok=True)
     target = Path(tempfile.mkdtemp(prefix="run-", dir=base))
+    (target / "input_policy.json").write_text(
+        json.dumps(
+            {
+                "source_sha256": source_hash,
+                "content_exclusions": (source_record.get("pdf_provenance") or {}).get(
+                    "content_exclusions", []
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
     runtime = os.environ.get("SIIP_INSTRUCTKG_PYTHON")
     if not runtime:
         raise OriginalPipelineError(
@@ -112,6 +183,7 @@ def generate(source_record, artifact_dir):
     env = dict(
         os.environ,
         PYTHONDONTWRITEBYTECODE="1",
+        PYTHONUTF8="1",
         HF_HUB_OFFLINE="1",
         TRANSFORMERS_OFFLINE="1",
         PYTHONUNBUFFERED="1",
@@ -244,6 +316,35 @@ async def worker(pdf, target):
         return original_options(**kwargs)
 
     ingest.PdfPipelineOptions = options
+    policy = json.loads((target / "input_policy.json").read_text(encoding="utf-8"))
+    if policy["source_sha256"] != sha(pdf):
+        raise OriginalPipelineError("Content policy source mismatch")
+    original_converter, original_chunker = ingest.DocumentConverter, ingest.HybridChunker
+    document_items, chunk_items = {}, []
+
+    class CapturingConverter:
+        def __init__(self, **kwargs):
+            self.converter = original_converter(**kwargs)
+
+        def convert(self, path):
+            result = self.converter.convert(path)
+            document = result.document.export_to_dict()
+            (target / "docling_document.json").write_text(
+                json.dumps(document, indent=2), encoding="utf-8"
+            )
+            document_items.update({item["self_ref"]: item for item in document.get("texts", [])})
+            return result
+
+    class CapturingChunker:
+        def __init__(self, **kwargs):
+            self.chunker = original_chunker(**kwargs)
+
+        def chunk(self, *, dl_doc):
+            for chunk in self.chunker.chunk(dl_doc=dl_doc):
+                chunk_items.append([item.self_ref for item in (chunk.meta.doc_items or [])])
+                yield chunk
+
+    ingest.DocumentConverter, ingest.HybridChunker = CapturingConverter, CapturingChunker
     import llm
 
     client = SimpleNamespace(responses=OllamaResponses(target / "model_calls.jsonl"))
@@ -273,9 +374,18 @@ async def worker(pdf, target):
         staged = Path(temp) / "lecture_text.pdf"
         shutil.copyfile(pdf, staged)
         chunks_path = Path(
-            ingest.ingest_pdfs([str(staged)], out_name="chunks.jsonl", out_dir=str(target))
+            ingest.ingest_pdfs([str(staged)], out_name="chunks_original.jsonl", out_dir=str(target))
         )
-    chunks = read_jsonl(chunks_path)
+    original_chunks = read_jsonl(chunks_path)
+    chunks, content_selection = instructional_chunks(
+        original_chunks, chunk_items, document_items, policy["content_exclusions"]
+    )
+    (target / "content_selection.json").write_text(
+        json.dumps(content_selection, indent=2), encoding="utf-8"
+    )
+    (target / "chunk_items.json").write_text(json.dumps(chunk_items, indent=2), encoding="utf-8")
+    chunks_path = target / "chunks.jsonl"
+    write_jsonl(chunks_path, chunks)
     if not chunks:
         raise OriginalPipelineError("Original ingestion produced no chunks")
     mentions, cards = await main.run_llm_and_cards(
@@ -284,18 +394,26 @@ async def worker(pdf, target):
         concept_cards_out=str(target / "concept_cards.jsonl"),
         model=model,
     )
-    packets = pairpackets.build_pairpackets(mentions=mentions, chunks=chunks, clusters=[])
+    forward, reverse = directional_pairpackets(pairpackets, chunks, mentions)
+    packets = forward + reverse
     write_jsonl(target / "pairpackets.jsonl", packets)
     (target / "clusters.json").write_text("[]\n", encoding="utf-8")
-    (target / "relations.jsonl").write_text("", encoding="utf-8")
-    await relation_judger.judge_pairpackets_file(
-        str(target / "pairpackets.jsonl"),
-        out_path=str(target / "relations.jsonl"),
-        model=model,
-        concurrency=2,
-        batch_size=8,
-    )
-    relations = read_jsonl(target / "relations.jsonl")
+    relations = []
+    for orientation, batch in (("forward", forward), ("reverse", reverse)):
+        packet_path, relation_path = (
+            target / f"pairpackets_{orientation}.jsonl",
+            target / f"relations_{orientation}.jsonl",
+        )
+        write_jsonl(packet_path, batch)
+        relation_path.write_text("", encoding="utf-8")
+        await relation_judger.judge_pairpackets_file(
+            str(packet_path), out_path=str(relation_path), model=model, concurrency=2, batch_size=8
+        )
+        judged = read_jsonl(relation_path)
+        if len(judged) != len(batch):
+            raise OriginalPipelineError("Original directional judgment count mismatch")
+        relations.extend(judged)
+    write_jsonl(target / "relations.jsonl", relations)
     if (target / "model_calls.jsonl").exists() and any(
         x.get("error") for x in read_jsonl(target / "model_calls.jsonl")
     ):
@@ -341,6 +459,15 @@ async def worker(pdf, target):
     if not calls.exists():
         calls.write_text("", encoding="utf-8")
     files = [
+        "input_policy.json",
+        "docling_document.json",
+        "chunk_items.json",
+        "chunks_original.jsonl",
+        "content_selection.json",
+        "pairpackets_forward.jsonl",
+        "pairpackets_reverse.jsonl",
+        "relations_forward.jsonl",
+        "relations_reverse.jsonl",
         "chunks.jsonl",
         "mentions.jsonl",
         "concept_cards.jsonl",
@@ -374,6 +501,8 @@ async def worker(pdf, target):
         ],
         "artifacts": artifacts,
         "counts": {
+            "original_chunks": len(original_chunks),
+            "unordered_candidate_pairs": len(forward),
             "chunks": len(chunks),
             "mentions": len(mentions),
             "concepts": len(cards),
@@ -381,6 +510,8 @@ async def worker(pdf, target):
             "judged_relationships": len(relations),
         },
         "clustering": "DEFERRED",
+        "content_selection": content_selection,
+        "direction_policy": "Original functions recompute forward/reverse packets; separate file judger calls avoid unordered dedup; every non-null remains an unreviewed directed candidate.",
         "fallback": False,
         "adapter_configuration": {
             "ocr": "disabled (native PDF text)",

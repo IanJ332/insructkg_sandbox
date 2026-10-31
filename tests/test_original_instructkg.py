@@ -112,6 +112,24 @@ class OriginalIntegrationBoundaryTests(unittest.TestCase):
                 demo_kg.DemoKGRepository(directory).generate_candidates(self.source)
             self.assertEqual(list(Path(directory).rglob("draft.json")), [])
 
+    def test_opposite_model_judgments_remain_independent_unreviewed_candidates(self):
+        import copy
+
+        result = copy.deepcopy(self.result)
+        reverse = {**result["edges"][0], "source": "JOIN_PREDICATE", "target": "JOIN"}
+        result["edges"].append(reverse)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(original_instructkg, "generate", return_value=result),
+        ):
+            graph = demo_kg.DemoKGRepository(directory).generate_candidates(self.source)
+        self.assertEqual(len({edge["edge_id"] for edge in graph["edges"]}), 2)
+        self.assertTrue(all(edge["review_state"] == "UNREVIEWED" for edge in graph["edges"]))
+        self.assertEqual(
+            {(e["source"], e["target"]) for e in graph["edges"]},
+            {("JOIN", "JOIN_PREDICATE"), ("JOIN_PREDICATE", "JOIN")},
+        )
+
     def test_source_snapshot_verification_rejects_modified_files(self):
         with (
             tempfile.TemporaryDirectory() as directory,

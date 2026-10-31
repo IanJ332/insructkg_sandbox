@@ -1,0 +1,80 @@
+{
+  "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de",
+  "original_chunk_text_ids_pages_neighbors_match_baseline": true,
+  "before": {
+    "chunks": 6,
+    "mentions": 30,
+    "concepts": 28,
+    "unordered_pairs": 61,
+    "judgments": 61,
+    "edges": 33
+  },
+  "after": {
+    "original_chunks": 6,
+    "unordered_candidate_pairs": 61,
+    "chunks": 5,
+    "mentions": 27,
+    "concepts": 25,
+    "candidate_pairs": 122,
+    "judged_relationships": 122,
+    "edges": 78
+  },
+  "content_selection": {
+    "reviewed_exclusions": [
+      {
+        "item_ref": "#/texts/0",
+        "text_sha256": "d70b7d1da76d47dd2f4bf74da7519aa49b23ecf9338743d7e569bd612fad9a2e",
+        "reviewed_by": "instructor_alawini",
+        "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+      },
+      {
+        "item_ref": "#/texts/1",
+        "text_sha256": "15a187d8867ad970cd1a1772a9f708aabbdac7b256d610dcd8e7f811edf6c785",
+        "reviewed_by": "instructor_alawini",
+        "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+      },
+      {
+        "item_ref": "#/texts/2",
+        "text_sha256": "f38eccda130d2c8b2f8a0b9294a3c12d12b8f729955cb7f5a6ac219c4b8973ed",
+        "reviewed_by": "instructor_alawini",
+        "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+      }
+    ],
+    "excluded_chunks": [
+      {
+        "chunk_id": "lecture_text__0000",
+        "item_refs": [
+          "#/texts/2"
+        ],
+        "page_numbers": [
+          1
+        ]
+      }
+    ],
+    "mixed_chunks_retained": [],
+    "policy": "No vocabulary filtering; mixed or unreviewed content is retained."
+  },
+  "graph_id": "kg-bc2d1948943f7415",
+  "model": "qwen3:8b",
+  "model_digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "artifact_hashes": {
+    "input_policy.json": "0344b92cf4dddc51d6f378875c148152662020ec1625ad9b05d557ce6825fb9e",
+    "docling_document.json": "a7c44732a823898c3e9f6876a7e00f790ec75dd5eb097e5a575b8dbd2045d71e",
+    "chunk_items.json": "c988bf18c74507cadd27cc6cba6c058261d07d81c821cbf96fa04f70d8c70c2b",
+    "chunks_original.jsonl": "5a457162ca28970407ae54641c3a4912f059526374ddade13aa30967043e4e5f",
+    "content_selection.json": "78725342347e4cc4b44928dde2da7c28d1388b3e5fd2a714ceaf86ac5ac23fae",
+    "pairpackets_forward.jsonl": "364f3be72173295ea0e60e40fd4939f1ecc1e0ab0b4a46c3467b9d8bccdcf235",
+    "pairpackets_reverse.jsonl": "ebba4098e0f79bf684b1801eb88b39665b03e71aa7edc002a1cc661d15aa3506",
+    "relations_forward.jsonl": "21759f60ca7e66c9d7a45bde08ebf21d9e438d2db15f44e492f6729be1fad5a5",
+    "relations_reverse.jsonl": "4a753a666070d6a8819d8cfc5a3b69e1d07b9f613c9bae62eb30e695944b7575",
+    "chunks.jsonl": "58239c5fe482abf826c122f72102174d801365572212821f35427f7401d34ca6",
+    "mentions.jsonl": "16475c1fc00c25373c2c8f3c81fc8875eaa0fd4ee6a449e633953ce747980809",
+    "concept_cards.jsonl": "c96021a5b55703827c5e39c81962494460f0bb9ff2628083d2520edf09f9219b",
+    "clusters.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "pairpackets.jsonl": "de5eb96553d0f695492d0da9de0f469b9ce644863ef5cc7f399f929bf4d24f56",
+    "relations.jsonl": "7e603d2e3705f8e7dda014a0a2af6baab8da13cc1df5a4b256e2a39776fa0b7b",
+    "model_calls.jsonl": "6473ec30139fb6d09145179a9ade56dd2bb1d0cc90bf842153d730f36036e69f"
+  },
+  "original_prompt_logs": "Preserved locally; not redistributed.",
+  "quality": "Independent review FAIL for automatic unreviewed use; no controlled precision improvement claim."
+}

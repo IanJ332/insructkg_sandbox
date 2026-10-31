@@ -1,0 +1,30 @@
+{
+  "scope": "Two synthetic controlled replays only; no new learner deliveries or persisted feedback jobs. Prior six observed outcomes unchanged.",
+  "b6": "FAIL",
+  "same_question_and_sql": true,
+  "prior_observation_counts": {
+    "inner-count-id": 4,
+    "sparse-inner-count-id": 0
+  },
+  "shared_reviewed_prerequisites": [
+    "JOIN_CONDITION",
+    "NULL_SEMANTICS"
+  ],
+  "history_use": "Four observations reach the experienced case request and none reach the sparse case. The experienced raw response is withheld and its resulting deterministic history sentence is generic; useful history-conditioned Qwen guidance is not demonstrated. Different graph and prior-context selection from the historical run prevent attributing changed behavior solely to history.",
+  "non_revealing": "The sparse raw output was accepted by automated checks yet directly prescribes a replacement join type, contrary to the explicit non-revealing instruction. It is not a complete SQL solution but reveals a concrete key repair; independent non-revealing assessment fails. The experienced raw output also prescribes a replacement join and suggests the correct identifier count may be wrong; the quality guard withheld it. The fallback names a join as a review topic but does not prescribe a replacement join.",
+  "cases": [
+    {
+      "case": "inner-count-id",
+      "outcome": "feedback_quality_fallback",
+      "assessment": "FAIL",
+      "finding": "Raw feedback wrongly questions the correct COUNT(identifier) component and prescribes a replacement join; the guard prevents its delivery. Deterministic replay fallback offers generic history language, not a demonstrated useful model personalization."
+    },
+    {
+      "case": "sparse-inner-count-id",
+      "outcome": "live_success",
+      "assessment": "FAIL",
+      "finding": "Automated validation accepted the raw response despite explicit instruction violation: it prescribes the replacement join type. This is a controlled replay outcome, not a new learner-delivered job."
+    }
+  ],
+  "limits": "Two examples establish neither broad model quality nor exhaustive safety properties; no prompt was changed and no additional inference was run."
+}
