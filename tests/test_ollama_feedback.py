@@ -1,10 +1,10 @@
+import copy
 import json
 import sys
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prairielearn-course/serverFilesCourse"))
@@ -67,27 +67,11 @@ class OllamaTransportTests(unittest.TestCase):
             self.assertFalse(payload["stream"])
             self.assertFalse(payload["format"]["additionalProperties"])
             prompt = payload["messages"][0]["content"]
-            for required in (
-                "current question tags",
-                "possible causes",
-                "question_count",
-                "evidence_count",
-                "reviewed_relationships",
-                "not a trajectory",
-                "prerequisite-specific",
-                "attempt IDs",
-                "approved_prerequisite_history",
-                "MUST include",
-                "matching keys",
-            ):
-                self.assertIn(required, prompt)
-            self.assertIn(
-                "No approved prerequisite history is supplied; make no claim about prior performance",
-                prompt,
-            )
-            self.assertIn("lecture examples can use the reverse table orientation", prompt)
-            self.assertIn("Do not prescribe replacement join types", prompt)
-            self.assertEqual(result["prompt_version"], "siip-feedback-v9")
+            self.assertIn("deterministic grade is authoritative", prompt)
+            self.assertIn("sparse histories can warrant the same advice", prompt)
+            self.assertIn("Do not infer understanding", prompt)
+            self.assertLess(len(prompt), 2000)
+            self.assertEqual(result["prompt_version"], "siip-feedback-v11")
         finally:
             server.shutdown()
             server.server_close()
@@ -123,132 +107,6 @@ class OllamaTransportTests(unittest.TestCase):
                 self.assertEqual(result["candidate_concepts"], [])
                 self.assertIsNone(result["token_usage"])
 
-    def test_history_signal_uses_only_approved_prerequisites(self):
-        class Provider:
-            model = "fixture-model"
-            context = None
-
-            def generate(self, context):
-                self.context = context
-                return {
-                    "feedback_text": "Consider which rows should remain in the result.",
-                    "candidate_concepts": [],
-                    "evidence_references": [],
-                }, None
-
-        base = {
-            "mode": "kg",
-            "grade": {"status": "semantic_error", "score": 0},
-            "lecture_evidence": [],
-            "prerequisites": ["JOIN_CONDITION"],
-            "student_mastery": {
-                "JOIN_CONDITION": {
-                    "mastery_estimate": 0.25,
-                    "question_count": 1,
-                    "evidence_count": 2,
-                },
-                "LEFT_OUTER_JOIN": {
-                    "mastery_estimate": 0.75,
-                    "question_count": 1,
-                    "evidence_count": 2,
-                },
-            },
-        }
-        provider = Provider()
-        result = {"status": "semantic_error", "score": 0, "observation": "wrong_rows"}
-        with patch("siip.feedback.build_context", return_value=base):
-            output = generate_feedback(
-                "sql_join_02", "SELECT 1", result, provider=provider, grounding={"fixture": True}
-            )
-        self.assertEqual(output["inference_status"], "live_success")
-        self.assertEqual(provider.context["grade"]["score"], 0)
-        self.assertEqual(result["score"], 0)
-        self.assertEqual(
-            provider.context["approved_prerequisite_history"],
-            [
-                {
-                    "concept": "JOIN_CONDITION",
-                    "descriptive_estimate": 0.25,
-                    "question_count": 1,
-                    "evidence_count": 2,
-                    "evidence_level": "weaker",
-                }
-            ],
-        )
-
-    def test_history_present_prioritizes_evidence_in_system_prompt(self):
-        captured = []
-
-        class Response:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
-            def read(self, *_):
-                return json.dumps(
-                    {
-                        "done": True,
-                        "message": {
-                            "content": json.dumps(
-                                {
-                                    "feedback_text": "Consider which rows should remain in the result.",
-                                    "candidate_concepts": [],
-                                    "evidence_references": [],
-                                }
-                            )
-                        },
-                    }
-                ).encode()
-
-        class Opener:
-            def open(self, request, timeout):
-                captured.append(json.loads(request.data))
-                return Response()
-
-        history = [
-            {
-                "concept": "JOIN_CONDITION",
-                "descriptive_estimate": 0.25,
-                "question_count": 1,
-                "evidence_count": 2,
-                "evidence_level": "weaker",
-            }
-        ]
-        provider = OllamaProvider("http://127.0.0.1:11434/v1", "fixture")
-        with patch("urllib.request.build_opener", return_value=Opener()):
-            provider.generate(
-                {
-                    "_question_id": "sql_join_02",
-                    "mode": "kg",
-                    "approved_prerequisite_history": history,
-                    "student_mastery": {
-                        "JOIN_CONDITION": {
-                            "mastery_estimate": 0.25,
-                            "question_count": 1,
-                            "evidence_count": 2,
-                        }
-                    },
-                }
-            )
-        self.assertEqual(provider.last_request_payload, captured[0])
-        wire_context = json.loads(captured[0]["messages"][1]["content"])
-        self.assertNotIn("student_mastery", wire_context)
-        self.assertEqual(
-            wire_context["historical_concept_evidence"]["JOIN_CONDITION"]["descriptive_estimate"],
-            0.25,
-        )
-        prompt = captured[0]["messages"][0]["content"]
-        self.assertIn("Start feedback_text with an uncertainty-qualified account", prompt)
-        self.assertIn("including its attempt and question counts", prompt)
-        self.assertIn(json.dumps(history), prompt)
-        self.assertIn("QUALITY PRIORITY", prompt)
-        self.assertIn("solid understanding", prompt)
-        self.assertIn("which pairs match", prompt)
-        self.assertIn("Do not prescribe replacement join types", prompt)
-        self.assertNotIn("No approved prerequisite history is supplied", prompt)
-
     def test_history_projection_and_observed_claim_guard(self):
         context = {
             "mode": "kg",
@@ -267,9 +125,7 @@ class OllamaTransportTests(unittest.TestCase):
 
         projected = model_context_projection(context)
         self.assertNotIn("student_mastery", projected)
-        self.assertEqual(
-            projected["historical_concept_evidence"]["JOIN_CONDITION"]["descriptive_estimate"], 0.75
-        )
+        self.assertNotIn("historical_concept_evidence", projected)
         self.assertEqual(context["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"], 0.75)
         for claim in (
             "weaker understanding",
@@ -292,6 +148,61 @@ class OllamaTransportTests(unittest.TestCase):
                 "evidence_references": [],
             },
             context,
+            "sql_join_02",
+            check_quality=True,
+        )
+
+    def test_model_projection_preserves_evidence_ids_and_graph_policy(self):
+        from siip.feedback import model_context_projection
+
+        context = {
+            "question": "Which rows should remain?",
+            "student_sql": "SELECT 1",
+            "grade": {"status": "semantic_error", "score": 0},
+            "diagnosis": {"candidate_concepts": ["LEFT_OUTER_JOIN"], "internal": "secret"},
+            "lecture_evidence": [
+                {"id": "p1", "text": "first", "sha": "private"},
+                {"id": "p2", "text": "second", "reviewer": "private"},
+            ],
+            "reviewed_relationships": [
+                {"source": "A", "target": "B", "relation": "depends_on", "edge_id": "private"}
+            ],
+            "development_relationships": [
+                {"source": "A", "target": "C", "relation": "depends_on", "id": "private"}
+            ],
+            "graph_policy": "Development relationships are unreviewed.",
+            "prerequisites": ["B"],
+            "student_mastery": {"B": {"mastery_estimate": 0.3}},
+            "grounding_provenance": {"sha": "private"},
+            "_question_id": "sql_join_02",
+        }
+        original = copy.deepcopy(context)
+        wire = model_context_projection(context)
+        self.assertEqual(context, original)
+        self.assertEqual(
+            wire["lecture_evidence"],
+            [{"id": "p1", "text": "first"}, {"id": "p2", "text": "second"}],
+        )
+        self.assertEqual(wire["graph_policy"], context["graph_policy"])
+        self.assertEqual(
+            wire["reviewed_relationships"],
+            [{"source": "A", "target": "B", "relation": "depends_on"}],
+        )
+        self.assertEqual(
+            wire["development_relationships"],
+            [{"source": "A", "target": "C", "relation": "depends_on"}],
+        )
+        self.assertEqual(wire["candidate_concepts"], ["LEFT_OUTER_JOIN"])
+        self.assertNotIn("private", json.dumps(wire))
+        self.assertNotIn("mastery", json.dumps(wire))
+        self.assertNotIn("_question_id", wire)
+        valid_output(
+            {
+                "feedback_text": "Check which rows remain in the result.",
+                "candidate_concepts": [],
+                "evidence_references": ["p1", "p2"],
+            },
+            {**context, "mode": "kg"},
             "sql_join_02",
             check_quality=True,
         )

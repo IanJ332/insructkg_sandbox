@@ -208,7 +208,18 @@ class SubmissionRepository:
             history_records.sort(key=lambda row: (row["timestamp"], row["attempt_id"]))
             history = self._profile_from_records(sid, history_records)
             feedback = generate_feedback(
-                qid, record["submitted_sql"], result, mode, history["concepts"], provider
+                qid,
+                record["submitted_sql"],
+                result,
+                mode,
+                history["concepts"],
+                provider,
+                prior_records=history_records,
+                history_scope={
+                    "student_id": sid,
+                    "course_id": course_id,
+                    "cutoff": record["timestamp"],
+                },
             )
             output = {
                 **record,

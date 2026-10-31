@@ -55,6 +55,9 @@ def main():
     parser.add_argument("--foundation-assignment", required=True)
     parser.add_argument("--later-assignment", required=True)
     parser.add_argument("--followup-assignment", required=True)
+    parser.add_argument(
+        "--count-assignment", help="Also evaluate observed history across q02/q04 before q03"
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ack-isolated-synthetic-local", action="store_true")
     parser.add_argument("--verify-restart", action="store_true")
@@ -139,15 +142,13 @@ def main():
             "Fresh job store required"
         )
     registry = DemoAuthoringRegistry(runtime / "demo-state/authoring")
-    assignments = [
-        registry.get_assignment(aid)
-        for aid in (args.foundation_assignment, args.later_assignment, args.followup_assignment)
-    ]
-    assert [list(a.question_ids) for a in assignments] == [
-        ["sql_join_01"],
-        ["sql_join_02"],
-        ["sql_join_03"],
-    ]
+    assignment_ids = [args.foundation_assignment, args.later_assignment, args.followup_assignment]
+    expected_questions = [["sql_join_01"], ["sql_join_02"], ["sql_join_03"]]
+    if args.count_assignment:
+        assignment_ids.append(args.count_assignment)
+        expected_questions.append(["sql_join_04"])
+    assignments = [registry.get_assignment(aid) for aid in assignment_ids]
+    assert [list(a.question_ids) for a in assignments] == expected_questions
     assert all(
         a.course_id == args.course and a.publication_status == "PUBLISHED_LOCAL_DEMO"
         for a in assignments
@@ -215,12 +216,35 @@ def main():
         ("improvement", "S001", 1, QUESTIONS["sql_join_02"]["reference_sql"], 1),
         ("syntax", "S003", 1, "SELEC name FROM Employees;", 0),
     ]
+    if args.count_assignment:
+        bad_count = (
+            QUESTIONS["sql_join_04"]["reference_sql"]
+            .replace("LEFT OUTER JOIN", "INNER JOIN")
+            .replace("LEFT JOIN", "INNER JOIN")
+        )
+        scenarios = [
+            ("weak-foundation-1", "S001", 0, bad_foundation, 0),
+            ("strong-foundation-1", "S002", 0, QUESTIONS["sql_join_01"]["reference_sql"], 1),
+            ("longitudinal", "S001", 1, bad_later, 0),
+            ("contrasting-later", "S002", 1, bad_later, 0),
+            ("no-history", "S003", 1, bad_later, 0),
+            ("related-error", "S001", 3, bad_count, 0),
+            ("prior-later-correct", "S002", 1, QUESTIONS["sql_join_02"]["reference_sql"], 1),
+            ("related-correct", "S002", 3, QUESTIONS["sql_join_04"]["reference_sql"], 1),
+            ("related-sequence", "S003", 3, QUESTIONS["sql_join_04"]["reference_sql"], 1),
+            ("weak-followup", "S001", 2, bad_later, 0),
+            ("strong-followup", "S002", 2, bad_later, 0),
+            ("absent-prerequisite-followup", "S003", 2, bad_later, 0),
+            ("improvement", "S001", 1, QUESTIONS["sql_join_02"]["reference_sql"], 1),
+            ("syntax", "S003", 1, "SELEC name FROM Employees;", 0),
+        ]
     report = {
         "model": model,
         "provider": "CapturedOllamaProvider (native OllamaProvider capture subclass)",
         "cases": [],
         "errors": [],
         "synthetic": True,
+        "history_acceptance_policy": "Same advice is valid for sparse evidence; distinct prose alone never proves adaptation. Richer histories are separately reviewed against actual observed outcomes.",
         "feedback_source_sha256": hashlib.sha256(
             (ROOT / "prairielearn-course/serverFilesCourse/siip/feedback.py").read_bytes()
         ).hexdigest(),
@@ -324,8 +348,9 @@ def main():
             == absent["prerequisites"]
             == ["JOIN_CONDITION"]
         )
-        assert weak["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"] < 0.5
-        assert strong["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"] > 0.5
+        if not args.count_assignment:
+            assert weak["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"] < 0.5
+            assert strong["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"] > 0.5
         assert "JOIN_CONDITION" not in absent.get("student_mastery", {})
         for key in (
             "question",
@@ -336,18 +361,38 @@ def main():
             "lecture_evidence",
         ):
             assert weak[key] == strong[key] == absent[key], key
-        report["matched_groups"].append(
-            {
-                "scenarios": labels,
-                "same_question_sql_grade_graph": True,
-                "prerequisite_estimates": [
-                    weak["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"],
-                    strong["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"],
-                    None,
-                ],
-                "quality_status": "INDEPENDENT_REVIEW_REQUIRED",
-            }
-        )
+        group = {
+            "scenarios": labels,
+            "same_question_sql_grade_graph": True,
+            "quality_status": "INDEPENDENT_REVIEW_REQUIRED",
+        }
+        if args.count_assignment:
+            group["legacy_scenario_names_are_not_mastery_claims"] = True
+            group["prior_observation_windows"] = [
+                ctx.get("prior_observations", {}) for ctx in (weak, strong, absent)
+            ]
+            group["interpretation"] = (
+                "Sparse prerequisite evidence can justify the same advice. Later cases include target-concept history across different tasks; absent prerequisite does not mean absent history."
+            )
+        else:
+            group["prerequisite_estimates"] = [
+                weak["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"],
+                strong["student_mastery"]["JOIN_CONDITION"]["mastery_estimate"],
+                None,
+            ]
+        report["matched_groups"].append(group)
+    if args.count_assignment:
+        for label in ("weak-followup", "strong-followup", "absent-prerequisite-followup"):
+            server = context(label)
+            assert server["prior_observations"]["question_count"] >= 2
+            call = captures[by_label[label]["model_call_index"]]
+            wire = json.loads(call["request_payload"]["messages"][1]["content"])
+            assert wire["prior_observations"] == server["prior_observations"]
+            assert "student_mastery" not in wire and "approved_prerequisite_history" not in wire
+            provenance = by_label[label]["worker_result"]["prior_observation_provenance"][
+                "attempt_ids"
+            ]
+            assert set(provenance) <= set(by_label[label]["prior_attempt_ids"])
     target = by_label["longitudinal"]
     assert (
         students["S002"]

@@ -1,5 +1,7 @@
 # SIIP Integrated Synthetic Research Sandbox
 
+The [Phase 4 follow-up](docs/release/PHASE4_FOLLOWUP_ACCEPTANCE.md) verifies all six newly supplied PDFs and maps the now-readable proposal to the October meetings. It supplies bounded prior grade facts through a compact feedback contract; **B6 still FAILS**, and local release-candidate status remains withheld. Historical PR #7/#8 evidence below is preserved.
+
 Phase 4's [research and live-model acceptance report](docs/release/PHASE4_ACCEPTANCE.md) withholds release-candidate status: **B6 FAIL**. The final run completed twelve persisted submission lifecycles with eight actual Qwen calls, six accepted outputs, two quality fallbacks, and four separate nonsemantic bypasses. [Research traceability](docs/release/PHASE4_RESEARCH_TRACEABILITY.md) and [representative legacy-stage execution](docs/release/PHASE4_LEGACY_STAGES.md) distinguish observed reuse from incomplete reproduction.
 
 SIIP connects instructor lesson upload, source-grounded graph review, local SQL assignment publication, deterministic grading, asynchronous feedback, prior-only learner profiles, entrepreneurial mindset (EM) reflections, personalized projects, and instructor analytics. Four native PrairieLearn SQL question hooks are also included.

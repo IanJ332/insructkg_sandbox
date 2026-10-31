@@ -1,0 +1,33 @@
+# B6 follow-up: diagnosis before implementation
+
+Baseline is PR #8 commit `74a5e3ef50386c0428da9d3aac44c32308d86755`, prompt v9. This report precedes the follow-up implementation. Historical Phase 3 and Phase 4 results remain unchanged. Supplied source verification and the proposal/meeting cross-reference are in [source reconciliation](PHASE4_FOLLOWUP_SOURCE_RECONCILIATION.md) and the [traceability matrix](PHASE4_RESEARCH_TRACEABILITY.md).
+
+## Observed chain
+
+| Boundary | Concrete evidence | Finding |
+|---|---|---|
+| Canonical prior history | `store.py` `records`/`profile`, `jobs.py` worker cutoff; `artifacts/phase4/round5/isolation_verification.json` | Existing history is prior-only and student/course scoped. Final reconstructed contexts matched actual calls after later submissions and a backdated other-course probe. No demonstrated persistence or cutoff defect caused B6. |
+| Profile facts | `store.py` `_profile_from_records` stores correct/incorrect counts, question IDs, last attempt, observed errors and scored trajectories in its derived profile | Facts exist already. A Beta score uses the latest qualifying attempt per linked question, so two retries on one question are not two independent questions. Counts and heuristics do not validate understanding. No second profile/store is needed. |
+| Mapping and approved prerequisites | Reviewed JOIN_PREDICATE→JOIN_CONDITION mapping; immutable graph v1; `assignment_grounding.py`, `build_context` | The correct approved dependency reaches the model. Mapping preserves original IDs. Missing graph nodes/roles/clusters remain KG-quality limitations, not an excuse to fabricate history or edges. |
+| Evidence selection | Final call context has six source chunks, approved relations and question tags; lesson orientation differs from q02's requested preserved entity | Source provenance is genuine, but examples can distract from the actual question. Question instructions must determine the task. Tags and co-occurrence do not prove an error cause. |
+| History minimization | `feedback.py` `minimize_mastery`; final v9 wire has only estimate, question count and attempt count for JOIN_CONDITION | Correct/incorrect outcomes, recency, error labels and event provenance are lost before inference. Renaming an estimate to `descriptive_estimate` does not make it an observed grade or give it evidential strength. |
+| Serialized request and prompt | Actual v9 `round5/acceptance/model_calls.json` includes `request_payload` | Representative system text is 4,540 characters / 621 whitespace-delimited words; wire context is 5,247 JSON characters. Multiple paragraphs repeat history-first, weaker/stronger thresholds and action demands, while forbidding understanding claims. Those demands encourage ability interpretation and require contrasts despite sparse evidence. |
+| Raw Qwen behavior | Phase 3 q02 contrasts identical; v5/v6 q02 contrasts identical; v7/v8 differ but overclaim; v9 weak raw responses assert weaker understanding | Transport and schema success are distinct from evidence-grounded guidance. The same immediate correction can legitimately apply to different sparse histories. Changed prose is not sufficient for B6. |
+| Validator | Final v9 weak q02/q03 trigger `unsupported_historical_understanding_claim`; strong q02 says stronger understanding outside the narrow regex | The two rejections are legitimate and must stay rejected. The guard is a bounded known-claim filter, not semantic certification. Broadening acceptance or removing guards would conceal the failure. |
+| Delivery | Final twelve jobs completed, with six accepted responses, two quality fallbacks and four nonsemantic bypasses; learner/instructor jobs and restart matched | Delivery is functioning. The weak delivered text is deterministic fallback, so its apparent differentiation cannot count as Qwen adaptation. Accepted strong text remains independently problematic. |
+
+Earlier count-only diagnostics also failed to establish reliable history use. That observation prevents treating outcome counts alone as a proven fix; their actual consumption must be tested together with a small, stable contract. Model size or database choice has not been established as the root cause.
+
+## Bounded hypotheses and experiment decision
+
+**H1: redundant/conflicting instructions dilute the task.** Replace the accumulated v9 history paragraphs with one compact policy; preserve the three-field output schema, grading authority, citation/leakage validation and known SQL guards. Do not change the model, digest, transport or sampling.
+
+**H2: sparse heuristic inputs invite unsupported ability language.** Reuse the already scoped canonical prior records/profile facts to provide a bounded projection of observed grades, distinct question contexts, attempts, timestamps/recency, error observations and source references. Keep heuristic profile fields for existing callers and analytics; omit ability estimates and weaker/stronger ability labels from the model-facing history. Do not manufacture observations or create another profile implementation.
+
+Use a small controlled diagnostic set before a fresh E2E run. Include no relevant history, one prior error, one prior correct result, and richer related histories using existing different SQL questions where available. All records must be explicitly synthetic, actually graded and persisted, with source/attempt lineage. Do not call two attempts on q01 independent questions. If later correct and earlier incorrect outcomes occur on different tasks, report that factual sequence without asserting a causal learning improvement.
+
+Compare the archived v9 contract, a compact-policy diagnostic using the same supplied history, and the compact factual-context candidate while holding the current task/SQL/grade/graph fixed. Record each hypothesis, exact request and raw response. These are diagnostic arms, not multiple speculative version changes or E2E success. Limit implementation to one candidate contract and at most one further evidence-justified correction; stop if controlled tests still cannot establish the behavior.
+
+Independent Terra High review must judge whether any different action is warranted by the actual evidence, technically sound, non-revealing and appropriately uncertain. Sparse histories may correctly receive the same immediate advice. A B6 pass requires some sufficiently informative cases with defensible evidence-grounded adaptation, not mandatory wording differences in every pair.
+
+Storage remains Option A. Missing original MiniLM weights and the unavailable complete Year 1 backend/WIP text are separate reproduction/source-access limits; they are not database-migration or EM-expansion requirements for this experiment.
