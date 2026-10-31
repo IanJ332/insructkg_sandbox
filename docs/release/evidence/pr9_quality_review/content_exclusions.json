@@ -1,0 +1,20 @@
+[
+  {
+    "item_ref": "#/texts/0",
+    "text_sha256": "d70b7d1da76d47dd2f4bf74da7519aa49b23ecf9338743d7e569bd612fad9a2e",
+    "reviewed_by": "instructor_alawini",
+    "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+  },
+  {
+    "item_ref": "#/texts/1",
+    "text_sha256": "15a187d8867ad970cd1a1772a9f708aabbdac7b256d610dcd8e7f811edf6c785",
+    "reviewed_by": "instructor_alawini",
+    "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+  },
+  {
+    "item_ref": "#/texts/2",
+    "text_sha256": "f38eccda130d2c8b2f8a0b9294a3c12d12b8f729955cb7f5a6ac219c4b8973ed",
+    "reviewed_by": "instructor_alawini",
+    "reason": "Synthetic instructor simulation: fixture title/provenance/license metadata; not faculty review."
+  }
+]

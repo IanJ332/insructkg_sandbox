@@ -4,3 +4,5 @@
 *.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# Preserve recorded execution bytes so cloud artifacts match their SHA-256 receipts.
+docs/release/evidence/original_chunk_integration/** -text

@@ -1,0 +1,149 @@
+{
+  "asymmetric_upstream_directional_evidence": "PASS",
+  "forward": {
+    "pair": [
+      "A",
+      "B"
+    ],
+    "temporal_order": {
+      "B_first_introduced_at": {
+        "lecture_index": 0,
+        "lecture_id": "l0",
+        "chunk_id": "l0__0"
+      },
+      "A_first_introduced_at": {
+        "lecture_index": 1,
+        "lecture_id": "l1",
+        "chunk_id": "l1__0"
+      },
+      "gap_lectures": 1
+    },
+    "role_grounded_evidence": {
+      "A_defined_mentions_B": {
+        "count": 1,
+        "support": [
+          {
+            "lecture_id": "l1",
+            "chunk_id": "l1__0",
+            "page_numbers": [
+              1
+            ],
+            "A_role": "definition",
+            "A_snippet": "A requires B",
+            "B_present_in_chunk": true
+          }
+        ]
+      },
+      "A_example_mentions_B": {
+        "count": 0,
+        "support": []
+      },
+      "B_defined_mentions_A": {
+        "count": 0,
+        "support": []
+      }
+    },
+    "chunk_co_occurrence": {
+      "count": 1,
+      "chunks": [
+        {
+          "chunk_id": "l1__0",
+          "text": "A requires B"
+        }
+      ]
+    },
+    "cluster_co_occurrence_with_different_chunks": {
+      "count": 0,
+      "clusters": []
+    },
+    "negative_evidence": {
+      "a_without_b": 2,
+      "b_without_a": 1,
+      "a_total": 3,
+      "b_total": 2
+    },
+    "confidence_features": {
+      "temporal_ok": 1,
+      "role_support": 1,
+      "a_role_total": 3,
+      "role_score": 0.3333333333333333,
+      "cooc_score": 0.3333333333333333,
+      "neg_rate": 0.6666666666666666
+    }
+  },
+  "reverse": {
+    "pair": [
+      "B",
+      "A"
+    ],
+    "temporal_order": {
+      "B_first_introduced_at": {
+        "lecture_index": 1,
+        "lecture_id": "l1",
+        "chunk_id": "l1__0"
+      },
+      "A_first_introduced_at": {
+        "lecture_index": 0,
+        "lecture_id": "l0",
+        "chunk_id": "l0__0"
+      },
+      "gap_lectures": -1
+    },
+    "role_grounded_evidence": {
+      "A_defined_mentions_B": {
+        "count": 0,
+        "support": []
+      },
+      "A_example_mentions_B": {
+        "count": 0,
+        "support": []
+      },
+      "B_defined_mentions_A": {
+        "count": 1,
+        "support": [
+          {
+            "lecture_id": "l1",
+            "chunk_id": "l1__0",
+            "page_numbers": [
+              1
+            ],
+            "B_role": "definition",
+            "B_snippet": "A requires B",
+            "A_present_in_chunk": true
+          }
+        ]
+      }
+    },
+    "chunk_co_occurrence": {
+      "count": 1,
+      "chunks": [
+        {
+          "chunk_id": "l1__0",
+          "text": "A requires B"
+        }
+      ]
+    },
+    "cluster_co_occurrence_with_different_chunks": {
+      "count": 0,
+      "clusters": []
+    },
+    "negative_evidence": {
+      "a_without_b": 1,
+      "b_without_a": 2,
+      "a_total": 2,
+      "b_total": 3
+    },
+    "confidence_features": {
+      "temporal_ok": 0,
+      "role_support": 0,
+      "a_role_total": 0,
+      "role_score": 0.0,
+      "cooc_score": 0.5,
+      "neg_rate": 0.5
+    }
+  },
+  "unprovisioned_source_preflight": {
+    "status": "BLOCKED",
+    "reason": "SIIP_INSTRUCTKG_SOURCE_DIR must name the pinned external snapshot"
+  }
+}

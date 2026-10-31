@@ -79,8 +79,6 @@ def resolve_grounding(value, question_id=None):
         raise ValueError("Question does not belong to grounding assignment")
     selected = set(assignment.kg_node_ids)
     question_tags = [set(QUESTIONS[qid]["concepts"]) for qid in assignment.question_ids]
-    if not selected or not all(selected & tags for tags in question_tags):
-        raise ValueError("Assignment KG nodes do not match the question concept tags")
     config = assignment.grading_config
     for key in ("source_document_id", "source_version", "graph_id", "graph_version"):
         binding = getattr(assignment, key, None)
@@ -114,6 +112,9 @@ def resolve_grounding(value, question_id=None):
     if not approved:
         raise ValueError("Grounding requires reviewed graph evidence")
     mapping = reviewed_concept_mapping(config, graph)
+    resolved_selected = {mapping.get(node, node) for node in selected}
+    if not selected or not all(resolved_selected & tags for tags in question_tags):
+        raise ValueError("Assignment KG nodes do not match the question concept tags")
     # Project graph IDs for this assignment only. Saved versions remain untouched.
     approved = [
         {
@@ -123,23 +124,58 @@ def resolve_grounding(value, question_id=None):
         }
         for edge in approved
     ]
-    graph = {**graph, "assignment_concept_mapping": config.get("concept_mapping", {})}
-    text = registry.read_lesson_bytes(ids["source_document_id"], ids["source_version"]).decode(
-        "utf-8"
-    )
-    if hashlib.sha256(text.encode("utf-8")).hexdigest() != ids["source_sha256"] or hashlib.sha256(
-        text.strip().encode("utf-8")
-    ).hexdigest() != graph.get("source_content_sha256"):
-        raise ValueError("Grounding source bytes do not match persisted provenance")
-    chunks = [
-        {
-            "id": f"{ids['source_document_id']}:v{ids['source_version']}:chunk:{i}",
-            "page": i,
-            "text": part[:2200],
-        }
-        for i, part in enumerate(text.split("\n\n"), 1)
-        if part.strip()
-    ]
+    graph = {
+        **graph,
+        "assignment_concept_mapping": config.get("concept_mapping", {}),
+        "assignment_kg_node_ids": list(assignment.kg_node_ids),
+    }
+    text = registry.read_lesson_text(ids["source_document_id"], ids["source_version"])
+    text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    if source.media_type == "application/pdf":
+        if (
+            source.extracted_source_sha256 != ids["source_sha256"]
+            or source.extracted_text_sha256 != text_hash
+            or graph.get("registered_content_hash") != ids["source_sha256"]
+            or graph.get("source_content_sha256") != text_hash
+            or graph.get("extracted_chunks") != list(source.extracted_chunks)
+            or "\n\n".join(
+                c.get("text", "")
+                for c in source.extracted_chunks
+                if isinstance(c, dict) and c.get("text")
+            )
+            != text
+        ):
+            raise ValueError("Grounding source bytes do not match persisted provenance")
+        chunks = []
+        for chunk in source.extracted_chunks:
+            if not isinstance(chunk, dict) or not isinstance(chunk.get("text"), str):
+                raise ValueError("Invalid persisted original chunk")
+            chunk_id = chunk.get("chunk_id")
+            pages = chunk.get("page_numbers") or []
+            if not isinstance(chunk_id, str) or not isinstance(pages, list):
+                raise ValueError("Invalid persisted original chunk metadata")
+            chunks.append(
+                {
+                    "id": chunk_id,
+                    "page": pages[0] if pages else None,
+                    "page_numbers": pages,
+                    "text": chunk["text"][:2200],
+                }
+            )
+    else:
+        if text_hash != ids["source_sha256"] or hashlib.sha256(
+            text.strip().encode("utf-8")
+        ).hexdigest() != graph.get("source_content_sha256"):
+            raise ValueError("Grounding source bytes do not match persisted provenance")
+        chunks = [
+            {
+                "id": f"{ids['source_document_id']}:v{ids['source_version']}:chunk:{i}",
+                "page": i,
+                "text": part[:2200],
+            }
+            for i, part in enumerate(text.split("\n\n"), 1)
+            if part.strip()
+        ]
     words = {item.replace("_", " ").lower() for item in assignment.kg_node_ids}
     chunks.sort(key=lambda part: -sum(word in part["text"].lower() for word in words))
     return ids, graph, approved, chunks[:6]

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-31",
+  "worktree_branch": "codex/original-instructkg-integration",
+  "base_commit": "7d64d7585decdb60144743acebe83d6058adfd2e",
+  "runtime": {
+    "python": "3.14.3",
+    "pypdf": "6.21.4 (patched development copy on PYTHONPATH)"
+  },
+  "unit_integration": {
+    "status": "PASS",
+    "command": "python -m unittest discover -s tests -v",
+    "tests": 362,
+    "failures": 0,
+    "duration_seconds": 104.997,
+    "log": "artifacts/original-integration/validation/unittest-final.log"
+  },
+  "browser": {
+    "status": "PASS",
+    "tests": 7,
+    "failures": 0,
+    "skipped": 0,
+    "duration_seconds": 74.544,
+    "log": "artifacts/original-integration/validation/browser.log",
+    "artifact_directory": "artifacts/full-browser-20261031T075611Z-e9a641",
+    "instructor_pdf_receipt": "artifacts/original-integration/browser_pdf_receipt.json",
+    "restart_receipt": "artifacts/original-integration/restart_verification.json"
+  },
+  "static": {
+    "ruff_check": "PASS",
+    "ruff_format": "PASS (201 files)",
+    "mypy": "PASS (configured 3-file scope)",
+    "pip_check": "PASS",
+    "configuration": "PASS",
+    "evidence_directory": "artifacts/original-integration/validation/"
+  },
+  "security": {
+    "bandit": "PASS (0 findings)",
+    "pip_audit": "PASS (no known vulnerabilities)",
+    "bandit_log": "artifacts/original-integration/validation/bandit-final.log",
+    "pip_audit_log": "artifacts/original-integration/validation/pip-audit.log"
+  },
+  "wheel": {
+    "status": "PASS",
+    "inventory": "47 code-only files",
+    "file": "artifacts/dist/siip_sql_sandbox-0.2.1-py3-none-any.whl",
+    "size_bytes": 120187,
+    "sha256": "d2def738d86dfc9ba5beea637605abc1ba24e4eaec1134a912b0db87b0b94ac7",
+    "build_log": "artifacts/original-integration/validation/wheel-build-final.log",
+    "inventory_log": "artifacts/original-integration/validation/wheel-inventory-final.log"
+  },
+  "temporary_fixture_cleanup": {
+    "tracked_provenance_restored": true,
+    "original_provenance_sha256": "58b4240a4b9cee705a918ecf0b579907876859f94295af607c4d29bad49e2b55",
+    "generated_fixture_files_removed": [
+      "prairielearn-course/serverFilesCourse/siip/data/lecture.json",
+      "prairielearn-course/serverFilesCourse/siip/data/existing_relations.jsonl"
+    ]
+  }
+}

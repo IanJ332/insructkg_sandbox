@@ -1,0 +1,354 @@
+{
+  "graph_id": "kg-6b9ac34972ee3e35",
+  "version": 1,
+  "review_actor": "synthetic instructor_alawini; no faculty endorsement",
+  "actions": [
+    {
+      "edge_id": "edge-efc1299ee688",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-80398aeaa969",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-aa91abdb1e41",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-8d5b76d0f91b",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-aa177de7f17e",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-6fcf2e7a9cff",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-d3aaa5b32c91",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-c5083cf65032",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-bb0bf2679f2a",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-4c582c0334e9",
+      "decision": "APPROVE",
+      "independent_recommendation": "APPROVE",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+approved+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-441c85ee8279",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-89590ecd3857",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-a852f7c41ebb",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-244a2dabd74d",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-b3160bd9b6d8",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-5cb703348338",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-2d5e769a3699",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-725117add202",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-f483bb16c8c8",
+      "decision": "APPROVE",
+      "independent_recommendation": "APPROVE",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+approved+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-53788884ee95",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-a32fb2a3dfcd",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-223d7dd00a8a",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-6b2301879c33",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-44adf8d51653",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-0de847ca1134",
+      "decision": "REJECT",
+      "independent_recommendation": "NEEDS_REVISION",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-afefc03a5c0c",
+      "decision": "APPROVE",
+      "independent_recommendation": "APPROVE",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+approved+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-6a94be050bd1",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-a07de5a2e832",
+      "decision": "APPROVE",
+      "independent_recommendation": "APPROVE",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+approved+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-23c5a96fd7ca",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-ef0be0c14113",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-09c4861c4b3e",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-f63ba6d9797c",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    },
+    {
+      "edge_id": "edge-1f59f692537f",
+      "decision": "REJECT",
+      "independent_recommendation": "REJECT",
+      "response": {
+        "status": 303,
+        "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Relation+rejectd+and+persisted"
+      }
+    }
+  ],
+  "save": {
+    "status": 303,
+    "location": "/demo-graph?graph_id=kg-6b9ac34972ee3e35&notice=Saved+reviewed+graph+version+1"
+  },
+  "assignments": [
+    {
+      "assignment_id": "original-e2e-q1",
+      "create": {
+        "status": 303,
+        "location": "/assignments?notice=Created+draft+original-e2e-q1"
+      },
+      "publish": {
+        "status": 303,
+        "location": "/assignments?notice=Published+original-e2e-q1+to+the+local+SIIP+demo"
+      }
+    },
+    {
+      "assignment_id": "original-e2e-q2",
+      "create": {
+        "status": 303,
+        "location": "/assignments?notice=Created+draft+original-e2e-q2"
+      },
+      "publish": {
+        "status": 303,
+        "location": "/assignments?notice=Published+original-e2e-q2+to+the+local+SIIP+demo"
+      }
+    },
+    {
+      "assignment_id": "original-e2e-q3",
+      "create": {
+        "status": 303,
+        "location": "/assignments?notice=Created+draft+original-e2e-q3"
+      },
+      "publish": {
+        "status": 303,
+        "location": "/assignments?notice=Published+original-e2e-q3+to+the+local+SIIP+demo"
+      }
+    },
+    {
+      "assignment_id": "original-e2e-q4",
+      "create": {
+        "status": 303,
+        "location": "/assignments?notice=Created+draft+original-e2e-q4"
+      },
+      "publish": {
+        "status": 303,
+        "location": "/assignments?notice=Published+original-e2e-q4+to+the+local+SIIP+demo"
+      }
+    }
+  ]
+}

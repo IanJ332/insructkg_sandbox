@@ -1,0 +1,33 @@
+{
+  "baseline_head": "7a5a01dadcc24ff63c7ac21763c02a17edfd77b6",
+  "unit_integration": {
+    "tests": 366,
+    "result": "PASS",
+    "seconds": 104.099
+  },
+  "e2e_suite": {
+    "tests": 14,
+    "result": "PASS",
+    "seconds": 74.816,
+    "includes": "Seven previously exercised browser cases plus recorder/related E2E cases"
+  },
+  "ruff": "PASS",
+  "mypy": "PASS configured three-file scope",
+  "bandit": "PASS zero findings",
+  "wheel_sha256": "f03654523396aeb6ae356111e0a12b94e70565810f473615925c60cadc6a9eac",
+  "clean_room": "BLOCKED for unprovisioned external source/runtime/cache/model; local provisioned pipeline and fresh fixture generation exercised",
+  "same_pdf_pipeline": {
+    "source_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de",
+    "original_chunks": 6,
+    "selected_chunks": 5,
+    "judgments": 122
+  },
+  "B6": "FAIL",
+  "historical_six_outcomes_preserved": true,
+  "controlled_replays": 2,
+  "canonical_records_unchanged": true,
+  "independent_model_review": "Completed; unreviewed KG and both controlled feedback outputs FAIL pedagogical/non-revealing assessment",
+  "hosted_checks": "Exact-head final results recorded in PR #9",
+  "dependency_audit": "PASS no known vulnerabilities (requirements-dev.txt)",
+  "pip_check": "PASS, requirements unchanged"
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "case": "inner-count-id",
+    "scope": "Controlled replay only; not delivered to student or persisted as a new feedback job.",
+    "question_id": "sql_join_04",
+    "prerequisites": [
+      "JOIN_CONDITION",
+      "NULL_SEMANTICS"
+    ],
+    "prior_observation_count": 4,
+    "raw_output": {
+      "feedback_text": "Your query uses INNER JOIN, which excludes departments with no employees. To include departments with zero employees, you need a LEFT OUTER JOIN. However, the COUNT function may not correctly reflect zero counts for unmatched departments due to NULL semantics. Investigate how COUNT behaves with NULL values in the context of a LEFT OUTER JOIN.",
+      "candidate_concepts": [
+        "LEFT_OUTER_JOIN",
+        "COUNT_AGGREGATION",
+        "NULL_SEMANTICS"
+      ],
+      "evidence_references": [
+        "lecture_text__0003",
+        "lecture_text__0004",
+        "lecture_text__0005"
+      ]
+    },
+    "automated_result": "feedback_quality_fallback",
+    "error_code": "unsupported_count_diagnosis",
+    "failure_stage": "quality_validation",
+    "model": "qwen3:8b",
+    "prompt_version": "siip-feedback-v11"
+  },
+  {
+    "case": "sparse-inner-count-id",
+    "scope": "Controlled replay only; not delivered to student or persisted as a new feedback job.",
+    "question_id": "sql_join_04",
+    "prerequisites": [
+      "JOIN_CONDITION",
+      "NULL_SEMANTICS"
+    ],
+    "prior_observation_count": 0,
+    "raw_output": {
+      "feedback_text": "Your query uses an INNER JOIN, which excludes departments with no employees. To include all departments, you need a LEFT OUTER JOIN. Investigate how LEFT OUTER JOIN affects row retention and NULL semantics for unmatched rows.",
+      "candidate_concepts": [
+        "LEFT_OUTER_JOIN",
+        "NULL_SEMANTICS"
+      ],
+      "evidence_references": [
+        "lecture_text__0003",
+        "lecture_text__0004"
+      ]
+    },
+    "automated_result": "live_success",
+    "error_code": null,
+    "failure_stage": null,
+    "model": "qwen3:8b",
+    "prompt_version": "siip-feedback-v11"
+  }
+]

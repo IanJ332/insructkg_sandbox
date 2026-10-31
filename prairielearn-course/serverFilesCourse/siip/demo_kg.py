@@ -1,9 +1,10 @@
 """Small, honest knowledge-graph workflow for the local SIIP demonstration.
 
-This module does *not* run original InstructKG. By default it creates a clearly
-labeled deterministic synthetic fixture. SIIP_DEMO_KG_MODE=local explicitly opts
-into bounded Ollama extraction with source validation and an honest fixture
-fallback. Every returned graph and edge repeats its actual extraction boundary.
+The default is a clearly labeled deterministic synthetic fixture. The local mode
+uses bounded Ollama extraction with an explicit fixture fallback. The selected
+ORIGINAL_INSTRUCTKG_CHUNK_ONLY mode invokes pinned external original functions,
+defers embeddings/clustering, and fails without substituting a fixture. Every
+returned graph and edge records its actual extraction boundary.
 
 The caller owns the persistence directory.  No module-global database or demo
 output path is used, which keeps tests isolated and lets the dashboard select its
@@ -186,9 +187,18 @@ class DemoKGRepository:
         if not isinstance(source_record, Mapping):
             raise DemoKGError("source_record must be a mapping")
         document_id = _source_document_id(source_record)
-        text = _source_text(source_record)
-        content_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
-        local_requested = os.environ.get("SIIP_DEMO_KG_MODE", "synthetic").lower() == "local"
+        requested_mode = str(
+            source_record.get("requested_extraction_mode")
+            or os.environ.get("SIIP_DEMO_KG_MODE", "synthetic")
+        )
+        original_requested = requested_mode.lower() == "original_instructkg_chunk_only"
+        text = "" if original_requested else _source_text(source_record)
+        content_sha256 = (
+            str(source_record.get("content_hash") or "")
+            if original_requested
+            else hashlib.sha256(text.encode("utf-8")).hexdigest()
+        )
+        local_requested = requested_mode.lower() == "local"
         model = os.environ.get("SIIP_LOCAL_KG_MODEL", "qwen3:8b")
         local_result = None
         fallback_reason = None
@@ -204,6 +214,14 @@ class DemoKGRepository:
             ],
             separators=(",", ":"),
         )
+        if original_requested:
+            from . import original_instructkg
+
+            identity += f"|{original_instructkg.PIPELINE_VERSION}|{model}"
+            identity += json.dumps(
+                (source_record.get("pdf_provenance") or {}).get("content_exclusions", []),
+                sort_keys=True,
+            )
         if local_requested:
             from . import local_kg_extractor
 
@@ -214,6 +232,20 @@ class DemoKGRepository:
         if draft_path.exists():
             return _read_json(draft_path)
 
+        if original_requested:
+            try:
+                local_result = original_instructkg.generate(
+                    source_record, graph_directory / "original_artifacts"
+                )
+            except (original_instructkg.OriginalPipelineError, OSError, ValueError) as exc:
+                raise DemoKGError(str(exc)) from exc
+            text = local_result["extracted_text"]
+            content_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            extraction_method = original_instructkg.EXTRACTION_METHOD
+            pipeline_version = original_instructkg.PIPELINE_VERSION
+            source_type = "original_instructkg"
+            boundary = original_instructkg.BOUNDARY
+            mode = original_instructkg.MODE
         if local_requested:
             try:
                 local_result = local_kg_extractor.extract_candidates(text, document_id, model=model)
@@ -237,7 +269,9 @@ class DemoKGRepository:
             for concept_id, label in _CONCEPTS
         ]
         edges = []
-        for source, relation, target, keywords, confidence in _EDGE_FIXTURES:
+        for source, relation, target, keywords, confidence in (
+            () if original_requested else _EDGE_FIXTURES
+        ):
             edges.append(
                 {
                     "edge_id": _edge_id(source, relation, target),
@@ -263,6 +297,7 @@ class DemoKGRepository:
             nodes = local_result["nodes"]
             edges = local_result["edges"]
         for node in nodes:
+            node.setdefault("source_document_id", document_id)
             node.update(
                 {
                     "extraction_method": extraction_method,
@@ -272,6 +307,7 @@ class DemoKGRepository:
                 }
             )
         for edge in edges:
+            edge.setdefault("source_document_id", document_id)
             edge.update(
                 {
                     "edge_id": _edge_id(edge["source"], edge["relation"], edge["target"]),
@@ -307,11 +343,15 @@ class DemoKGRepository:
             "pipeline_version": pipeline_version,
             "source_type": source_type,
             "extraction_mode": mode,
-            "requested_extraction_mode": "local" if local_requested else "synthetic",
+            "requested_extraction_mode": requested_mode,
             "fallback_reason": fallback_reason,
             "extraction_metadata": local_result["extraction_metadata"] if local_result else {},
             "rejected_candidates": local_result["rejected_candidates"] if local_result else [],
-            "actual_instructkg_extraction": False,
+            "actual_instructkg_extraction": original_requested,
+            "extracted_text": local_result.get("extracted_text") if original_requested else None,
+            "extracted_chunks": local_result.get("extracted_chunks")
+            if original_requested
+            else None,
             "scientific_boundary": boundary,
             "relation_direction_contract": (
                 "For A depends_on B, B is a prerequisite of A; "

@@ -9,6 +9,7 @@ means *visible to the local SIIP demo UI*, not native PrairieLearn publication.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import re
@@ -94,13 +95,21 @@ class LessonRecord:
     processing_status: str
     stored_content_path: str
     module_id: str | None = None
+    media_type: str = "text/plain"
+    pdf_provenance: dict[str, Any] | None = None
+    extracted_text_path: str | None = None
+    extracted_text_sha256: str | None = None
+    extracted_source_sha256: str | None = None
+    extracted_chunks: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "LessonRecord":
-        return cls(**dict(value))
+        data = dict(value)
+        data["extracted_chunks"] = tuple(data.get("extracted_chunks", ()))
+        return cls(**data)
 
 
 @dataclass(frozen=True)
@@ -156,12 +165,21 @@ class DemoAuthoringRegistry:
         *,
         max_lesson_bytes: int = DEFAULT_MAX_LESSON_BYTES,
         clock: Callable[[], str] = _now_utc,
+        trusted_pdf_manifest: Mapping[str, Any] | None = None,
     ) -> None:
         self.storage_dir = Path(storage_dir).resolve()
         if max_lesson_bytes < 1:
             raise ValueError("max_lesson_bytes must be positive")
         self.max_lesson_bytes = max_lesson_bytes
         self._clock = clock
+        if trusted_pdf_manifest is None and os.environ.get("SIIP_SYNTHETIC_PDF_MANIFEST"):
+            try:
+                trusted_pdf_manifest = json.loads(
+                    Path(os.environ["SIIP_SYNTHETIC_PDF_MANIFEST"]).read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError) as exc:
+                raise ValueError("Invalid trusted PDF manifest") from exc
+        self._trusted_pdf_manifest = dict(trusted_pdf_manifest or {})
         with _REGISTRY_LOCKS_GUARD:
             self._lock = _REGISTRY_LOCKS.setdefault(str(self.storage_dir), threading.RLock())
         self._index_path = self.storage_dir / "demo_authoring_registry.json"
@@ -307,22 +325,48 @@ class DemoAuthoringRegistry:
             original_filename = original_filename or path.name
 
         original_filename = _validate_filename(original_filename)
-        if Path(original_filename).suffix.lower() not in {".md", ".txt", ".markdown"}:
-            raise ValueError("lesson must be a Markdown or text file")
-        try:
-            decoded = content.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ValueError("lesson must contain UTF-8 text") from exc
-        if any(ord(char) < 32 and char not in "\n\r\t" for char in decoded):
-            raise ValueError("lesson must not contain binary control characters")
+        suffix = Path(original_filename).suffix.lower()
         if not content:
             raise ValueError("lesson content must not be empty")
         if len(content) > self.max_lesson_bytes:
             raise ValueError(f"lesson exceeds the {self.max_lesson_bytes}-byte limit")
-        if SYNTHETIC_PROVENANCE_LABEL.encode("utf-8") not in content:
-            raise ValueError("lesson content must include the synthetic provenance label")
-
         digest = hashlib.sha256(content).hexdigest()
+        if suffix == ".pdf":
+            provenance = self._trusted_pdf_manifest.get(digest)
+            if not isinstance(provenance, Mapping) or not all(
+                isinstance(provenance.get(k), str) and provenance[k].strip()
+                for k in ("provenance", "license")
+            ):
+                raise ValueError("PDF SHA-256 is not in the trusted synthetic PDF manifest")
+            if not content.startswith(b"%PDF-"):
+                raise ValueError("invalid PDF header")
+            try:
+                from pypdf import PdfReader
+
+                reader = PdfReader(io.BytesIO(content), strict=True)
+                if reader.is_encrypted:
+                    raise ValueError("encrypted PDF is not supported")
+                if not 1 <= len(reader.pages) <= 200:
+                    raise ValueError("PDF must contain 1 to 200 pages")
+                for page in reader.pages:
+                    _ = page.mediabox
+            except ImportError as exc:
+                raise ValueError("PDF support requires pypdf") from exc
+            except Exception as exc:
+                raise ValueError("invalid or unsupported PDF") from exc
+            media_type = "application/pdf"
+        elif suffix in {".md", ".txt", ".markdown"}:
+            try:
+                decoded = content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ValueError("lesson must contain UTF-8 text") from exc
+            if any(ord(char) < 32 and char not in "\n\r\t" for char in decoded):
+                raise ValueError("lesson must not contain binary control characters")
+            if SYNTHETIC_PROVENANCE_LABEL not in decoded:
+                raise ValueError("lesson content must include the synthetic provenance label")
+            media_type = "text/plain"
+        else:
+            raise ValueError("lesson must be a Markdown, text, or trusted synthetic PDF file")
         relative_content_path = (Path("lesson_content") / f"{digest}.bin").as_posix()
         content_path = self.storage_dir / Path(relative_content_path)
 
@@ -356,6 +400,8 @@ class DemoAuthoringRegistry:
                 processing_status="UPLOADED",
                 stored_content_path=relative_content_path,
                 module_id=module_id,
+                media_type=media_type,
+                pdf_provenance=dict(provenance) if media_type == "application/pdf" else None,
             )
             data["lessons"].append(record.to_dict())
             self._save(data)
@@ -397,6 +443,72 @@ class DemoAuthoringRegistry:
         if hashlib.sha256(content).hexdigest() != record.sha256:
             raise ValueError("stored lesson content failed its SHA-256 integrity check")
         return content
+
+    def set_extracted_view(
+        self,
+        source_document_id: str,
+        version: int,
+        *,
+        source_sha256: str,
+        text: str,
+        chunks: Iterable[Mapping[str, Any]],
+    ) -> LessonRecord:
+        """Bind a derived text view to the exact uploaded bytes."""
+        if (
+            not isinstance(text, str)
+            or not text.strip()
+            or len(text.encode("utf-8")) > self.max_lesson_bytes * 8
+        ):
+            raise ValueError("invalid extracted text")
+        chunk_list = list(chunks)
+        try:
+            serialized = json.dumps(chunk_list, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid extracted chunks") from exc
+        if len(serialized.encode("utf-8")) > self.max_lesson_bytes * 16:
+            raise ValueError("extracted chunks too large")
+        with self._lock:
+            data = self._load()
+            for i, item in enumerate(data["lessons"]):
+                record = LessonRecord.from_dict(item)
+                if record.source_document_id == source_document_id and record.version == version:
+                    if record.sha256 != source_sha256 or record.media_type != "application/pdf":
+                        raise ValueError("extracted view source hash mismatch")
+                    self.read_lesson_bytes(source_document_id, version)
+                    text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+                    view_hash = hashlib.sha256(
+                        f"{source_sha256}:{text_hash}".encode("ascii")
+                    ).hexdigest()
+                    relative = (Path("lesson_content") / f"{view_hash}.txt").as_posix()
+                    (self.storage_dir / relative).write_text(text, encoding="utf-8", newline="")
+                    updated = replace(
+                        record,
+                        extracted_text_path=relative,
+                        extracted_text_sha256=text_hash,
+                        extracted_source_sha256=source_sha256,
+                        extracted_chunks=tuple(chunk_list),
+                    )
+                    data["lessons"][i] = updated.to_dict()
+                    self._save(data)
+                    return updated
+        raise KeyError("lesson not found")
+
+    def read_lesson_text(self, source_document_id: str, version: int | None = None) -> str:
+        record = self.get_lesson(source_document_id, version)
+        if record is None:
+            raise KeyError("lesson not found")
+        content = self.read_lesson_bytes(source_document_id, version)
+        if record.media_type != "application/pdf":
+            return content.decode("utf-8")
+        if not record.extracted_text_path or record.extracted_source_sha256 != record.sha256:
+            raise ValueError("PDF extracted text is not available")
+        path = (self.storage_dir / record.extracted_text_path).resolve()
+        if path.parent != self._content_dir:
+            raise ValueError("extracted text path escapes the registry content directory")
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != record.extracted_text_sha256:
+            raise ValueError("extracted text failed its SHA-256 integrity check")
+        return raw.decode("utf-8")
 
     def set_lesson_processing_status(
         self, source_document_id: str, version: int, status: str

@@ -1,0 +1,1048 @@
+{
+  "review_type": "Independent source-grounded assessment; recommendations only, not instructor decisions",
+  "source_pdf_sha256": "a508a4ea5e7ca39f485646c6657d7d5d3ce2d4c07fcf1fd5fa756ae9e6fd64de",
+  "after_counts": {
+    "original_chunks": 6,
+    "selected_chunks": 5,
+    "concepts": 25,
+    "unordered_pairs": 61,
+    "directed_judgments": 122,
+    "non_null_edges": 78
+  },
+  "recommendation_counts": {
+    "NEEDS_REVISION": 25,
+    "REJECT": 48,
+    "APPROVE": 5
+  },
+  "source_support_rate": "5/78 under the reviewer conservative source-support standard, not externally validated precision",
+  "quality_result": "FAIL for automatic unreviewed prerequisite use; reverse-direction testing recovers a source-supported edge but also emits conflicting and unsupported candidates.",
+  "before_after": "Original reviewed provenance-only chunk was excluded from extraction but preserved; CC0/fixture/integration/public-domain nodes absent. Generic PREREQUISITE_KNOWLEDGE remains. Baseline 33 edges with 4 approve, 10 needs revision, 19 reject; after 78 edges with 5 approve, 25 needs revision, 48 reject. Different candidate sets and two directions mean counts do not establish a controlled precision change.",
+  "direction_pairs": [
+    {
+      "supported": "INNER_JOIN_RESULT depends_on JOIN_PREDICATE (19)",
+      "rejected": "JOIN_PREDICATE depends_on INNER_JOIN_RESULT (41); model explanation argues the opposite."
+    },
+    {
+      "supported": "LEFT_OUTER_JOIN depends_on JOIN_PREDICATE (45), recovered",
+      "rejected": "JOIN_PREDICATE depends_on LEFT_OUTER_JOIN (20); model explanation argues the opposite."
+    }
+  ],
+  "coverage": "A new correct LEFT_OUTER_JOIN to JOIN_PREDICATE candidate appears; INNER_JOIN_RESULT to JOIN_PREDICATE, LEFT_OUTER_JOIN to NULL_SEMANTICS, and UNMATCHED_ROWS to NULL_SEMANTICS have direct lesson support. Reverse candidates can conflict, and absent semantic clustering limits coverage.",
+  "selection": "Three hash-bound instructor-reviewed Docling item references identify a fully reviewed provenance chunk; mixed/unreviewed material remains. Original source and chunks preserved in this run.",
+  "edges": [
+    {
+      "index": 0,
+      "edge_id": "edge-80398aeaa969",
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Omitting a predicate yields a Cartesian product here; predicate knowledge is not stated as a general prerequisite.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 1,
+      "edge_id": "edge-aa91abdb1e41",
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "depends_on",
+      "target": "ROW_MATCHING",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The source contrasts matching and Cartesian products; prerequisite direction is not established.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 2,
+      "edge_id": "edge-af30c9c66bb1",
+      "source": "CARTESIAN_PRODUCT",
+      "relation": "part_of",
+      "target": "TABLE_COMBINATION",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The source describes table-row combination but does not define this taxonomy.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 3,
+      "edge_id": "edge-6fcf2e7a9cff",
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "COUNT is linked to NULL semantics, not specifically NULL equality.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 4,
+      "edge_id": "edge-d3aaa5b32c91",
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "NULL semantics supports interpreting counts; this narrower prerequisite is not explicit.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 5,
+      "edge_id": "edge-366a5184e34a",
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_FOR_JOINS",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "COUNT links to NULL semantics generally, not specifically join semantics.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 6,
+      "edge_id": "edge-8ee0dad3cdde",
+      "source": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "Using IS NULL is not required to understand COUNT.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 7,
+      "edge_id": "edge-db25e8e9bab2",
+      "source": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "relation": "depends_on",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "Grouping is not prerequisite to the general COUNT(column) rule.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 8,
+      "edge_id": "edge-da016d4a598a",
+      "source": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTING",
+      "recommendation": "APPROVE",
+      "rationale": "The source states COUNT(column) counts non-NULL values and connects NULL semantics to grouped counts.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 9,
+      "edge_id": "edge-a296719e958f",
+      "source": "COUNT_COUNTS_RESULT_ROWS",
+      "relation": "depends_on",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "COUNT(*) counting rows does not require grouping.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 10,
+      "edge_id": "edge-5c1da16580b3",
+      "source": "COUNT_COUNTS_RESULT_ROWS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTING",
+      "recommendation": "REJECT",
+      "rationale": "The general COUNT(*) rule counts rows regardless of NULL.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 11,
+      "edge_id": "edge-441c85ee8279",
+      "source": "EQUALITY_PREDICATE",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Equality can serve as a join predicate; the general prerequisite is not established.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 12,
+      "edge_id": "edge-89590ecd3857",
+      "source": "EQUALITY_PREDICATE",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 13,
+      "edge_id": "edge-a852f7c41ebb",
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The related NULL statements do not explicitly establish this learning order.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 14,
+      "edge_id": "edge-1ac5270bd674",
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_FOR_JOINS",
+      "recommendation": "REJECT",
+      "rationale": "Join-specific NULL semantics is not needed first for general NULL equality.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 15,
+      "edge_id": "edge-855638be59cc",
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "The text does not require IS NULL use before NULL equality.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 16,
+      "edge_id": "edge-b8e0f607c795",
+      "source": "GROUP_BY_PARTITIONS_ROWS",
+      "relation": "depends_on",
+      "target": "HAVING_CLAUSE_FOR_AGGREGATE_CONDITIONS",
+      "recommendation": "REJECT",
+      "rationale": "GROUP BY does not depend on HAVING.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 17,
+      "edge_id": "edge-1c56b5f08d3d",
+      "source": "GROUP_BY_PARTITIONS_ROWS",
+      "relation": "part_of",
+      "target": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "recommendation": "REJECT",
+      "rationale": "Grouping is not part of WHERE row conditions.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 18,
+      "edge_id": "edge-ab0888e58ed4",
+      "source": "HAVING_CLAUSE_FOR_AGGREGATE_CONDITIONS",
+      "relation": "part_of",
+      "target": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "recommendation": "REJECT",
+      "rationale": "HAVING and WHERE have distinct roles, not a part-of relationship.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 19,
+      "edge_id": "edge-624ffdb98ffd",
+      "source": "INNER_JOIN_RESULT",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "APPROVE",
+      "rationale": "The source explicitly makes join predicate prerequisite to interpreting inner joins.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 20,
+      "edge_id": "edge-53788884ee95",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "LEFT_OUTER_JOIN",
+      "recommendation": "REJECT",
+      "rationale": "Reversed: source and model justification say left outer join depends on predicate.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 21,
+      "edge_id": "edge-a32fb2a3dfcd",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "MATCHING_ROW",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Matching is defined relative to a predicate; this prerequisite direction is not established.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 22,
+      "edge_id": "edge-6b2301879c33",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS",
+      "recommendation": "REJECT",
+      "rationale": "The source does not require NULL semantics to understand join predicates.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 23,
+      "edge_id": "edge-44adf8d51653",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 24,
+      "edge_id": "edge-0de847ca1134",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "ROW_MATCHING",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Matching and predicates are related; this teaching direction is not explicit.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 25,
+      "edge_id": "edge-1d4edde23b65",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "TABLE_COMBINATION",
+      "recommendation": "REJECT",
+      "rationale": "Table combination is not established as a prerequisite of join predicates.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 26,
+      "edge_id": "edge-9d4c12e267ee",
+      "source": "LEFT_JOIN_INCLUDES_UNMATCHED_ROWS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_IN_COUNTING",
+      "recommendation": "REJECT",
+      "rationale": "Row preservation is not stated to depend on NULL semantics in counts.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 27,
+      "edge_id": "edge-e0c1fbb32b31",
+      "source": "LEFT_JOIN_INCLUDES_UNMATCHED_ROWS",
+      "relation": "part_of",
+      "target": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "recommendation": "REJECT",
+      "rationale": "Retaining unmatched rows is not part of WHERE conditions.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 28,
+      "edge_id": "edge-afefc03a5c0c",
+      "source": "LEFT_OUTER_JOIN",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS",
+      "recommendation": "APPROVE",
+      "rationale": "The source explicitly states left outer join interpretation depends on NULL semantics.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 29,
+      "edge_id": "edge-6a94be050bd1",
+      "source": "LEFT_OUTER_JOIN",
+      "relation": "part_of",
+      "target": "RETAINS_LEFT_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "Row retention is a characteristic of the join; this part-of direction is reversed.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 30,
+      "edge_id": "edge-23c5a96fd7ca",
+      "source": "MATCHING_ROW",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 31,
+      "edge_id": "edge-ef0be0c14113",
+      "source": "NONMATCHING_ROW",
+      "relation": "depends_on",
+      "target": "PREREQUISITE_KNOWLEDGE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 32,
+      "edge_id": "edge-9095355ccac9",
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_FOR_JOINS",
+      "recommendation": "REJECT",
+      "rationale": "The NULL missing-value concept does not require join-specific semantics.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 33,
+      "edge_id": "edge-03d7d45ea768",
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "IS NULL usage is not prerequisite for understanding NULL as missing.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 34,
+      "edge_id": "edge-dc714116113b",
+      "source": "NULL_SEMANTICS_FOR_JOINS",
+      "relation": "depends_on",
+      "target": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "IS NULL use is not established as a prerequisite for join NULL semantics.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 35,
+      "edge_id": "edge-cdaeb5a4bb79",
+      "source": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "relation": "depends_on",
+      "target": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "recommendation": "REJECT",
+      "rationale": "COUNT behavior is not prerequisite to NULL equality.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 36,
+      "edge_id": "edge-e2117a355019",
+      "source": "HAVING_CLAUSE_FOR_AGGREGATE_CONDITIONS",
+      "relation": "depends_on",
+      "target": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "HAVING may use aggregates, but this specific COUNT rule is not required generally.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 37,
+      "edge_id": "edge-830ecb85f956",
+      "source": "HAVING_CLAUSE_FOR_AGGREGATE_CONDITIONS",
+      "relation": "depends_on",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "HAVING concerns grouped aggregate conditions; an explicit learning prerequisite is not stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 38,
+      "edge_id": "edge-7bc462ca5cf7",
+      "source": "INNER_JOIN_RESULT",
+      "relation": "depends_on",
+      "target": "CARTESIAN_PRODUCT",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The source contrasts inner joins and Cartesian products without establishing this prerequisite.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 39,
+      "edge_id": "edge-fcc291ee17cd",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "CARTESIAN_PRODUCT",
+      "recommendation": "REJECT",
+      "rationale": "Cartesian products are not established as prerequisite for join predicates.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 40,
+      "edge_id": "edge-620bbfce00b9",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "EQUALITY_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Equality is one possible predicate, not necessarily prerequisite for every join predicate.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 41,
+      "edge_id": "edge-36655d42fe57",
+      "source": "JOIN_PREDICATE",
+      "relation": "depends_on",
+      "target": "INNER_JOIN_RESULT",
+      "recommendation": "REJECT",
+      "rationale": "Reversed: source and model justification say inner join result depends on predicate.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 42,
+      "edge_id": "edge-c72cfbad0a41",
+      "source": "LEFT_JOIN_INCLUDES_UNMATCHED_ROWS",
+      "relation": "part_of",
+      "target": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "Retaining unmatched rows is a join property, not part of COUNT(column).",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 43,
+      "edge_id": "edge-5faf67bfbb37",
+      "source": "LEFT_JOIN_INCLUDES_UNMATCHED_ROWS",
+      "relation": "part_of",
+      "target": "COUNT_COUNTS_RESULT_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "Retaining unmatched rows is not part of COUNT(*).",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 44,
+      "edge_id": "edge-521597ffd83a",
+      "source": "LEFT_JOIN_INCLUDES_UNMATCHED_ROWS",
+      "relation": "part_of",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "Retaining unmatched rows is not part of GROUP BY.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 45,
+      "edge_id": "edge-7b36044b0121",
+      "source": "LEFT_OUTER_JOIN",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "APPROVE",
+      "rationale": "The source explicitly makes join predicate prerequisite to interpreting left outer joins.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 46,
+      "edge_id": "edge-0575e2c369d9",
+      "source": "MATCHING_ROW",
+      "relation": "depends_on",
+      "target": "EQUALITY_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Equality can support a match, but is not necessary for every matching-row concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 47,
+      "edge_id": "edge-809fb3488ca5",
+      "source": "MATCHING_ROW",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Matching satisfies a predicate, but explicit pedagogical ordering is not stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 48,
+      "edge_id": "edge-f91acfbf42cc",
+      "source": "NONMATCHING_ROW",
+      "relation": "depends_on",
+      "target": "EQUALITY_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Equality is not necessary for every nonmatching-row concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 49,
+      "edge_id": "edge-21f07985dee5",
+      "source": "NONMATCHING_ROW",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Nonmatching is defined relative to a predicate; explicit prerequisite is not stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 50,
+      "edge_id": "edge-e657c80dc162",
+      "source": "NONMATCHING_ROW",
+      "relation": "part_of",
+      "target": "MATCHING_ROW",
+      "recommendation": "REJECT",
+      "rationale": "Nonmatching rows contrast with matching rows; they are not a component of them.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 51,
+      "edge_id": "edge-6f9550cec6a8",
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "recommendation": "REJECT",
+      "rationale": "COUNT behavior is not prerequisite to knowing NULL indicates missing values.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 52,
+      "edge_id": "edge-d72507cacb35",
+      "source": "NULL_REPRESENTS_MISSING_VALUE",
+      "relation": "depends_on",
+      "target": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "recommendation": "REJECT",
+      "rationale": "NULL equality behavior is not prerequisite to knowing NULL indicates missing values.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 53,
+      "edge_id": "edge-cf0287494e38",
+      "source": "NULL_SEMANTICS",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "REJECT",
+      "rationale": "Join predicates are not established as prerequisite to NULL semantics.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 54,
+      "edge_id": "edge-9d472bcbc631",
+      "source": "NULL_SEMANTICS",
+      "relation": "depends_on",
+      "target": "LEFT_OUTER_JOIN",
+      "recommendation": "REJECT",
+      "rationale": "Reversed: source and model justification make NULL semantics prerequisite to left outer join.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 55,
+      "edge_id": "edge-8fe4950e966a",
+      "source": "NULL_SEMANTICS_FOR_JOINS",
+      "relation": "depends_on",
+      "target": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "recommendation": "REJECT",
+      "rationale": "COUNT behavior is not prerequisite to NULL semantics for joins.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 56,
+      "edge_id": "edge-cb074132a25f",
+      "source": "NULL_SEMANTICS_FOR_JOINS",
+      "relation": "depends_on",
+      "target": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The relevant NULL concepts are related; exact learning order is not explicitly stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 57,
+      "edge_id": "edge-7390c62ce37d",
+      "source": "NULL_SEMANTICS_FOR_JOINS",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Knowing NULL indicates missing is relevant, but this prerequisite is not explicitly stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 58,
+      "edge_id": "edge-971ab4d34fce",
+      "source": "NULL_SEMANTICS_IN_COUNTING",
+      "relation": "part_of",
+      "target": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "NULL semantics is not part of the COUNT(column) function.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 59,
+      "edge_id": "edge-0496a077d033",
+      "source": "NULL_SEMANTICS_IN_COUNTING",
+      "relation": "part_of",
+      "target": "COUNT_COUNTS_RESULT_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "NULL semantics is not a component of COUNT(*), which counts rows.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 60,
+      "edge_id": "edge-d815b8cdb9ce",
+      "source": "NULL_SEMANTICS_IN_COUNTING",
+      "relation": "depends_on",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "The source does not require grouping to understand NULL semantics in counting.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 61,
+      "edge_id": "edge-377ceab69835",
+      "source": "PREREQUISITE_KNOWLEDGE",
+      "relation": "depends_on",
+      "target": "EQUALITY_PREDICATE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 62,
+      "edge_id": "edge-22ac885da5e4",
+      "source": "PREREQUISITE_KNOWLEDGE",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 63,
+      "edge_id": "edge-4becd4b37e99",
+      "source": "PREREQUISITE_KNOWLEDGE",
+      "relation": "depends_on",
+      "target": "MATCHING_ROW",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 64,
+      "edge_id": "edge-86e509688d7f",
+      "source": "PREREQUISITE_KNOWLEDGE",
+      "relation": "depends_on",
+      "target": "NONMATCHING_ROW",
+      "recommendation": "REJECT",
+      "rationale": "PREREQUISITE_KNOWLEDGE is generic wording, not a course concept.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0001"
+      ]
+    },
+    {
+      "index": 65,
+      "edge_id": "edge-e52194e0f26a",
+      "source": "RETAINS_LEFT_ROWS",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "REJECT",
+      "rationale": "Left rows are retained regardless of match; the explanation confuses matching and preservation.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 66,
+      "edge_id": "edge-e9f8ee5d0023",
+      "source": "RETAINS_LEFT_ROWS",
+      "relation": "part_of",
+      "target": "LEFT_OUTER_JOIN",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Left-row retention is a characteristic of a left join; modeling behavior as part-of needs review.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 67,
+      "edge_id": "edge-3c85b52b69f7",
+      "source": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "relation": "part_of",
+      "target": "COUNT_COLUMN_COUNTS_NON_NULL_VALUES",
+      "recommendation": "REJECT",
+      "rationale": "WHERE row conditions are not part of COUNT(column).",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 68,
+      "edge_id": "edge-a101b9cee3ab",
+      "source": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "relation": "part_of",
+      "target": "GROUP_BY_PARTITIONS_ROWS",
+      "recommendation": "REJECT",
+      "rationale": "WHERE filtering precedes grouping and is not a component of GROUP BY.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 69,
+      "edge_id": "edge-772deed20edc",
+      "source": "ROW_CONDITIONS_IN_WHERE_CLAUSE",
+      "relation": "part_of",
+      "target": "HAVING_CLAUSE_FOR_AGGREGATE_CONDITIONS",
+      "recommendation": "REJECT",
+      "rationale": "WHERE and HAVING have distinct roles; WHERE is not part of HAVING.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0005"
+      ]
+    },
+    {
+      "index": 70,
+      "edge_id": "edge-6fce29eb85f3",
+      "source": "ROW_MATCHING",
+      "relation": "depends_on",
+      "target": "CARTESIAN_PRODUCT",
+      "recommendation": "REJECT",
+      "rationale": "Cartesian products are not a stated prerequisite for row matching.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 71,
+      "edge_id": "edge-baf9459d03fe",
+      "source": "ROW_MATCHING",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The predicate determines matching but explicit learning order is not stated.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0002"
+      ]
+    },
+    {
+      "index": 72,
+      "edge_id": "edge-6b4292c46a88",
+      "source": "UNMATCHED_ROWS",
+      "relation": "depends_on",
+      "target": "JOIN_PREDICATE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The predicate determines matches but the general prerequisite is not explicit.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 73,
+      "edge_id": "edge-31577e165ae9",
+      "source": "UNMATCHED_ROWS",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS",
+      "recommendation": "APPROVE",
+      "rationale": "The source explicitly makes NULL semantics prerequisite to explaining unmatched rows in a left outer join.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0003"
+      ]
+    },
+    {
+      "index": 74,
+      "edge_id": "edge-571ea0dd8549",
+      "source": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "relation": "depends_on",
+      "target": "COUNT_BEHAVIOR_WITH_NULLABLE_COLUMNS",
+      "recommendation": "REJECT",
+      "rationale": "COUNT behavior is not a prerequisite for IS NULL.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 75,
+      "edge_id": "edge-37fb125e5ae5",
+      "source": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "relation": "depends_on",
+      "target": "EQUALITY_WITH_NULL_IS_UNKNOWN",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "The text presents NULL equality and IS NULL together without establishing this order.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 76,
+      "edge_id": "edge-cac249364c5a",
+      "source": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "relation": "depends_on",
+      "target": "NULL_REPRESENTS_MISSING_VALUE",
+      "recommendation": "NEEDS_REVISION",
+      "rationale": "Knowing NULL indicates missing is relevant, but the exact prerequisite is not explicit.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    },
+    {
+      "index": 77,
+      "edge_id": "edge-c69d48dfa710",
+      "source": "USE_IS_NULL_FOR_MISSING_VALUES",
+      "relation": "depends_on",
+      "target": "NULL_SEMANTICS_FOR_JOINS",
+      "recommendation": "REJECT",
+      "rationale": "Join-specific NULL semantics is not required for IS NULL generally.",
+      "source_page": 1,
+      "evidence_chunk_ids": [
+        "lecture_text__0004"
+      ]
+    }
+  ]
+}

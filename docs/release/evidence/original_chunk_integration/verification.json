@@ -1,0 +1,16 @@
+{
+  "target_attempt_id": "demo-8f0a8950620ec74f88cb1394",
+  "prior_count": 4,
+  "later_count": 4,
+  "current_excluded": true,
+  "later_excluded": true,
+  "cross_course_excluded": true,
+  "other_student_history_count": 1,
+  "learner_instructor_jobs_equal": true,
+  "cross_student_denied": true,
+  "canonical_lineage_present": true,
+  "model_call_count": 6,
+  "reviewed_prerequisites": [
+    "NULL_SEMANTICS"
+  ]
+}

@@ -355,6 +355,10 @@ def authoring_page(csrf_token=None, notice=None, course_id=None):
                   <input type="hidden" name="csrf_token" value="{esc(csrf_token or "")}">
                   <input type="hidden" name="source_document_id" value="{esc(lesson.source_document_id)}">
                   <input type="hidden" name="version" value="{lesson.version}">
+                  <label>Extraction mode <select name="extraction_mode">
+                    <option value="existing">Existing configured extraction</option>
+                    <option value="ORIGINAL_INSTRUCTKG_CHUNK_ONLY">Original InstructKG (chunk only)</option>
+                  </select></label>
                   <button type="submit">Generate Knowledge Graph</button>
                 </form>''',
             ]
@@ -406,7 +410,8 @@ def authoring_page(csrf_token=None, notice=None, course_id=None):
         <input type="hidden" name="course_id" value="{esc(course_id)}">
         <label>Module <select name="module_id" required>{module_options}</select></label><br><br>
         <label>Source document ID <input name="source_document_id" value="lesson-sql-joins" required></label><br><br>
-        <label>Lesson document <input data-testid="lesson-file" type="file" name="lesson_file" accept=".md,.txt" required></label><br><br>
+        <p class="muted">Text lessons require the synthetic provenance label. PDFs must be explicitly synthetic and listed by SHA-256 in the server trusted manifest with provenance and license.</p>
+        <label>Lesson document <input data-testid="lesson-file" type="file" name="lesson_file" accept=".md,.markdown,.txt,.pdf" required></label><br><br>
         <button data-testid="upload-lesson" type="submit">Upload lesson</button>
       </form>
     </section>
@@ -449,7 +454,9 @@ def demo_graph_page(graph_id=None, csrf_token=None, notice=None):
             [
                 f"<code>{esc(edge['source'])}</code> → <strong>{esc(edge['relation'])}</strong> → <code>{esc(edge['target'])}</code>",
                 esc(edge["evidence_excerpt"]),
-                f"{edge['confidence']:.2f}",
+                f"{edge['confidence']:.2f}"
+                if isinstance(edge.get("confidence"), (int, float))
+                else "Not provided",
                 esc(edge["review_state"]),
                 review,
             ]
@@ -616,7 +623,14 @@ def overview(repo):
     authoring_summary = (
         "<section><h2>Assignment activity and feedback status</h2>"
         + table(["Assignment", "Publication", "Attempts", "Correct outcomes"], assignment_rows)
-        + f"<p>Durable feedback jobs: {pretty(get_jobs_repo().stats())}</p></section>"
+        + f"<p>Durable feedback jobs: {pretty(get_jobs_repo().stats())}</p>"
+        + "<p>Individual feedback and prior-history analysis:</p><ul>"
+        + "".join(
+            f'<li><a href="/api/instructor/feedback?course_id={esc(record["course_id"])}&amp;attempt_id={esc(record["attempt_id"])}">{esc(record["attempt_id"])}</a></li>'
+            for record in records
+            if record.get("course_id") and get_jobs_repo().get_by_attempt(record["attempt_id"])
+        )
+        + "</ul></section>"
     )
     ambiguity_summary = (
         "<section><h2>Candidate curriculum ambiguities</h2><p>Shared error patterns are candidates for instructor review. They do not establish that instructional material is defective.</p>"
@@ -1664,9 +1678,12 @@ class Handler(BaseHTTPRequestHandler):
                 if lesson is None:
                     self.send("Lesson not found", 404)
                     return
-                content = (
-                    get_demo_authoring().read_lesson_bytes(document_id, version).decode("utf-8")
-                )
+                try:
+                    content = get_demo_authoring().read_lesson_text(document_id, version)
+                except ValueError:
+                    if lesson.media_type != "application/pdf":
+                        raise
+                    content = "Extracted PDF text is not available yet. Generate a graph using Original InstructKG to create the source view."
                 self.send(
                     shell(
                         "Stored lesson",
@@ -2297,7 +2314,61 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(
                         json.dumps({"error": "Feedback not found"}), 404, content="application/json"
                     )
+                from siip.assignment_grounding import reviewed_concept_mapping
+                from siip.instructor_analysis import analyze_attempt
+
+                bindings = ("graph_id", "graph_version", "source_document_id", "source_version")
+                has_lineage = all(getattr(assignment, key, None) is not None for key in bindings)
+                analysis = {
+                    "status": "unavailable",
+                    "reason": "Reviewed graph lineage is unavailable for this legacy assignment.",
+                }
+                if has_lineage:
+                    if any(grounding.get(key) != getattr(assignment, key) for key in bindings):
+                        return self.send(
+                            json.dumps({"error": "Feedback lineage mismatch"}),
+                            409,
+                            content="application/json",
+                        )
+                    try:
+                        graph = get_demo_kg().retrieve(
+                            assignment.graph_id, assignment.graph_version
+                        )
+                        if (
+                            graph.get("course_id") != course_id
+                            or graph.get("source_document_id") != assignment.source_document_id
+                            or graph.get("source_version") != assignment.source_version
+                        ):
+                            raise ValueError("graph lineage mismatch")
+                        mapping = reviewed_concept_mapping(assignment.grading_config, graph)
+                        prior = repo.records(
+                            attempt["student_id"],
+                            attempt["timestamp"],
+                            before=True,
+                            course_id=course_id,
+                        )
+                        analysis = analyze_attempt(attempt, prior, graph, mapping)
+                    except (ValueError, KeyError, TypeError, OSError):
+                        analysis = {
+                            "status": "unavailable",
+                            "reason": "Reviewed graph evidence is unavailable.",
+                        }
                 payload = {
+                    "canonical_attempt": {
+                        key: attempt.get(key)
+                        for key in (
+                            "attempt_id",
+                            "student_id",
+                            "course_id",
+                            "assessment_id",
+                            "question_id",
+                            "timestamp",
+                            "submitted_sql",
+                            "concepts",
+                            "diagnosis",
+                        )
+                    },
+                    "analysis": analysis,
                     "attempt_id": attempt_id,
                     "course_id": course_id,
                     "assignment_id": assignment.assignment_id,
@@ -2385,7 +2456,11 @@ class Handler(BaseHTTPRequestHandler):
             size = int(self.headers["Content-Length"])
             if size < 0:
                 raise ValueError("Negative length")
-            max_request_size = 2 * 1024 * 1024 if self.path == "/api/demo/lessons/upload" else 16000
+            max_request_size = (
+                get_demo_authoring().max_lesson_bytes + 65536
+                if self.path == "/api/demo/lessons/upload"
+                else 16000
+            )
             if size > max_request_size:
                 return self.send("Request too large", 413)
             if self.headers.get("Transfer-Encoding"):
@@ -2394,7 +2469,7 @@ class Handler(BaseHTTPRequestHandler):
             raw = self.rfile.read(size)
             if len(raw) != size:
                 raise ValueError("Incomplete payload")
-            text = raw.decode("utf-8")
+            text = "" if self.path == "/api/demo/lessons/upload" else raw.decode("utf-8")
             auth = RequestAuth(self)
 
             # Local-only professor demonstration upload and authoring lifecycle.
@@ -2484,29 +2559,66 @@ class Handler(BaseHTTPRequestHandler):
                     source_type="actual_execution",
                 )
                 registry.set_lesson_processing_status(document_id, version, "PROCESSING")
+                stage = "validation"
                 try:
-                    graph = get_demo_kg().generate_candidates(
-                        {
-                            **lesson.to_dict(),
-                            "content_hash": lesson.sha256,
-                            "content": registry.read_lesson_bytes(document_id, version).decode(
-                                "utf-8"
-                            ),
-                        }
-                    )
-                except Exception:
+                    requested_mode = params.get("extraction_mode", ["existing"])[0]
+                    if requested_mode not in {"existing", "ORIGINAL_INSTRUCTKG_CHUNK_ONLY"}:
+                        raise ValueError("Invalid extraction mode")
+                    if (
+                        lesson.media_type == "application/pdf"
+                        and requested_mode != "ORIGINAL_INSTRUCTKG_CHUNK_ONLY"
+                    ):
+                        raise ValueError("PDF requires Original InstructKG extraction")
+                    source = {
+                        **lesson.to_dict(),
+                        "content_hash": lesson.sha256,
+                        "source_path": str(
+                            (registry.storage_dir / lesson.stored_content_path).resolve()
+                        ),
+                    }
+                    if requested_mode != "existing":
+                        source["requested_extraction_mode"] = requested_mode
+                    registry.read_lesson_bytes(document_id, version)
+                    if lesson.media_type != "application/pdf":
+                        source["content"] = registry.read_lesson_text(document_id, version)
+                    stage = "graph extraction"
+                    graph = get_demo_kg().generate_candidates(source)
+                    if lesson.media_type == "application/pdf":
+                        stage = "source view registration"
+                        registry.set_extracted_view(
+                            document_id,
+                            version,
+                            source_sha256=lesson.sha256,
+                            text=graph["extracted_text"],
+                            chunks=graph["extracted_chunks"],
+                        )
+                except Exception as exc:
                     registry.set_lesson_processing_status(document_id, version, "FAILED")
-                    raise
+                    event(
+                        "kg_extraction_failed",
+                        correlation_id=self.correlation,
+                        error_type=type(exc).__name__,
+                        source=stage,
+                        path="outputs/knowledge_graph/02_extracted_kg.json",
+                    )
+                    status = 400 if stage == "validation" and isinstance(exc, ValueError) else 503
+                    return self.send(
+                        f"Knowledge graph {stage} failed. Check server logs for the correlation ID.",
+                        status,
+                    )
                 registry.set_lesson_processing_status(document_id, version, "PROCESSED")
                 record_demo_event(
                     actor_type="system",
-                    actor_id="siip-demo-kg-fixture",
+                    actor_id="siip-demo-kg-fixture"
+                    if graph.get("extraction_mode") == "SYNTHETIC_FIXTURE"
+                    else "siip-demo-kg-extractor",
                     phase="knowledge_graph",
                     event_type="kg_extraction_completed",
                     entity_id=graph["graph_id"],
                     artifact_path="outputs/knowledge_graph/02_extracted_kg.json",
                     source_type="actual_execution"
-                    if graph.get("extraction_mode") == "LOCAL_LLM_ASSISTED_EXTRACTION"
+                    if graph.get("extraction_mode")
+                    in {"LOCAL_LLM_ASSISTED_EXTRACTION", "ORIGINAL_INSTRUCTKG_CHUNK_ONLY"}
                     else "synthetic_fixture",
                 )
                 self.send_response(303)
@@ -2622,6 +2734,13 @@ class Handler(BaseHTTPRequestHandler):
                         }
                     }
                     reviewed_concept_mapping({"concept_mapping": mapping}, graph)
+                resolved_nodes = {
+                    mapping.get(node, {}).get("canonical_id", node) for node in node_ids
+                }
+                if not resolved_nodes.intersection(QUESTIONS[question_id]["concepts"]):
+                    return self.send(
+                        "Assignment concepts must match the question using reviewed mappings", 409
+                    )
                 record = get_demo_authoring().create_assignment(
                     assignment_id=params["assignment_id"][0],
                     course_id=lesson.course_id,
