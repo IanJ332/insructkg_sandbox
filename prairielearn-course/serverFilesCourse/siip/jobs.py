@@ -727,6 +727,7 @@ class FeedbackWorker:
             # Historical personalization: load prior mastery profile if not explicitly passed
             student_mastery = mastery
             history_provenance = "none"
+            prior_records, history_scope = None, None
             if student_mastery is None and self.submission_repo is not None:
                 try:
                     cutoff = job.created_at
@@ -753,6 +754,13 @@ class FeedbackWorker:
                     prof = self.submission_repo.profile(
                         job.student_id, as_of=cutoff, before=True, course_id=course_id
                     )
+                    if prof and isinstance(prof, dict):
+                        prior_records = prof.get("history")
+                        history_scope = {
+                            "student_id": job.student_id,
+                            "course_id": course_id,
+                            "cutoff": cutoff,
+                        }
                     if prof and isinstance(prof, dict) and prof.get("concepts"):
                         student_mastery = prof["concepts"]
                         history_provenance = "prior_submissions"
@@ -770,6 +778,8 @@ class FeedbackWorker:
                 mastery=student_mastery,
                 provider=provider,
                 grounding=job.grading.get("_grounding"),
+                prior_records=prior_records,
+                history_scope=history_scope,
             )
             if feedback_result.get("grounding_provenance"):
                 provenance = feedback_result["grounding_provenance"]

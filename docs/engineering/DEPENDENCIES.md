@@ -1,6 +1,6 @@
 # Dependency inventory and compatibility
 
-The integration package has **zero third-party runtime Python dependencies**. Python standard library implements SQLite worker, HTTP client/server, JSON and persistence. Development dependencies are all version pinned in requirements-dev.txt: pypdf 6.20.1, Ruff 0.17.0, mypy 2.4.0, Bandit 1.9.4, detect-secrets 1.5.0, pip-audit 2.10.1 and Playwright 1.64.0 with pinned transitive packages. pypdf was upgraded from baseline 6.1.1 following dependency review. Chromium is installed by the pinned Playwright CLI, not committed.
+The integration package has **zero third-party runtime Python dependencies**. Python standard library implements SQLite worker, HTTP client/server, JSON and persistence. Development dependencies are all version pinned in requirements-dev.txt: pypdf 6.21.4, Ruff 0.17.0, mypy 2.4.0, Bandit 1.9.4, detect-secrets 1.5.0, pip-audit 2.10.1 and Playwright 1.64.0 with pinned transitive packages. The Phase 4 audit found seven pypdf 6.21.2 advisories fixed across 6.21.3 and [6.21.4](https://github.com/py-pdf/pypdf/releases/tag/6.21.4); the patch pin replaces that earlier version. Chromium is installed by the pinned Playwright CLI, not committed.
 
 PrairieLearn image digest is `sha256:f030faf735fdbb80c0307cc1b599d0757bb76a2f4573fbab9a7303adad4275ac`. The independent audited source revision is `eaaa91843807411918d260475e0a9188bcc2c979`; no assertion equates image contents with that source SHA. Compose pins the runtime digest and binds loopback only.
 
